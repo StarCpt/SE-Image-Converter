@@ -1,0 +1,39 @@
+﻿<Window x:Class="SEImageToLCD_15BitColor.AcrylicDialog"
+        x:Name="AcrylicDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SEImageToLCD_15BitColor"
+        xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
+        mc:Ignorable="d"
+        BorderBrush="#00000000"
+        BorderThickness="0"
+            fw:AcrylicWindow.Enabled="True"
+            fw:AcrylicWindow.NoiseOpacity="0"
+            fw:AcrylicWindow.AcrylicAccentState="BlurBehind"
+            fw:AcrylicWindow.TintOpacity="0"
+            fw:AcrylicWindow.TintColor="#00000000"
+            fw:AcrylicWindow.FallbackColor="#00000000"
+            fw:AcrylicWindow.ExtendViewIntoTitleBar="True"
+            fw:AcrylicWindow.AcrylicWindowStyle="None"
+        Title="AcrylicDialog" Height="80"
+        WindowStyle="None" ResizeMode="NoResize" 
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False" 
+        SizeToContent="Width" MinWidth="175">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="booleanToVisibilityConverter" />
+    </Window.Resources>
+    
+    <Grid x:Name="grid">
+        <Border CornerRadius="5" Background="#A0101010" />
+        <Label x:Name="DialogMessage" Content="Test String" Foreground="White" Margin="5,0,5,20"
+               HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" />
+        <Button Style="{StaticResource TransparentRoundedButton}" Content="Ok" Background="#1d7dd4" Foreground="White"
+                x:Name="DialogCloseBtn" Height="20" Width="50" VerticalAlignment="Bottom" Margin="0,0,0,7" FontSize="10"
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="DialogCloseBtn_Click"/>
+    </Grid>
+</Window>
