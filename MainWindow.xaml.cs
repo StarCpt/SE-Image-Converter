@@ -82,9 +82,9 @@ namespace SEImageToLCD_15BitColor
                 { ToggleBtn_5BitColor, Program.BitDepth.ColorDepth5 },
             };
 
-            MainWindowWindow.Title = "Star's Image Converter Preview 2";
-            AppTitleText.Content = "Star's Image Converter Preview 2";
-            AppBigTitle.Content = "Star's Image Converter pv2";
+            MainWindowWindow.Title = "Star's Image Converter v0.3";
+            AppTitleText.Content = "Star's Image Converter v0.3";
+            AppBigTitle.Content = "Star's Image Converter";
         }
 
         private void OnBrowseImagesClicked(object sender, RoutedEventArgs e)
