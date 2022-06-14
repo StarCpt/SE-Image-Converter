@@ -25,7 +25,7 @@ namespace SEImageToLCD_15BitColor
             InitializeComponent();
             AcrylicDialogWindow.Owner = parent;
             DialogMessage.Content = message;
-            MainWindow.Logging.Log($"Initialized AcrylicDialog: {message}");
+            MainWindow.Logging.Log($"AcrylicDialog: {message}");
         }
 
         private void DialogCloseBtn_Click(object sender, RoutedEventArgs e)

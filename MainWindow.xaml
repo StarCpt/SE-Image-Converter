@@ -71,6 +71,11 @@
                                 <ToolTip Style="{StaticResource CustomToolTip}" x:Name="OpenLogBtnToolTip"/>
                             </MenuItem.ToolTip>
                         </MenuItem>
+                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="App Directory" Click="OpenAppDirBtn_Click" x:Name="OpenAppDirBtn">
+                            <MenuItem.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Open this application's base directory in File Explorer."/>
+                            </MenuItem.ToolTip>
+                        </MenuItem>
                     </ContextMenu>
                 </Image.ContextMenu>
             </Image>
@@ -229,8 +234,8 @@
                 <Label Grid.ColumnSpan="2" Content="Custom LCD Size" Foreground="White" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
                 <TextBox Background="#25303030" Grid.Column="0" Grid.Row="1" Margin="0,2,0,0" Text="178" x:Name="ImageWidthSetting"
                          VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
-                         Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="TextBox_PreviewTextInput" 
-                         DataObject.Pasting="TextBox_Pasting" MouseWheel="TextBox_MouseWheel" ContextMenuService.IsEnabled="False">
+                         Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput" TextChanged="ImageSize_TextChanged"
+                         DataObject.Pasting="ImageSize_Pasting" MouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False">
                     <TextBox.ContextMenu>
                         <ContextMenu IsEnabled="False"/>
                     </TextBox.ContextMenu>
@@ -240,8 +245,8 @@
                 </TextBox>
                 <TextBox Background="#25303030" Grid.Column="1" Grid.Row="1" Margin="0,2,0,0" Text="178" x:Name="ImageHeightSetting"
                          VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
-                         Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="TextBox_PreviewTextInput" 
-                         DataObject.Pasting="TextBox_Pasting" MouseWheel="TextBox_MouseWheel" ContextMenuService.IsEnabled="False">
+                         Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput" TextChanged="ImageSize_TextChanged"
+                         DataObject.Pasting="ImageSize_Pasting" MouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False">
                     <TextBox.ContextMenu>
                         <ContextMenu IsEnabled="False"/>
                     </TextBox.ContextMenu>

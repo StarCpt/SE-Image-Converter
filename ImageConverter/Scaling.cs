@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -17,6 +18,7 @@ namespace SEImageToLCD_15BitColor
             using (Graphics g = Graphics.FromImage(newImage))
             {
                 g.InterpolationMode = mode;
+                ImageAttributes att = new ImageAttributes();
                 g.DrawImage(image, new Rectangle(Point.Empty, newImage.Size));
             }
 

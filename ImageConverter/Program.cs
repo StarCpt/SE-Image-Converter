@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
+using System.Drawing.Imaging;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -66,7 +67,7 @@ namespace SEImageToLCD_15BitColor
             return new Tuple<string, BitmapImage>(convertedStrB.ToString(), MainWindowUtils.BitmapToBitmapImage(GetBitmap(imagePixelArr)));
         }
 
-        static Pixel[,] Pad(Bitmap image, Size targetSize)
+        public static Pixel[,] Pad(Bitmap image, Size targetSize)
         {
             Pixel[,] paddedImage = new Pixel[Math.Max(targetSize.Width, image.Width), Math.Max(targetSize.Height, image.Height)];
             int xPadding = ((targetSize.Width - image.Width) / 2).Clamp(0, int.MaxValue);
@@ -180,14 +181,26 @@ namespace SEImageToLCD_15BitColor
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);//I dont' understand this. I'm just copying whip's code
 
             pixel.Update(
-                (int)(Math.Round(pixel.R / colorStepInterval) * colorStepInterval),
-                (int)(Math.Round(pixel.G / colorStepInterval) * colorStepInterval),
-                (int)(Math.Round(pixel.B / colorStepInterval) * colorStepInterval));
+                (byte)(Math.Round(pixel.R / colorStepInterval) * colorStepInterval),
+                (byte)(Math.Round(pixel.G / colorStepInterval) * colorStepInterval),
+                (byte)(Math.Round(pixel.B / colorStepInterval) * colorStepInterval));
 
             return pixel;
         }
 
-        private static Pixel[,] ChangeBitDepth(Pixel[,] imagePixelArray, byte perChannelColorDepth)
+        public static byte[] ChangeBitDepth(byte[] image, byte colorDepth)
+        {
+            double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);//I dont' understand this. I'm just copying whip's code
+
+            for (int i = 0; i < image.Length; i++)
+            {
+                image[i] = (byte)(Math.Round(image[i] / colorStepInterval) * colorStepInterval);
+            }
+
+            return image;
+        }
+
+        public static Pixel[,] ChangeBitDepth(Pixel[,] imagePixelArray, byte perChannelColorDepth)
         {
             double colorStepInterval = 255.0 / (Math.Pow(2, perChannelColorDepth) - 1);
 
@@ -197,9 +210,9 @@ namespace SEImageToLCD_15BitColor
                 {
                     Pixel pixel = imagePixelArray[x, y];
                     imagePixelArray[x, y].Update(
-                        (int)(Math.Round(pixel.R / colorStepInterval) * colorStepInterval),
-                        (int)(Math.Round(pixel.G / colorStepInterval) * colorStepInterval),
-                        (int)(Math.Round(pixel.B / colorStepInterval) * colorStepInterval));
+                        (byte)(Math.Round(pixel.R / colorStepInterval) * colorStepInterval),
+                        (byte)(Math.Round(pixel.G / colorStepInterval) * colorStepInterval),
+                        (byte)(Math.Round(pixel.B / colorStepInterval) * colorStepInterval));
                 }
             }
 
@@ -214,6 +227,147 @@ namespace SEImageToLCD_15BitColor
         public static char ColorTo15BitChar(byte r, byte g, byte b)
         {
             return (char)((uint)0x3000 + ((r >> 3) << 10) + ((g >> 3) << 5) + (b >> 3));
+        }
+    }
+    public class ProgramThread
+    {
+        private Bitmap imageBitmap;
+        private Program.DitherMode ditherModeEnum;
+        private Program.BitDepth bitDepthEnum;
+        private Size lcdSize;
+        private InterpolationMode interpolationEnum;
+        private MainWindow.ConvertCallback callback;
+
+        public ProgramThread(Bitmap imageBitmap, Program.DitherMode ditherModeEnum, Program.BitDepth bitDepthEnum, Size lcdSize, InterpolationMode interpolationEnum, MainWindow.ConvertCallback callback)
+        {
+            this.imageBitmap = imageBitmap;
+            this.ditherModeEnum = ditherModeEnum;
+            this.bitDepthEnum = bitDepthEnum;
+            this.lcdSize = lcdSize;
+            this.interpolationEnum = interpolationEnum;
+            this.callback = callback;
+        }
+
+        public void CancelCallback() => callback = null;
+
+        public void ConvertImageThreaded()
+        {
+            StringBuilder convertedStrB = new StringBuilder();
+            float scale = Math.Min((float)lcdSize.Width / imageBitmap.Width, (float)lcdSize.Height / imageBitmap.Height);
+            //double scale = 178d / Math.Max(img.Width, img.Height);
+            imageBitmap = Scaling.Scale(imageBitmap, scale, interpolationEnum);
+            MainWindow.Logging.Log($"scaled. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+            Program.Pixel[,] imagePixelArr = Program.Pad(imageBitmap, lcdSize);
+            MainWindow.Logging.Log($"converted to pixel array. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            switch (ditherModeEnum)
+            {
+                case Program.DitherMode.NoDither:
+                    imagePixelArr = Program.ChangeBitDepth(imagePixelArr, (byte)bitDepthEnum);
+                    break;
+                case Program.DitherMode.FloydSteinberg:
+                    imagePixelArr = Dithering.ChangeBitDepthAndDither(imagePixelArr, (byte)bitDepthEnum);
+                    break;
+            }
+
+            MainWindow.Logging.Log($"bitdepth change and dithering done. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            for (int x = 0; x < imagePixelArr.GetLength(0); x++)
+            {
+                for (int y = 0; y < imagePixelArr.GetLength(1); y++)
+                {
+                    Program.Pixel pixel = imagePixelArr[x, y];
+                    char colorChar;
+                    switch (bitDepthEnum)
+                    {
+                        case Program.BitDepth.Color3:
+                            colorChar = Program.ColorTo9BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
+                            convertedStrB.Append(colorChar);
+                            break;
+                        case Program.BitDepth.Color5:
+                            colorChar = Program.ColorTo15BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
+                            convertedStrB.Append(colorChar);
+                            break;
+                    }
+                }
+                convertedStrB.AppendLine();
+            }
+
+            MainWindow.Logging.Log($"finished processing. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            if (callback != null)
+            {
+                callback(new Tuple<string, BitmapImage>(convertedStrB.ToString(), MainWindowUtils.BitmapToBitmapImage(Program.GetBitmap(imagePixelArr))));
+            }
+        }
+
+        /// <summary>
+        /// WORK IN PROGRESS! DONT USE THIS DUMBASS
+        /// </summary>
+        public void ConvertImageThreadedFast()
+        {
+            StringBuilder convertedStrB = new StringBuilder();
+            float scale = Math.Min((float)lcdSize.Width / imageBitmap.Width, (float)lcdSize.Height / imageBitmap.Height);
+            //double scale = 178d / Math.Max(img.Width, img.Height);
+            imageBitmap = Scaling.Scale(imageBitmap, scale, interpolationEnum);
+            MainWindow.Logging.Log($"scaled. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            Rectangle rectangle = new Rectangle(0, 0, imageBitmap.Width, imageBitmap.Height);
+            BitmapData bitData = imageBitmap.LockBits(rectangle, ImageLockMode.ReadWrite, imageBitmap.PixelFormat);
+            IntPtr ptr = bitData.Scan0;
+
+            int bitsPerPixel = Image.GetPixelFormatSize(imageBitmap.PixelFormat);
+            int channelCount = bitsPerPixel / 8;
+            int imgByteSize = channelCount * imageBitmap.Width * imageBitmap.Height;
+            byte[] rawImgData = new byte[imgByteSize];
+            System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgData, 0, imgByteSize);
+            //imageBitmap.Palette
+
+            MainWindow.Logging.Log($"converted to byte array. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            switch (ditherModeEnum)
+            {
+                case Program.DitherMode.NoDither:
+                    rawImgData = Program.ChangeBitDepth(rawImgData, (byte)bitDepthEnum);
+                    break;
+                case Program.DitherMode.FloydSteinberg:
+                    rawImgData = Dithering.ChangeBitDepthAndDitherFast(rawImgData, channelCount, imageBitmap.Width, imageBitmap.Height, (byte)bitDepthEnum);
+                    break;
+            }
+
+            MainWindow.Logging.Log($"bitdepth change and dithering done. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            //for (int p = 0; p < rawImgData.Length; p+= channelCount)
+            //{
+            //    for (int c = 0; c < channelCount; c++)
+            //    {
+            //        //Program.Pixel pixel = imagePixelArr[x, y];
+            //        //char colorChar;
+            //        //switch (bitDepthEnum)
+            //        //{
+            //        //    case Program.BitDepth.Color3:
+            //        //        colorChar = Program.ColorTo9BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
+            //        //        convertedStrB.Append(colorChar);
+            //        //        break;
+            //        //    case Program.BitDepth.Color5:
+            //        //        colorChar = Program.ColorTo15BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
+            //        //        convertedStrB.Append(colorChar);
+            //        //        break;
+            //        //}
+            //    }
+            //    //convertedStrB.AppendLine();
+            //}
+
+            System.Runtime.InteropServices.Marshal.Copy(rawImgData, 0, ptr, imgByteSize);
+
+            imageBitmap.UnlockBits(bitData);
+
+            MainWindow.Logging.Log($"finished processing. {MainWindow.Main.sw.ElapsedMilliseconds} ms elapsed.");
+
+            if (callback != null)
+            {
+                callback(new Tuple<string, BitmapImage>(convertedStrB.ToString(), MainWindowUtils.BitmapToBitmapImage(imageBitmap)));
+            }
         }
     }
     public static class MathExt
