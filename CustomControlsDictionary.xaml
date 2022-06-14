@@ -22,7 +22,6 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.5" />
-                            <!--<Setter Property="Background" Value="#05BBBBBB" />-->
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -66,7 +65,7 @@
                 <ControlTemplate TargetType="ToolTip">
                     <Grid>
                         <Border Background="#D0303030" CornerRadius="2" BorderThickness="0" BorderBrush="#00000000" />
-                        <Label Content="{TemplateBinding Content}" Foreground="White" />
+                        <Label Content="{TemplateBinding Content}" Foreground="White" FontSize="12" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -80,14 +79,33 @@
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <StackPanel Background="#00000000" Margin="0,1,0,0">
-                        <Label Content="{TemplateBinding Header}" Background="{TemplateBinding Background}" Foreground="White" Padding="10,5" />
+                        <Label Content="{TemplateBinding Header}" Background="{TemplateBinding Background}" Foreground="White" Padding="10,5" FontSize="12" />
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Opacity" Value="0.7" />
                             <Setter Property="Background" Value="#454545" />
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="CustomMenu" TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <StackPanel Background="#252525">
+                        <Border Margin="0,2" />
+                        <StackPanel IsItemsHost="True">
+                        </StackPanel>
+                        <Border Margin="0,2.5" />
+                    </StackPanel>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

@@ -61,7 +61,19 @@
             
         </Rectangle>
         <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" FlowDirection="LeftToRight" Orientation="Horizontal">
-            <Image x:Name="AppTitleIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,3,0" Height="16" Width="16" Source="/Resources/15icon_16x16.png" Stretch="Uniform"/>
+            <Image x:Name="AppTitleIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,3,0" Height="16" Width="16" Source="/Resources/15icon_16x16.png" Stretch="Uniform"
+                   IsHitTestVisible="True" WindowChrome.IsHitTestVisibleInChrome="True"
+                   MouseLeftButtonDown="AppTitleIcon_MouseLeftButtonChanged" MouseLeftButtonUp="AppTitleIcon_MouseLeftButtonChanged" LostMouseCapture="AppTitleIcon_LostMouseCapture">
+                <Image.ContextMenu>
+                    <ContextMenu Style="{StaticResource CustomMenu}">
+                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Open Log" Click="OpenLogs_Clicked">
+                            <MenuItem.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" x:Name="OpenLogBtnToolTip"/>
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                    </ContextMenu>
+                </Image.ContextMenu>
+            </Image>
             <Label x:Name="AppTitleText" Content="Star's Image Converter PV1" VerticalAlignment="Center" Margin="0" Foreground="#FFFFFF"/>
         </StackPanel>
         <Border BorderThickness="0,1,0,0" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" BorderBrush="#151515" Opacity="0.5" />
@@ -79,23 +91,15 @@
                    Height="350" Width="350" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.25"
                    AllowDrop="True" PreviewDrop="ImagePreview_PreviewDrop">
             <Rectangle.ToolTip>
-                <ToolTip Style="{StaticResource CustomToolTip}" Content="Preview for converted images" />
+                <ToolTip Style="{StaticResource CustomToolTip}" Content="Converted Image Preview" />
             </Rectangle.ToolTip>
             <Rectangle.ContextMenu>
-                <ContextMenu>
-                    <ContextMenu.Template>
-                        <ControlTemplate>
-                            <StackPanel Background="#252525">
-                                <Border Margin="0,2" />
-                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="TryFromClipboard">
-                                    <MenuItem.ToolTip>
-                                        <ToolTip Style="{StaticResource CustomToolTip}" Content="If the clipboard contains an image,&#x0a;converts it with currently selected settings" />
-                                    </MenuItem.ToolTip>
-                                </MenuItem>
-                                <Border Margin="0,2.5" />
-                            </StackPanel>
-                        </ControlTemplate>
-                    </ContextMenu.Template>
+                <ContextMenu Style="{StaticResource CustomMenu}">
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard">
+                        <MenuItem.ToolTip>
+                            <ToolTip Style="{StaticResource CustomToolTip}" Content="If the clipboard contains an image,&#x0a;converts it with currently selected settings" />
+                        </MenuItem.ToolTip>
+                    </MenuItem>
                 </ContextMenu>
             </Rectangle.ContextMenu>
         </Rectangle>
@@ -104,18 +108,10 @@
                Height="350" Width="350" HorizontalAlignment="Center" VerticalAlignment="Center"
                AllowDrop="True" PreviewDrop="ImagePreview_PreviewDrop">
             <Image.ContextMenu>
-                <ContextMenu>
-                    <ContextMenu.Template>
-                        <ControlTemplate>
-                            <StackPanel Background="#252525">
-                                <Border Margin="0,2" />
-                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="OnCopyToClipClicked" />
-                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="TryFromClipboard" />
-                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemoveImagePreview" />
-                                <Border Margin="0,2.5" />
-                            </StackPanel>
-                        </ControlTemplate>
-                    </ContextMenu.Template>
+                <ContextMenu Style="{StaticResource CustomMenu}">
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="OnCopyToClipClicked" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemoveImagePreview" x:Name="RemoveImagePreviewBtn"/>
                 </ContextMenu>
             </Image.ContextMenu>
         </Image>
@@ -127,16 +123,8 @@
                 Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                 FontSize="15" Foreground="White" Click="OnBrowseImagesClicked">
                 <Button.ContextMenu>
-                    <ContextMenu>
-                        <ContextMenu.Template>
-                            <ControlTemplate>
-                                <StackPanel Background="#252525">
-                                    <Border Margin="0,2" />
-                                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Clear image cache" Click="ContextMenuItem_DeleteCache" />
-                                    <Border Margin="0,2.5" />
-                                </StackPanel>
-                            </ControlTemplate>
-                        </ContextMenu.Template>
+                    <ContextMenu Style="{StaticResource CustomMenu}">
+                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Clear image cache" Click="ContextMenuItem_DeleteCache" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Button.ToolTip>
@@ -153,7 +141,7 @@
                 VerticalAlignment="Center" VerticalContentAlignment="Center" HorizontalAlignment="Left" HorizontalContentAlignment="Center"
                 FontSize="12" Foreground="White" x:Name="ToggleBtn_3BitColor" Click="ColorDepthOption_Clicked">
                     <ToggleButton.ToolTip>
-                        <ToolTip Style="{StaticResource CustomToolTip}" Content="For the &quot;Monospace&quot; font&#x0a;Use this for vanilla SE" />
+                        <ToolTip Style="{StaticResource CustomToolTip}" Content="For use with the &quot;Monospace&quot; font.&#x0a;Use this for vanilla SE" />
                     </ToggleButton.ToolTip>
                 </ToggleButton>
                 <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
@@ -170,7 +158,7 @@
                 Height="25" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                 FontSize="12" Foreground="White" x:Name="ToggleBtn_Dithering" Click="DitherOption_Clicked">
                 <ToggleButton.ToolTip>
-                    <ToolTip Style="{StaticResource CustomToolTip}" Content="Applies Floyd-Steinberg error diffusion to the picture" />
+                    <ToolTip Style="{StaticResource CustomToolTip}" Content="Applies Floyd-Steinberg error diffusion to the image during conversion." />
                 </ToggleButton.ToolTip>
             </ToggleButton>
             <Grid Margin="5">
@@ -204,20 +192,12 @@
                 Width="145" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                 FontSize="15" Foreground="White" Click="OnConvertClicked">
                 <Button.ContextMenu>
-                    <ContextMenu>
-                        <ContextMenu.Template>
-                            <ControlTemplate>
-                                <StackPanel Background="#252525">
-                                    <Border Margin="0,2" />
-                                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Clear image cache" Click="ContextMenuItem_DeleteCache" />
-                                    <Border Margin="0,2.5" />
-                                </StackPanel>
-                            </ControlTemplate>
-                        </ContextMenu.Template>
+                    <ContextMenu Style="{StaticResource CustomMenu}">
+                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Clear image cache" Click="ContextMenuItem_DeleteCache" />
                     </ContextMenu>
                 </Button.ContextMenu>
                 <Button.ToolTip>
-                    <ToolTip Style="{StaticResource CustomToolTip}" Content="" x:Name="CurrentImageLabelToolTip" FontSize="12" />
+                    <ToolTip Style="{StaticResource CustomToolTip}" Content="" x:Name="ConvertBtnToolTip"/>
                 </Button.ToolTip>
             </Button>
         </StackPanel>
@@ -306,7 +286,7 @@
             <Button Style="{StaticResource TransparentRoundedButton}"
                 Content="Copy to Clipboard" Margin="0,25,0,0"
                 Width="145" Height="40" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                FontSize="15" Foreground="White" Click="OnCopyToClipClicked">
+                FontSize="15" Foreground="White" Click="OnCopyToClipClicked" x:Name="CopyToClipBtn">
             </Button>
         </StackPanel>
     </Grid>

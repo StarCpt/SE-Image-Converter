@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
+using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -14,26 +15,26 @@ namespace SEImageToLCD_15BitColor
         public enum BitDepth
         {
             Invalid = -1,
-            ColorDepth3 = 3,
-            ColorDepth5 = 5,
+            Color3 = 3,
+            Color5 = 5,
         }
         public enum DitherMode
         {
-            None = 0,
+            NoDither = 0,
             FloydSteinberg = 1,
         }
 
-        public static Tuple<string, System.Windows.Media.Imaging.BitmapImage> ConvertImage(Bitmap imageBitmap, DitherMode ditherModeEnum, BitDepth bitDepthEnum, Point lcdSize, InterpolationMode interpolationEnum)
+        public static Tuple<string, BitmapImage> ConvertImage(Bitmap imageBitmap, DitherMode ditherModeEnum, BitDepth bitDepthEnum, Size lcdSize, InterpolationMode interpolationEnum)
         {
-            StringBuilder convertedStrB = new();
-            float scale = Math.Min((float)lcdSize.X / (float)imageBitmap.Width, (float)lcdSize.Y / (float)imageBitmap.Height);
+            StringBuilder convertedStrB = new StringBuilder();
+            float scale = Math.Min((float)lcdSize.Width / imageBitmap.Width, (float)lcdSize.Height / imageBitmap.Height);
             //double scale = 178d / Math.Max(img.Width, img.Height);
             imageBitmap = Scaling.Scale(imageBitmap, scale, interpolationEnum);
             Pixel[,] imagePixelArr = Pad(imageBitmap, lcdSize);
 
             switch (ditherModeEnum)
             {
-                case DitherMode.None:
+                case DitherMode.NoDither:
                     imagePixelArr = ChangeBitDepth(imagePixelArr, (byte)bitDepthEnum);
                     break;
                 case DitherMode.FloydSteinberg:
@@ -49,11 +50,11 @@ namespace SEImageToLCD_15BitColor
                     char colorChar;
                     switch (bitDepthEnum)
                     {
-                        case BitDepth.ColorDepth3:
+                        case BitDepth.Color3:
                             colorChar = ColorTo9BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
                             convertedStrB.Append(colorChar);
                             break;
-                        case BitDepth.ColorDepth5:
+                        case BitDepth.Color5:
                             colorChar = ColorTo15BitChar((byte)pixel.R, (byte)pixel.G, (byte)pixel.B);
                             convertedStrB.Append(colorChar);
                             break;
@@ -62,14 +63,14 @@ namespace SEImageToLCD_15BitColor
                 convertedStrB.AppendLine();
             }
 
-            return new Tuple<string, System.Windows.Media.Imaging.BitmapImage>(convertedStrB.ToString(), MainWindow.BitmapToBitmapImage(GetBitmap(imagePixelArr)));
+            return new Tuple<string, BitmapImage>(convertedStrB.ToString(), MainWindowUtils.BitmapToBitmapImage(GetBitmap(imagePixelArr)));
         }
 
-        static Pixel[,] Pad(Bitmap image, Point targetSize)
+        static Pixel[,] Pad(Bitmap image, Size targetSize)
         {
-            Pixel[,] paddedImage = new Pixel[Math.Max(targetSize.X, image.Width), Math.Max(targetSize.Y, image.Height)];
-            int xPadding = ((targetSize.X - image.Width) / 2).Clamp(0, int.MaxValue);
-            int yPadding = ((targetSize.Y - image.Height) / 2).Clamp(0, int.MaxValue);
+            Pixel[,] paddedImage = new Pixel[Math.Max(targetSize.Width, image.Width), Math.Max(targetSize.Height, image.Height)];
+            int xPadding = ((targetSize.Width - image.Width) / 2).Clamp(0, int.MaxValue);
+            int yPadding = ((targetSize.Height - image.Height) / 2).Clamp(0, int.MaxValue);
             
             for (int x = 0; x < paddedImage.GetLength(0); x++)
             {
@@ -217,7 +218,6 @@ namespace SEImageToLCD_15BitColor
     }
     public static class MathExt
     {
-
         public static T Clamp<T>(this T val, T min, T max) where T : IComparable<T>
         {
             if (val.CompareTo(min) < 0) return min;
