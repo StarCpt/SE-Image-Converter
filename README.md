@@ -1,3 +1,5 @@
+IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to download the right version (x86 or x64)
+
 # SE-Image-Converter
 Supports 15-bit color with the "Mono Color" mod: https://steamcommunity.com/sharedfiles/filedetails/?id=2174915662
 
