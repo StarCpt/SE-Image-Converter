@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:SEImageToLCD_15BitColor"
              xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
+             xmlns:AttachedBehavior="SEImageToLCD_15BitColor.ScrollAnimationBehavior"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>

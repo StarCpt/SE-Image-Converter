@@ -9,6 +9,9 @@
     <PackageIconUrl />
     <ApplicationIcon>15icon_16x16.ico</ApplicationIcon>
     <Nullable>warnings</Nullable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>starcptdigitalsignature.pfx</AssemblyOriginatorKeyFile>
+    <DelaySign>false</DelaySign>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

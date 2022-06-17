@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
-using Pixel = SEImageToLCD_15BitColor.Program.Pixel;
+using Pixel = SEImageToLCD_15BitColor.ConversionUtils.Pixel;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -31,7 +31,7 @@ namespace SEImageToLCD_15BitColor
 
                     //this is about 20% faster
                     Pixel oldColor = pixelArr[x, y];
-                    pixelArr[x, y] = Program.ChangeBitDepth(oldColor, colorDepth);
+                    pixelArr[x, y] = ConversionUtils.ChangeBitDepth(oldColor, colorDepth);
                     Pixel error = oldColor - pixelArr[x, y];
 
                     for (int i = 0; i < ditherMethodIterations; i++)
@@ -48,53 +48,112 @@ namespace SEImageToLCD_15BitColor
             return pixelArr;
         }
 
-        public static byte[] ChangeBitDepthAndDitherFast(byte[] colorArr, int imgChannels, int imgWidth, int imgHeight, byte colorDepth)
+        public static byte[] ChangeBitDepthAndDitherFast(byte[] colorArr, int colorChannels, int width, byte colorDepth, int imgStride)
         {
-            //imgChannels = 3;
-            int[] bigColorArray = new int[colorArr.Length];
+            int[] bigColorArr = new int[colorArr.Length];
 
-            int[,] ditherMethod = FloydSteinbergOffsetAndWeight;
-            int ditherMethodIterations = ditherMethod.GetLength(0);
+            int[,] ditherArr = FloydSteinbergOffsetAndWeight;
+            int ditherIterations = ditherArr.GetLength(0);
+            int realWidth = width * colorChannels;
+            int strideDiff = imgStride - realWidth;
 
-            for (int b = 0; b < bigColorArray.Length; b++)
+            double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);
+
+            for (int c = 0; c < colorArr.Length - strideDiff;)
             {
-                bigColorArray[b] = colorArr[b];
-            }
+                //bigColorArr[c] += colorArr[c];
 
-            for (int p = 0; p < bigColorArray.Length; p++)
-            {
-                //color value of a single channel
-                int oldColor = bigColorArray[p];
-                byte newColor = ChangeBitDepth(oldColor, colorDepth);
-                colorArr[p] = newColor;
-                int error = oldColor - newColor;
+                int oldColor = bigColorArr[c] + colorArr[c];
+                colorArr[c] = ChangeBitDepthFast(oldColor, colorStepInterval);//newColor
+                int error = oldColor - colorArr[c];
 
-                for (int i = 0; i < ditherMethodIterations; i++)
+                for (int i = 0; i < ditherIterations; i++)
                 {
-                    int pos = p + (ditherMethod[i, 0] + (imgWidth * ditherMethod[i, 1])) * imgChannels;
-                    bool isAfterWidth = ((p / colorDepth) % imgWidth == (imgWidth - 1)) && ((pos / colorDepth) % imgWidth == 0);
-                    bool isBeforeWidth = ((p / colorDepth) % imgWidth == 0) && ((pos / colorDepth) % imgWidth == (imgWidth - 1));
-
-                    if (pos < bigColorArray.Length && !isAfterWidth && !isBeforeWidth)
+                    int offsetPos = c + (imgStride * ditherArr[i, 1]) + (ditherArr[i, 0] * colorChannels);
+                    if (IsWithinImage(colorArr.Length, imgStride, strideDiff, c, offsetPos, ditherArr[i, 0], colorChannels, width))
                     {
-                        bigColorArray[pos] += (int)Math.Round((error * (float)ditherMethod[i, 2]) / 16f);
+                        bigColorArr[offsetPos] += (int)Math.Round(/*Math.Round*/(error * /*(float)*/ditherArr[i, 2]) / 16f);
                     }
                 }
-            }
 
-            //for (int b = 0; b < bigColorArray.Length; b++)
-            //{
-            //    colorArr[b] = (byte)bigColorArray[b];
-            //}
+                c++;
+                if (c % imgStride == realWidth)
+                {
+                    c += strideDiff;
+                }
+            }
 
             return colorArr;
         }
 
-        private static byte ChangeBitDepth(int singleChannelColor, byte colorDepth)
+        public static byte[] ChangeBitDepthAndDitherFastThreaded(byte[] colorArr, int colorChannels, int width, byte colorDepth, int imgStride)
         {
+            int[] bigColorArr = new int[colorArr.Length];
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);
 
-            return (byte)Math.Round(Math.Round(singleChannelColor / colorStepInterval) * colorStepInterval);
+            Task.WaitAll(new Task[3]
+            {
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 0, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 1, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 2, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+            });
+
+            return colorArr;
+        }
+
+        private static void ChangeBitDepthAndDitherThread(byte[] colorArr, int[] bigColorArr, int colorChannels, int channel, int width, int imgStride, int[,] ditherArr, double colorStepInterval)
+        {
+            int ditherIterations = ditherArr.GetLength(0);
+            int realWidth = width * colorChannels;
+            int strideDiff = imgStride - realWidth;
+
+            for (int c = channel; c < colorArr.Length - strideDiff;)
+            {
+                int oldColor = bigColorArr[c] + colorArr[c];
+                colorArr[c] = ChangeBitDepthFast(oldColor, colorStepInterval);
+                int error = oldColor - colorArr[c];
+
+                for (int i = 0; i < ditherIterations; i++)
+                {
+                    int offsetPos = c + (imgStride * ditherArr[i, 1]) + (ditherArr[i, 0] * colorChannels);
+                    int offsetPosX = (c % imgStride / colorChannels) + ditherArr[i, 1];
+                    bool isOutOfRange = offsetPos >= colorArr.Length - strideDiff || offsetPos < 0;
+                    bool isBeforeWidth = offsetPosX < 0;
+                    bool isAfterWidth = offsetPosX > width - 1;
+
+                    if (!isOutOfRange && !isBeforeWidth && !isAfterWidth)
+                    {
+                        bigColorArr[offsetPos] += (int)Math.Round((error * ditherArr[i, 2]) / 16f);
+                    }
+                }
+
+                c += colorChannels;
+                if ((c - channel) % imgStride == realWidth)
+                {
+                    c += strideDiff;
+                }
+            }
+        }
+
+        private static bool IsWithinImage(int arrayLength, int imageStride, int strideDiff, int currentPos, int offPos, int xOffset, int colorChannels, int width)
+        {
+            //int currPosInRow = currentPos % imageStride / colorChannels;
+            int offsetPosX = ((currentPos % imageStride) / colorChannels) + xOffset;
+
+            //check if position is out of array bounds
+            bool isOutOfArrayRange = offPos >= arrayLength - strideDiff || offPos < 0;
+
+            bool isBeforeWidth = offsetPosX < 0;
+
+            bool isAfterWidth = offsetPosX > width - 1;
+
+            return !isOutOfArrayRange && !isBeforeWidth && !isAfterWidth;
+
+        }
+
+        private static byte ChangeBitDepthFast(int singleChannelColor, double colorStepInterval)
+        {
+            return (Math.Round(singleChannelColor / colorStepInterval) * colorStepInterval).ToByte();
         }
 
         private static bool IsValidPixelPos(ref Pixel[,] image, int x, int y)
@@ -104,7 +163,7 @@ namespace SEImageToLCD_15BitColor
 
         //xOffset, yOffset, errorWeight
         private static readonly int[,] FloydSteinbergOffsetAndWeight =
-            new int[,]
+            new int[4,3]
             {
                 { 1, 0, 7 },
                 {-1, 1, 3 },
