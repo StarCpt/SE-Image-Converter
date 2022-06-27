@@ -13,7 +13,7 @@ namespace SEImageToLCD_15BitColor
     {
         public static Bitmap Scale(Bitmap image, float scale, InterpolationMode mode)
         {
-            Bitmap newImage = new((int)(image.Width * scale), (int)(image.Height * scale), PixelFormat.Format24bppRgb);
+            Bitmap newImage = new Bitmap((image.Width * scale).ToRoundedInt(), (image.Height * scale).ToRoundedInt(), PixelFormat.Format24bppRgb);
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
@@ -22,18 +22,21 @@ namespace SEImageToLCD_15BitColor
                 g.CompositingMode = CompositingMode.SourceCopy;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                //ImageAttributes att = new ImageAttributes();
-                g.DrawImage(image, new Rectangle(Point.Empty, newImage.Size));
+                g.DrawImage(image, 0, 0, newImage.Width, newImage.Height);
             }
 
             return newImage;
         }
+
         public static Bitmap ScaleAndPad(Bitmap image, float scale, InterpolationMode mode, Size lcdSize)
         {
             Bitmap newImage = new Bitmap(lcdSize.Width, lcdSize.Height, PixelFormat.Format24bppRgb);
 
             int xOffset = (int)Math.Round((lcdSize.Width - (image.Width * scale)) / 2f);
             int yOffset = (int)Math.Round((lcdSize.Height - (image.Height * scale)) / 2f);
+
+            xOffset = 0;
+            yOffset = 0;
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
@@ -48,18 +51,18 @@ namespace SEImageToLCD_15BitColor
             return newImage;
         }
 
-        public static Bitmap ScaleFast(Bitmap image, float scale, InterpolationMode mode)
+        public static Bitmap ScaleAndOffset(Bitmap image, float scale, float xOff, float yOff, InterpolationMode mode, Size size)
         {
-            Bitmap newImage = new((int)(image.Width * scale), (int)(image.Height * scale), PixelFormat.Format24bppRgb);
+            Bitmap newImage = new Bitmap(size.Width, size.Height, PixelFormat.Format24bppRgb);
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
                 g.InterpolationMode = mode;
-                g.SmoothingMode = SmoothingMode.HighSpeed;
+                g.SmoothingMode = SmoothingMode.HighQuality;
                 g.CompositingMode = CompositingMode.SourceCopy;
-                g.CompositingQuality = CompositingQuality.HighSpeed;
-                g.PixelOffsetMode = PixelOffsetMode.HighSpeed;
-                g.DrawImage(image, new Rectangle(Point.Empty, newImage.Size));
+                g.CompositingQuality = CompositingQuality.HighQuality;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.DrawImage(image, xOff, yOff, image.Width * scale, image.Height * scale);
             }
 
             return newImage;
