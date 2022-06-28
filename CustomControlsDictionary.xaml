@@ -12,7 +12,39 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="3">
-                        <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Content="{TemplateBinding Content}"/>
+                        <Label VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Content="{TemplateBinding Content}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                               Foreground="White"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity"  Value="0.7"/>
+                            <Setter Property="Background" Value="#05FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity"  Value="0.5"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- TransparentRoundedButton -->
+    <Style x:Key="TransparentRoundedButtonSmall" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="#00000000" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <Label VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Content="{TemplateBinding Content}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                               Foreground="White"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -40,7 +72,9 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4">
-                        <Label Padding="0" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"/>
+                        <Label VerticalAlignment="Center" HorizontalAlignment="Center"
+                               Content="{TemplateBinding Content}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                               Foreground="White"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">

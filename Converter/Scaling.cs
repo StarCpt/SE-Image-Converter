@@ -35,9 +35,6 @@ namespace SEImageToLCD_15BitColor
             int xOffset = (int)Math.Round((lcdSize.Width - (image.Width * scale)) / 2f);
             int yOffset = (int)Math.Round((lcdSize.Height - (image.Height * scale)) / 2f);
 
-            xOffset = 0;
-            yOffset = 0;
-
             using (Graphics g = Graphics.FromImage(newImage))
             {
                 g.InterpolationMode = mode;

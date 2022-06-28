@@ -25,12 +25,13 @@ using System.Diagnostics;
 using BitDepth = SEImageToLCD_15BitColor.ConvertThread.BitDepth;
 using DitherMode = SEImageToLCD_15BitColor.ConvertThread.DitherMode;
 using Size = System.Drawing.Size;
-using System.Timers;
+using Timer = System.Timers.Timer;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
 using System.Windows.Media.Animation;
+using System.Timers;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -40,8 +41,8 @@ namespace SEImageToLCD_15BitColor
     public partial class MainWindow : Window
     {
         private string ConvertedImageStr;
-        private ImageInfo ImageCache;//load image here first then convert so it can be used again
-        public static MainWindow Main { get; private set; }
+        public static ImageInfo ImageCache;//load image here first then convert so it can be used again
+        public static MainWindow Static { get; private set; }
         private static bool InstantChanges;
 
         private readonly Dictionary<ToggleButton, Size> lcdButtons;
@@ -51,17 +52,18 @@ namespace SEImageToLCD_15BitColor
 
         private static bool lcdPicked;
 
+        private Timer ClipboardTimer;
+
         public static Logging Logging { get; private set; }
-        public readonly Stopwatch sw = new Stopwatch();
 
         ConvertThread ConvertThread;
         PreviewConvertThread PreviewConvertThread;
-        private Task ConversionTask;
+        private Task ConvertTask;
         private Task PreviewConvertTask;
-        private ConvertThread QueuedConversion;
-        private PreviewConvertThread QueuedPreviewConversion;
+        ConvertCallback convertCallback;
+        PreviewConvertCallback previewConvertCallback;
 
-        private enum ImageInfoType
+        public enum ImageInfoType
         {
             UploadedFile = 1,
             DraggedFile = 2,
@@ -71,17 +73,15 @@ namespace SEImageToLCD_15BitColor
             ClipboardBitmap = 32,
         }
 
-        private struct ImageInfo
+        public struct ImageInfo
         {
             public Bitmap Image;
-            public Size ImageSize;
             public string FileNameOrImageSource;
             public bool IsFile;
 
-            public ImageInfo(Bitmap image, Size imageSize, string fileNameOrOther, bool isFile)
+            public ImageInfo(Bitmap image, string fileNameOrOther, bool isFile)
             {
                 Image = image;
-                ImageSize = imageSize;
                 FileNameOrImageSource = fileNameOrOther;
                 IsFile = isFile;
             }
@@ -91,10 +91,11 @@ namespace SEImageToLCD_15BitColor
         {
             Logging = new Logging(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log", 1000, true);
 
-            Main = this;
+            Static = this;
             InitializeComponent();
             ToggleBtn_3BitColor.IsChecked = true;
             ToggleBtn_LCDPanel.IsChecked = true;
+            ToggleBtn_Dithering.IsChecked = true;
             lcdPicked = true;
             ToggleBtn_ScaleBicubic.IsChecked = true;
             ImageWidthSetting.Foreground = Brushes.DarkGray;
@@ -136,13 +137,16 @@ namespace SEImageToLCD_15BitColor
                 { ToggleBtn_RotateRight, RotateFlipType.Rotate90FlipNone },
             };
 
-            MainWindowWindow.Title = "Star's Image Converter v0.6.1";
-            AppTitleText.Content = "Star's Image Converter v0.6.1";
+            convertCallback = new ConvertCallback(ConvertResultCallback);
+            previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
+
+            MainWindowWindow.Title = "Star's Image Converter v0.7";
+            AppTitleText.Content = "Star's Image Converter v0.7";
             AppBigTitle.Content = "Star's Image Converter";
 
-            Logging.Log("MainWindow initialized.");
-
             InitImagePreview();
+
+            Logging.Log("MainWindow initialized.");
         }
 
         private void OnBrowseImagesClicked(object sender, RoutedEventArgs e)
@@ -162,7 +166,7 @@ namespace SEImageToLCD_15BitColor
                     UpdateCurrentConvertBtnToolTip(dialog.FileName, true);
                     if (InstantChanges && ImageCache.Image != null)
                     {
-                        TryConvertImageThreaded(ImageCache, true, true, true);
+                        TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
                     }
                 }
                 else
@@ -178,26 +182,26 @@ namespace SEImageToLCD_15BitColor
             {
                 if (supEnum == IsFileSupportedEnum.Supported)
                 {
-                    Bitmap bitmapImage = new(filePath);
-                    result = new ImageInfo(bitmapImage, bitmapImage.Size, filePath, true);
+                    Bitmap bitmap = new(filePath);
+                    result = new ImageInfo(bitmap, filePath, true);
                     return true;
                 }
                 else if (supEnum == IsFileSupportedEnum.Webp)
                 {
-                    Bitmap bitmapImage = DecodeWebpImage(filePath);
-                    result = new ImageInfo(bitmapImage, bitmapImage.Size, filePath, true);
+                    Bitmap bitmap = DecodeWebpImage(filePath);
+                    result = new ImageInfo(bitmap, filePath, true);
                     return true;
                 }
                 else
                 {
-                    result = new ImageInfo(null, Size.Empty, filePath, true);
+                    result = new ImageInfo(null, filePath, true);
                     return false;
                 }
             }
             catch (Exception e)
             {
                 Logging.Log(e.ToString());
-                result = new ImageInfo(null, Size.Empty, filePath, true);
+                result = new ImageInfo(null, filePath, true);
                 return false;
             }
         }
@@ -246,7 +250,7 @@ namespace SEImageToLCD_15BitColor
         {
             if (ImageCache.Image != null)
             {
-                TryConvertImageThreaded(ImageCache, true, true, true);
+                TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
             }
             else //should not happen
             {
@@ -273,7 +277,7 @@ namespace SEImageToLCD_15BitColor
         /// </summary>
         /// <param name="imagePath"></param>
         /// <returns></returns>
-        private bool TryConvertFromFile(string imagePath, bool showErrorDialogs, bool cache)
+        private bool TryConvertFromFile(string imagePath)
         {
             try
             {
@@ -282,11 +286,11 @@ namespace SEImageToLCD_15BitColor
                 {
                     if (TryGetImageInfo(imagePath, supportedFlag, out ImageInfo bitImageInfo))
                     {
-                        return TryConvertImageThreaded(bitImageInfo, showErrorDialogs, cache, true);
+                        return TryConvertImageThreaded(bitImageInfo, true, convertCallback, previewConvertCallback);
                     }
                     else
                     {
-                        if (showErrorDialogs)
+                        //if (showErrorDialogs)
                         {
                             ShowAcrylDialog("This file type is not supported!");
                         }
@@ -295,7 +299,7 @@ namespace SEImageToLCD_15BitColor
                 }
                 else
                 {
-                    if (showErrorDialogs)
+                    //if (showErrorDialogs)
                     {
                         ShowAcrylDialog("This file type is not supported!");
                     }
@@ -306,7 +310,7 @@ namespace SEImageToLCD_15BitColor
             {
                 Logging.Log($"Caught exception at TryConvertFromFile(string, bool, bool) ({imagePath})");
                 Logging.Log(e.ToString());
-                if (showErrorDialogs)
+                //if (showErrorDialogs)
                 {
                     ShowAcrylDialog("Error occurred while decoding the file! Make sure file type is valid.");
                 }
@@ -319,7 +323,7 @@ namespace SEImageToLCD_15BitColor
         /// </summary>
         /// <param name="image"></param>
         /// <returns>whether or not the operation succeeded</returns>
-        private bool TryConvertImageThreaded(ImageInfo image, bool showErrorDialogs, bool cache, bool resetZoom)
+        private bool TryConvertImageThreaded(ImageInfo image, bool resetZoom, ConvertCallback convertCallback, PreviewConvertCallback previewConvertCallback)
         {
             try
             {
@@ -327,7 +331,7 @@ namespace SEImageToLCD_15BitColor
                 {
                     colorDepth = BitDepth.Color3;
                     Logging.Log("Color depth error! Defaulting to 3 bits.");
-                    if (showErrorDialogs)
+                    //if (showErrorDialogs)
                     {
                         ShowAcrylDialog("Color depth error! Defaulting to 3 bits.");
                     }
@@ -337,7 +341,7 @@ namespace SEImageToLCD_15BitColor
                 {
                     interpolationMode = InterpolationMode.NearestNeighbor;
                     Logging.Log("Scaling mode error! Defaulting to Nearest.");
-                    if (showErrorDialogs)
+                    //if (showErrorDialogs)
                     {
                         ShowAcrylDialog("Scaling mode error! Defaulting to Nearest.");
                     }
@@ -354,18 +358,18 @@ namespace SEImageToLCD_15BitColor
                     {
                         lcdSize = new Size(178, 178);
                         Logging.Log("LCD size error! Defaulting to 178x178.");
-                        if (showErrorDialogs)
+                        //if (showErrorDialogs)
                         {
                             ShowAcrylDialog("LCD size error! Defaulting to 178x178.");
                         }
                     }
                 }
 
-                if (!TryGetDitherMode(out DitherMode dither))
+                if (!TryGetDitherMode(out DitherMode ditherMode))
                 {
-                    dither = DitherMode.NoDither;
+                    ditherMode = DitherMode.NoDither;
                     Logging.Log("Dithering option error! Defaulting to None.");
-                    if (showErrorDialogs)
+                    //if (showErrorDialogs)
                     {
                         ShowAcrylDialog("Dithering option error! Defaulting to None.");
                     }
@@ -373,70 +377,77 @@ namespace SEImageToLCD_15BitColor
 
                 if (image.Image != null)
                 {
+                    if (resetZoom)
+                    {
+                        ResetPreviewZoomAndPan();
+                    }
+
+                    if (ConvertTask != null && !ConvertTask.IsCompleted)
+                    {
+                        ConvertThread.CancelTask();
+                    }
+
                     var tt = GetTranslateTransform(ImagePreview);
-                    var NewThread = new ConvertThread(image.Image, dither, colorDepth, lcdSize.Value, interpolationMode, new ConvertCallback(ConvertResultCallback), resetZoom, (float)((tt.X - (PreviewTopLeft.X)) / (ImagePreviewBorder.ActualWidth / lcdSize.Value.Width)), (float)((tt.Y - (PreviewTopLeft.Y)) / (ImagePreviewBorder.ActualHeight / lcdSize.Value.Height)));
+                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize.Value, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Value.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Value.Height)));
+                    ConvertTask = Task.Run(ConvertThread.ConvertThreadedFast);
 
-                    if (ConversionTask != null && !ConversionTask.IsCompleted)
-                    {
-                        QueuedConversion = NewThread;
-                    }
-                    else
-                    {
-                        Logging.Log($"Begin Conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Image.Size.ToShortString()} to {lcdSize.Value.ToShortString()} {dither.ToString()} {image.FileNameOrImageSource.ToString()}");
-                        sw.Restart();
-                        ConvertThread = NewThread;
-                        ConversionTask = Task.Run(ConvertThread.ConvertImageThreadedFast);
-                    }
+                    UpdatePreview(image, lcdSize.Value, interpolationMode, colorDepth, ditherMode, previewConvertCallback);
 
-                    if (cache)
-                    {
-                        ImageCache = image;
-                    }
+                    ImageCache = image;
 
                     return true;
                 }
                 else
                 {
                     Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()}), Image is null");
-                    if (showErrorDialogs)
-                    {
-                        ShowAcrylDialog("Error occurred during image conversion! (2)");
-                    }
+                    ShowAcrylDialog("Error occurred during image conversion! (Error 2)");
                     return false;
                 }
-        }
+            }
             catch (Exception e)
             {
                 Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()})");
                 Logging.Log(e.ToString());
-                if (showErrorDialogs)
-                {
-                    ShowAcrylDialog("Error occurred during image conversion! (1)");
-    }
+                ShowAcrylDialog("Error occurred during image conversion! (Error 1)");
                 return false;
             }
         }
 
-        public delegate void ConvertCallback(string resultStr, BitmapImage resultImg, Size lcdSize, bool resetZoom);
-
-        public void ConvertResultCallback(string resultStr, BitmapImage resultImg, Size lcdSize, bool resetZoom)
+        public delegate void ConvertCallback(string resultStr);
+        private void ConvertResultCallback(string resultStr)
         {
-            if (QueuedConversion != null)
+            ConvertedImageStr = resultStr;
+            previewChanged = false;
+            CopyToClipBtn.Dispatcher.Invoke(() => CopyToClipBtn.IsEnabled = true);
+        }
+        private void ConvertCallbackCopyToClip(string resultStr)
+        {
+            ConvertedImageStr = resultStr;
+            previewChanged = false;
+            CopyToClipBtn.Dispatcher.Invoke(() =>
             {
-                sw.Restart();
-                ConvertThread = QueuedConversion;
-                QueuedConversion = null;
-                ConversionTask = Task.Run(ConvertThread.ConvertImageThreadedFast);
-            }
-            else
+                CopyToClipBtn.IsEnabled = true;
+            });
+
+            if (ClipboardTimer != null)
             {
-                sw.Stop();
-                Logging.Log($"Conversion took {sw.ElapsedMilliseconds} ms");
-                ConvertedImageStr = resultStr;
-                ChangePreviewFromOtherThread(resultImg, lcdSize, resetZoom);
+                ClipboardTimer.Enabled = false;
+                ClipboardTimer.Dispose();
             }
 
-            Logging.Log($"callback done. {Main.sw.ElapsedMilliseconds} ms elapsed.");
+            ClipboardTimer = new Timer(150)
+            {
+                Enabled = true,
+                AutoReset = false,
+            };
+            ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => 
+            CopyToClipBtn.Dispatcher.Invoke(() => 
+            {
+                try { Clipboard.SetDataObject(resultStr, true); }
+                catch { ShowAcrylDialog("Clipboard error, try again!"); }
+                finally { ClipboardTimer = null; }
+            });
+            ClipboardTimer.Start();
         }
 
         private bool TryGetColorBitDepth(out BitDepth result)
@@ -467,6 +478,12 @@ namespace SEImageToLCD_15BitColor
         }
         private bool TryGetLCDSize(out Size? result)
         {
+            if (lcdButtons == null)
+            {
+                result = null;
+                return false;
+            }
+
             if (lcdButtons.Any(b => b.Key.IsChecked == true))
             {
                 result = lcdButtons.FirstOrDefault(b => b.Key.IsChecked == true).Value;
@@ -478,7 +495,7 @@ namespace SEImageToLCD_15BitColor
                 {
                     if (ImageWidthSetting.Text.TrimStart('0').Length == 0 || ImageHeightSetting.Text.TrimStart('0').Length == 0)
                     {
-                        result = new Size(0, 0);
+                        result = Size.Empty;
                         return false;
                     }
                     result = new Size(int.Parse(ImageWidthSetting.Text), int.Parse(ImageHeightSetting.Text));
@@ -506,14 +523,31 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        private void OnCopyToClipClicked(object sender, RoutedEventArgs e)
+        private void CopyToClipClicked(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(ConvertedImageStr))
+            if (!previewChanged && !string.IsNullOrEmpty(ConvertedImageStr))
             {
-                Clipboard.SetText(ConvertedImageStr);
-                Logging.Log("Copied converted image to clipboard");
+                if (ClipboardTimer != null)
+                {
+                    ClipboardTimer.Enabled = false;
+                    ClipboardTimer.Dispose();
+                }
+
+                ClipboardTimer = new Timer(150)
+                {
+                    Enabled = true,
+                    AutoReset = false,
+                };
+                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+                CopyToClipBtn.Dispatcher.Invoke(() =>
+                {
+                    try { Clipboard.SetDataObject(ConvertedImageStr, true); }
+                    catch { ShowAcrylDialog("Clipboard error, try again!"); }
+                    finally { ClipboardTimer = null; }
+                });
+                ClipboardTimer.Start();
             }
-            else
+            else if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -521,13 +555,11 @@ namespace SEImageToLCD_15BitColor
 
         private void MainWindowWindow_Deactivated(object sender, EventArgs e)
         {
-            //backgroundbrush.Fill.Opacity = 0.95;
             backgroundbrush.Fill.Opacity = 1;
             AppTitleBackground.Fill.Opacity = 1;
         }
         private void MainWindowWindow_Activated(object sender, EventArgs e)
         {
-            //backgroundbrush.Fill.Opacity = 0.85;
             backgroundbrush.Fill.Opacity = 0.9;
             AppTitleBackground.Fill.Opacity = 0.9;
         }
@@ -540,7 +572,10 @@ namespace SEImageToLCD_15BitColor
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            DoInstantChange(false);
+            if (InstantChanges)
+            {
+                UpdatePreview();
+            }
         }
 
         private void LCDOption_Clicked(object sender, RoutedEventArgs e)
@@ -557,7 +592,10 @@ namespace SEImageToLCD_15BitColor
             ImageWidthSetting.Foreground = Brushes.DarkGray;
             ImageHeightSetting.Foreground = Brushes.DarkGray;
 
-            DoInstantChange(true);
+            if (InstantChanges)
+            {
+                DoInstantChange(true);
+            }
         }
 
         public static bool IsNumeric(string str)
@@ -658,10 +696,19 @@ namespace SEImageToLCD_15BitColor
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            DoInstantChange(false);
+            if (InstantChanges)
+            {
+                UpdatePreview();
+            }
         }
 
-        private void DitherOption_Clicked(object sender, RoutedEventArgs e) => DoInstantChange(false);
+        private void DitherOption_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (InstantChanges)
+            {
+                UpdatePreview();
+            }
+        }
 
         private void ContextMenuItem_DeleteCache(object sender, RoutedEventArgs e)
         {
@@ -675,10 +722,10 @@ namespace SEImageToLCD_15BitColor
             if (Clipboard.ContainsImage())
             {
                 var image = Utils.BitmapSourceToBitmap(Clipboard.GetImage());
-                if (TryConvertImageThreaded(new ImageInfo(image, image.Size, "Image loaded from Clipboard", false),  true, true, true))
+                if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, convertCallback, previewConvertCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from Clipboard", null);
-                    UpdateCurrentConvertBtnToolTip("Image loaded from Clipboard", true);
+                    UpdateCurrentConvertBtnToolTip("Loaded from Clipboard", true);
                     Logging.Log("Image loaded from Clipboard (Bitmap)");
                 }
             }
@@ -687,11 +734,11 @@ namespace SEImageToLCD_15BitColor
                 System.Collections.Specialized.StringCollection filedroplist = Clipboard.GetFileDropList();
                 foreach (string file in filedroplist)
                 {
-                    if (TryConvertFromFile(file, true, true))
+                    if (TryConvertFromFile(file))
                     {
                         UpdateBrowseImagesBtn(file.GetFileName(), file);
                         UpdateCurrentConvertBtnToolTip(file, true);
-                        Logging.Log("Image loaded from Clipboard (FileDrop)");
+                        Logging.Log("Loaded from Clipboard (FileDrop)");
                         break;
                     }
                 }
@@ -724,7 +771,7 @@ namespace SEImageToLCD_15BitColor
         {
             if (InstantChanges && ImageCache.Image != null)
             {
-                TryConvertImageThreaded(ImageCache, true, false, resetZoom);
+                TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
             }
         }
 
@@ -816,16 +863,20 @@ namespace SEImageToLCD_15BitColor
             {
                 ImageCache.Image.RotateFlip(type);
 
-                TryConvertImageThreaded(ImageCache, true, true, true);
+                if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
+                {
+                    TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                }
+                else
+                {
+                    UpdatePreview();
+                }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");
             }
         }
 
-        private void ImageTransformClicked(object sender, RoutedEventArgs e)
-        {
-            TransformImage(imageTransformButtons[sender as Button]);
-        }
+        private void ImageTransformClicked(object sender, RoutedEventArgs e) => TransformImage(imageTransformButtons[sender as Button]);
     }
 
     public static class Utils

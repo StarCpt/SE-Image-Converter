@@ -32,8 +32,12 @@
         <Border CornerRadius="5" Background="#A0101010" />
         <Label x:Name="DialogMessage" Content="Test String" Foreground="White" Margin="5,0,5,20"
                HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" />
-        <Button Style="{StaticResource TransparentRoundedButton}" Content="Ok" Background="#DD0000" Foreground="White"
+        <Button Style="{StaticResource TransparentRoundedButton}" Background="#DD0000" Foreground="White"
                 x:Name="DialogCloseBtn" Height="20" Width="50" VerticalAlignment="Bottom" Margin="0,0,0,7" FontSize="10"
-                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="DialogCloseBtn_Click"/>
+                HorizontalContentAlignment="Center" VerticalContentAlignment="Top" Click="DialogCloseBtn_Click" ClipToBounds="False">
+            <Button.Content>
+                <TextBlock Text="Ok" Foreground="White" FontSize="10" Margin="0,-2,0,0" Background="Transparent" />
+            </Button.Content>
+        </Button>
     </Grid>
 </Window>
