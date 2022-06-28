@@ -401,7 +401,7 @@ namespace SEImageToLCD_15BitColor
                 else
                 {
                     Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()}), Image is null");
-                    ShowAcrylDialog("Error occurred during image conversion! (Error 2)");
+                    ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
                     return false;
                 }
             }
@@ -409,7 +409,7 @@ namespace SEImageToLCD_15BitColor
             {
                 Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()})");
                 Logging.Log(e.ToString());
-                ShowAcrylDialog("Error occurred during image conversion! (Error 1)");
+                ShowAcrylDialog("Error occurred during image conversion! (Exception)");
                 return false;
             }
         }
@@ -776,14 +776,6 @@ namespace SEImageToLCD_15BitColor
             DoInstantChangeTimed(false, 0);
         }
 
-        //private void DoInstantChange(bool resetZoom)
-        //{
-        //    if (InstantChanges && ImageCache.Image != null)
-        //    {
-        //        TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
-        //    }
-        //}
-
         private void DoInstantChangeTimed(bool resetZoom, ushort delay)
         {
             if (ConvertTimer != null)
@@ -798,8 +790,8 @@ namespace SEImageToLCD_15BitColor
                 if (InstantChanges && ImageCache.Image != null)
                 {
                     TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
-                    return;
                 }
+                return;
             }
 
             ConvertTimer = new Timer(delay)
@@ -866,10 +858,7 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        private void OpenLogs_Clicked(object sender, RoutedEventArgs e)
-        {
-            Logging.OpenLogFileAsync();
-        }
+        private void OpenLogs_Clicked(object sender, RoutedEventArgs e) => Logging.OpenLogFileAsync();
 
         //custom "Click" event for the app icon
         bool LeftMouseDownOnIcon = false;
@@ -893,10 +882,7 @@ namespace SEImageToLCD_15BitColor
             LeftMouseDownOnIcon = false;
         }
 
-        private void OpenAppDirBtn_Click(object sender, RoutedEventArgs e)
-        {
-            Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
-        }
+        private void OpenAppDirBtn_Click(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
 
         private void TransformImage(RotateFlipType type)
         {
@@ -971,8 +957,6 @@ namespace SEImageToLCD_15BitColor
 
         public static Bitmap BitmapImageToBitmap(BitmapImage bitmapImage)
         {
-            // BitmapImage bitmapImage = new BitmapImage(new Uri("../Images/test.png", UriKind.Relative));
-
             using (MemoryStream outStream = new MemoryStream())
             {
                 BitmapEncoder enc = new BmpBitmapEncoder();
