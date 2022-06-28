@@ -274,7 +274,7 @@
                                  Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput"
                                  TextChanged="ImageSize_TextChanged_Manually" PreviewKeyDown="ImageSize_PreviewKeyDown"
                                  DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
-                                 MouseEnter="ImageSize_MouseEnteredOrLeft" MouseLeave="ImageSize_MouseEnteredOrLeft">
+                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
@@ -287,7 +287,7 @@
                                  Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput" 
                                  TextChanged="ImageSize_TextChanged_Manually" PreviewKeyDown="ImageSize_PreviewKeyDown"
                                  DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
-                                 MouseEnter="ImageSize_MouseEnteredOrLeft" MouseLeave="ImageSize_MouseEnteredOrLeft">
+                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
@@ -325,6 +325,46 @@
                             <ToolTip Style="{StaticResource CustomToolTip}" Content="178x356" />
                         </ToggleButton.ToolTip>
                     </ToggleButton>
+                    <!--Custom LCD Size Box-->
+                    <Grid Height="61" Margin="5,5,5,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Border Background="#05FFFFFF" Grid.ColumnSpan="3" Grid.RowSpan="2" CornerRadius="4" BorderThickness="0" BorderBrush="Transparent" />
+                        <Label Grid.ColumnSpan="2" Content="Split Image" Foreground="White" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
+                        <TextBox Background="#25303030" Grid.Column="0" Grid.Row="1" Margin="0,2,0,0" Text="1"
+                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
+                                 Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSplit_PreviewTextInput"
+                                 TextChanged="ImageSplit_TextChanged_Manually" PreviewKeyDown="ImageSplit_PreviewKeyDown"
+                                 DataObject.Pasting="ImageSplit_Pasting" PreviewMouseWheel="ImageSplit_MouseWheel" ContextMenuService.IsEnabled="False"
+                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
+                            <TextBox.ContextMenu>
+                                <ContextMenu IsEnabled="False"/>
+                            </TextBox.ContextMenu>
+                            <TextBox.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Width" />
+                            </TextBox.ToolTip>
+                        </TextBox>
+                        <Label Content="by" Foreground="DarkGray" HorizontalAlignment="Center" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,7" VerticalAlignment="Bottom" Height="25"/>
+                        <TextBox Background="#25303030" Grid.Column="1" Grid.Row="1" Margin="0,2,0,0" Text="1"
+                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
+                                 Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSplit_PreviewTextInput" 
+                                 TextChanged="ImageSplit_TextChanged_Manually" PreviewKeyDown="ImageSplit_PreviewKeyDown"
+                                 DataObject.Pasting="ImageSplit_Pasting" PreviewMouseWheel="ImageSplit_MouseWheel" ContextMenuService.IsEnabled="False"
+                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
+                            <TextBox.ContextMenu>
+                                <ContextMenu IsEnabled="False"/>
+                            </TextBox.ContextMenu>
+                            <TextBox.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Height" />
+                            </TextBox.ToolTip>
+                        </TextBox>
+                    </Grid>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

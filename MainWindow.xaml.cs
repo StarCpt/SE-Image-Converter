@@ -53,6 +53,7 @@ namespace SEImageToLCD_15BitColor
         private static bool lcdPicked;
 
         private Timer ClipboardTimer;
+        private Timer ConvertTimer;
 
         public static Logging Logging { get; private set; }
 
@@ -574,10 +575,10 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreview();
+                UpdatePreviewTimed(0);
             }
         }
-
+        #region lcd size
         private void LCDOption_Clicked(object sender, RoutedEventArgs e)
         {
             lcdPicked = true;
@@ -594,7 +595,8 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                DoInstantChange(true);
+                //DoInstantChange(true);
+                DoInstantChangeTimed(true, 0);
             }
         }
 
@@ -649,7 +651,8 @@ namespace SEImageToLCD_15BitColor
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
 
-                DoInstantChange(true);
+                //DoInstantChange(true);
+                DoInstantChangeTimed(true, 50);
             }
         }
 
@@ -688,6 +691,12 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
+        public static bool isMouseOverSizeTextbox = false;
+        private void MenuTextBox_MouseEnteredOrLeft(object sender, MouseEventArgs e)
+        {
+            isMouseOverSizeTextbox = (sender as TextBox).IsMouseOver;
+        }
+        #endregion lcd size
         private void ScaleOption_Clicked(object sender, RoutedEventArgs e)
         {
             ToggleButton thisBtn = sender as ToggleButton;
@@ -698,7 +707,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreview();
+                UpdatePreviewTimed(0);
             }
         }
 
@@ -706,7 +715,7 @@ namespace SEImageToLCD_15BitColor
         {
             if (InstantChanges)
             {
-                UpdatePreview();
+                UpdatePreviewTimed(0);
             }
         }
 
@@ -764,15 +773,53 @@ namespace SEImageToLCD_15BitColor
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
 
-            DoInstantChange(false);
+            DoInstantChangeTimed(false, 0);
         }
 
-        private void DoInstantChange(bool resetZoom)
+        //private void DoInstantChange(bool resetZoom)
+        //{
+        //    if (InstantChanges && ImageCache.Image != null)
+        //    {
+        //        TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+        //    }
+        //}
+
+        private void DoInstantChangeTimed(bool resetZoom, ushort delay)
         {
-            if (InstantChanges && ImageCache.Image != null)
+            if (ConvertTimer != null)
             {
-                TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+                ConvertTimer.Enabled = false;
+                ConvertTimer.Dispose();
+                ConvertTimer = null;
             }
+
+            if (delay == 0)
+            {
+                if (InstantChanges && ImageCache.Image != null)
+                {
+                    TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+                    return;
+                }
+            }
+
+            ConvertTimer = new Timer(delay)
+            {
+                Enabled = true,
+                AutoReset = false,
+            };
+
+            ConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+            {
+                if (InstantChanges && ImageCache.Image != null)
+                {
+                    Task.Run(() => MainWindowWindow.Dispatcher.Invoke(() =>
+                    {
+                        TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+                        ConvertTimer = null;
+                    }));
+                }
+            };
+            ConvertTimer.Start();
         }
 
         private void UpdateBrowseImagesBtn(string text, string fullpath)
@@ -851,12 +898,6 @@ namespace SEImageToLCD_15BitColor
             Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
         }
 
-        public static bool isMouseOverSizeTextbox = false;
-        private void ImageSize_MouseEnteredOrLeft(object sender, MouseEventArgs e)
-        {
-            isMouseOverSizeTextbox = (sender as TextBox).IsMouseOver;
-        }
-
         private void TransformImage(RotateFlipType type)
         {
             if (ImageCache.Image != null)
@@ -869,7 +910,7 @@ namespace SEImageToLCD_15BitColor
                 }
                 else
                 {
-                    UpdatePreview();
+                    UpdatePreviewTimed(0);
                 }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");

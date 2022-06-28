@@ -72,7 +72,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = 1f;
 
-            UpdatePreview();
+            UpdatePreviewTimed(0);
         }
 
         public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
@@ -89,27 +89,50 @@ namespace SEImageToLCD_15BitColor
             PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
         }
 
-        public void UpdatePreview()
+        public void UpdatePreviewTimed(ushort delay)
         {
             if (ImageCache.Image == null ||
-                !TryGetLCDSize(out Size? size) || 
-                !TryGetInterpolationMode(out InterpolationMode interpolation) || 
-                !TryGetColorBitDepth(out ConvertThread.BitDepth depth) || 
+                !TryGetLCDSize(out Size? size) ||
+                !TryGetInterpolationMode(out InterpolationMode interpolation) ||
+                !TryGetColorBitDepth(out ConvertThread.BitDepth depth) ||
                 !TryGetDitherMode(out ConvertThread.DitherMode dither))
             {
                 return;
             }
-
             float scale = Math.Min((float)size.Value.Width / ImageCache.Image.Size.Width, (float)size.Value.Height / ImageCache.Image.Size.Height);
             scale *= previewImageZoom;
 
-            if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
+            if (PreviewConvertTimer != null)
             {
-                PreviewConvertThread.CancelTask();
+                PreviewConvertTimer.Stop();
+                PreviewConvertTimer.Dispose();
+                PreviewConvertTimer = null;
             }
 
-            PreviewConvertThread = new PreviewConvertThread(ImageCache.Image, dither, depth, interpolation, new PreviewConvertCallback(PreviewConvertResultCallback), scale);
-            PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
+            if (delay == 0)
+            {
+                UpdatePreviewInternal();
+                return;
+            }
+
+            PreviewConvertTimer = new Timer(delay)
+            {
+                Enabled = true,
+                AutoReset = false,
+            };
+            PreviewConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) => ImagePreview.Dispatcher.Invoke(UpdatePreviewInternal);
+            PreviewConvertTimer.Start();
+
+            void UpdatePreviewInternal()
+            {
+                if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
+                {
+                    PreviewConvertThread.CancelTask();
+                }
+
+                PreviewConvertThread = new PreviewConvertThread(ImageCache.Image, dither, depth, interpolation, new PreviewConvertCallback(PreviewConvertResultCallback), scale);
+                PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
+            }
         }
 
         public void UpdatePreviewTopLeft(object sender, SizeChangedEventArgs e)
@@ -141,17 +164,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)st.ScaleX;
 
-            if (PreviewConvertTimer != null)
-            {
-                PreviewConvertTimer.Stop();
-                PreviewConvertTimer.Dispose();
-                PreviewConvertTimer = null;
-            }
-            PreviewConvertTimer = new Timer(100);
-            PreviewConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) => ImagePreview.Dispatcher.Invoke(UpdatePreview);
-            PreviewConvertTimer.Enabled = true;
-            PreviewConvertTimer.AutoReset = false;
-            PreviewConvertTimer.Start();
+            UpdatePreviewTimed(100);
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -173,20 +186,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)zoom;
 
-            //if (PreviewConvertTimer != null)
-            //{
-            //    PreviewConvertTimer.Stop();
-            //    PreviewConvertTimer.Dispose();
-            //    PreviewConvertTimer = null;
-            //}
-
-            //PreviewConvertTimer = new Timer(100);
-            //PreviewConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) => ImagePreview.Dispatcher.Invoke(UpdatePreview);
-            //PreviewConvertTimer.Enabled = true;
-            //PreviewConvertTimer.AutoReset = false;
-            //PreviewConvertTimer.Start();
-
-            UpdatePreview();
+            UpdatePreviewTimed(0);
 
             tt.X = ((PreviewTopLeft.X * 2) + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX)) / 2;
             tt.Y = ((PreviewTopLeft.Y * 2) + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY)) / 2;
@@ -371,6 +371,97 @@ namespace SEImageToLCD_15BitColor
             if (previewImageZoom != zoom)
             {
                 SetPreviewZoom(zoom);
+            }
+        }
+
+        public static bool IsOneToNine(string str)
+        {
+            return !str.Any(c => c < '1' || c > '9');
+        }
+
+        private void ImageSplit_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            if (!IsOneToNine(e.Text))
+            {
+                e.Handled = true;
+            }
+            else
+            {
+                lcdPicked = false;
+            }
+        }
+
+        private void ImageSplit_PreviewKeyDown(object sender, KeyEventArgs e) => e.Handled = e.Key == Key.Space;
+
+        private void ImageSplit_TextChanged_Manually(object sender, TextChangedEventArgs e)
+        {
+            if (!lcdPicked)
+            {
+                TextBox box = sender as TextBox;
+                //int trimmedTextLength = box.Text.TrimStart('0').Length;
+                //if (trimmedTextLength > 1)
+                //{
+                //    box.Text = "9";
+                //    box.CaretIndex = 1;
+                //}
+                //else if (trimmedTextLength != box.Text.Length)
+                //{
+                //    int removeLength = (box.Text.Length - 1).Clamp(0, 1);
+                //    box.Text = box.Text.Substring(removeLength);
+                //    box.CaretIndex = e.Changes.Last().Offset - removeLength + e.Changes.Last().AddedLength;
+                //}
+
+                //if (lcdButtons != null)
+                //{
+                //    foreach (var btn in lcdButtons)
+                //    {
+                //        btn.Key.IsChecked = false;
+                //    }
+                //    ImageWidthSetting.Foreground = Brushes.White;
+                //    ImageHeightSetting.Foreground = Brushes.White;
+                //}
+                if (box.Text.Length > 1)
+                {
+                    box.Text = "9";
+                    box.CaretIndex = 1;
+                }
+
+                //DoInstantChangeTimed(true, 0);
+            }
+        }
+
+        private void ImageSplit_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+
+            if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
+            {
+                string text = (string)e.SourceDataObject.GetData(typeof(string));
+                if (!IsNumeric(text))
+                {
+                    e.CancelCommand();
+                }
+                else
+                {
+                    lcdPicked = false;
+                }
+            }
+            else
+            {
+                e.CancelCommand();
+            }
+        }
+
+        public void ImageSplit_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            e.Handled = true;
+            TextBox thisTextBox = sender as TextBox;
+
+            if (!string.IsNullOrEmpty(thisTextBox.Text))
+            {
+                lcdPicked = false;
+                int num = int.Parse(thisTextBox.Text);
+                int changeDirection = e.Delta > 0 ? 1 : -1;
+                thisTextBox.Text = (num + changeDirection).Clamp(1, 9).ToString();
             }
         }
     }
