@@ -15,7 +15,9 @@ using System.IO;
 using Bitmap = System.Drawing.Bitmap;
 using Size = System.Drawing.Size;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
+using Point = System.Windows.Point;
 using System.Timers;
+using SixLabors;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -72,7 +74,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = 1f;
 
-            UpdatePreviewTimed(0);
+            UpdatePreviewDelayed(0);
         }
 
         public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
@@ -89,7 +91,7 @@ namespace SEImageToLCD_15BitColor
             PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
         }
 
-        public void UpdatePreviewTimed(ushort delay)
+        public void UpdatePreviewDelayed(ushort delay)
         {
             if (ImageCache.Image == null ||
                 !TryGetLCDSize(out Size? size) ||
@@ -164,7 +166,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)st.ScaleX;
 
-            UpdatePreviewTimed(100);
+            UpdatePreviewDelayed(100);
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -186,7 +188,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)zoom;
 
-            UpdatePreviewTimed(0);
+            UpdatePreviewDelayed(0);
 
             tt.X = ((PreviewTopLeft.X * 2) + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX)) / 2;
             tt.Y = ((PreviewTopLeft.Y * 2) + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY)) / 2;
@@ -310,41 +312,117 @@ namespace SEImageToLCD_15BitColor
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
             {
-                try
-                {
-                    HtmlDocument doc = new();
-                    doc.LoadHtml((string)e.Data.GetData(DataFormats.Html));
-                    HtmlNodeCollection imgNodes = doc.DocumentNode.SelectNodes("//img");
-
-                    if (imgNodes != null && imgNodes.Count > 0)
-                    {
-                        WebClient web = new WebClient();
-                        string src = imgNodes[0].GetAttributeValue("src", null);
-                        src = WebUtility.HtmlDecode(src);
-                        Stream stream = web.OpenRead(src);
-                        Bitmap bitmap = new Bitmap(stream);
-                        if (TryConvertImageThreaded(new ImageInfo(bitmap, src, false), true, convertCallback, previewConvertCallback))
-                        {
-                            UpdateBrowseImagesBtn("Loaded from the web", null);
-                            UpdateCurrentConvertBtnToolTip("Image loaded from the web", true);
-                            Logging.Log($"Image loaded from HTML ({src})");
-                        }
-                    }
-                    else
-                    {
-                        ShowAcrylDialog("Dropped html does not contain any image links!");
-                    }
-                }
-                catch (Exception excep)
-                {
-                    Logging.Log("Caught exception while parsing HTML");
-                    Logging.Log(excep.ToString());
-                    ShowAcrylDialog("Invalid Web Item");
-                }
+                HandleHtmlDropThreadAsync(e.Data);
             }
             else
             {
                 ShowAcrylDialog("Clipboard does not contain any images");
+            }
+        }
+
+        private async Task HandleHtmlDropThreadAsync(IDataObject Data)
+        {
+            if (await UrlContainsImageAsync((string)Data.GetData(DataFormats.Text)))
+            {
+                string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
+
+                Bitmap image = await DownloadImageFromUrlAsync(url);
+                if (image != null && TryConvertImageThreaded(new ImageInfo(image, url, false), true, convertCallback, previewConvertCallback))
+                {
+                    UpdateBrowseImagesBtn("Loaded from image URL", null);
+                    UpdateCurrentConvertBtnToolTip("Image loaded from image URL", true);
+                    Logging.Log($"Image loaded from image URL ({url})");
+                }
+            }
+            else
+            {
+                HtmlDocument doc = new HtmlDocument();
+                doc.LoadHtml((string)Data.GetData(DataFormats.Html));
+                HtmlNodeCollection imgNodes = doc.DocumentNode.SelectNodes("//img");
+
+                if (imgNodes != null && imgNodes.Count > 0)
+                {
+                    string src = imgNodes[0].GetAttributeValue("src", null);
+                    src = WebUtility.HtmlDecode(src);
+                    Bitmap image = await DownloadImageFromUrlAsync(src);
+                    if (image != null && TryConvertImageThreaded(new ImageInfo(image, src, false), true, convertCallback, previewConvertCallback))
+                    {
+                        UpdateBrowseImagesBtn("Loaded from html", null);
+                        UpdateCurrentConvertBtnToolTip("Image loaded from html", true);
+                        Logging.Log($"Image loaded from HTML ({src})");
+                    }
+                }
+                else
+                {
+                    ShowAcrylDialog("Dropped html does not contain any image links!");
+                }
+            }
+        }
+
+        private async Task<bool> UrlContainsImageAsync(string url)
+        {
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            request.Method = "HEAD";
+            using (var response = await request.GetResponseAsync())
+            {
+                return response.ContentType
+                    .ToLowerInvariant()
+                    .StartsWith("image/");
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="url">Returns null if anything fails for whatever reason</param>
+        /// <returns></returns>
+        private async Task<Bitmap> DownloadImageFromUrlAsync(string url)
+        {
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+                request.Method = "GET";
+                using (var response = await request.GetResponseAsync())
+                {
+                    string imageType = response.ContentType
+                        .ToLowerInvariant()
+                        .Replace("image/", "");
+                    if (SupportedFileTypes.Any(t => t.Equals(imageType)))
+                    {
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            await response.GetResponseStream().CopyToAsync(ms);
+                            ms.Position = 0;
+
+                            if (imageType == "webp")
+                            {
+                                SixLabors.ImageSharp.Formats.Webp.WebpDecoder webpDecoder = new SixLabors.ImageSharp.Formats.Webp.WebpDecoder();
+                                SixLabors.ImageSharp.Image webpImg = webpDecoder.Decode(SixLabors.ImageSharp.Configuration.Default, ms, System.Threading.CancellationToken.None);
+
+                                SixLabors.ImageSharp.Formats.Bmp.BmpEncoder enc = new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder();
+
+                                using (MemoryStream stream = new MemoryStream())
+                                {
+                                    await webpImg.SaveAsync(stream, enc);
+                                    return new Bitmap(stream);
+                                }
+                            }
+                            else
+                            {
+                                return new Bitmap(ms);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
+            catch
+            {
+                ShowAcrylDialog("Error occurred while decoding image! (It might be a video!)");
+                return null;
             }
         }
 
@@ -384,10 +462,6 @@ namespace SEImageToLCD_15BitColor
             if (!IsOneToNine(e.Text))
             {
                 e.Handled = true;
-            }
-            else
-            {
-                lcdPicked = false;
             }
         }
 
@@ -440,10 +514,6 @@ namespace SEImageToLCD_15BitColor
                 {
                     e.CancelCommand();
                 }
-                else
-                {
-                    lcdPicked = false;
-                }
             }
             else
             {
@@ -458,7 +528,6 @@ namespace SEImageToLCD_15BitColor
 
             if (!string.IsNullOrEmpty(thisTextBox.Text))
             {
-                lcdPicked = false;
                 int num = int.Parse(thisTextBox.Text);
                 int changeDirection = e.Delta > 0 ? 1 : -1;
                 thisTextBox.Text = (num + changeDirection).Clamp(1, 9).ToString();

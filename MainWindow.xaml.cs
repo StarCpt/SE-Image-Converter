@@ -575,7 +575,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreviewTimed(0);
+                UpdatePreviewDelayed(0);
             }
         }
         #region lcd size
@@ -595,8 +595,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                //DoInstantChange(true);
-                DoInstantChangeTimed(true, 0);
+                DoInstantChangeDelayed(true, 0);
             }
         }
 
@@ -651,8 +650,7 @@ namespace SEImageToLCD_15BitColor
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
 
-                //DoInstantChange(true);
-                DoInstantChangeTimed(true, 50);
+                DoInstantChangeDelayed(true, 50);
             }
         }
 
@@ -707,7 +705,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreviewTimed(0);
+                UpdatePreviewDelayed(0);
             }
         }
 
@@ -715,7 +713,7 @@ namespace SEImageToLCD_15BitColor
         {
             if (InstantChanges)
             {
-                UpdatePreviewTimed(0);
+                UpdatePreviewDelayed(0);
             }
         }
 
@@ -773,10 +771,14 @@ namespace SEImageToLCD_15BitColor
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
 
-            DoInstantChangeTimed(false, 0);
+            DoInstantChangeDelayed(false, 0);
         }
-
-        private void DoInstantChangeTimed(bool resetZoom, ushort delay)
+        /// <summary>
+        /// does not check if instant change is enabled!
+        /// </summary>
+        /// <param name="resetZoom"></param>
+        /// <param name="delay"></param>
+        private void DoInstantChangeDelayed(bool resetZoom, ushort delay)
         {
             if (ConvertTimer != null)
             {
@@ -787,7 +789,7 @@ namespace SEImageToLCD_15BitColor
 
             if (delay == 0)
             {
-                if (InstantChanges && ImageCache.Image != null)
+                if (/*InstantChanges && */ImageCache.Image != null)
                 {
                     TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
                 }
@@ -802,7 +804,7 @@ namespace SEImageToLCD_15BitColor
 
             ConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
             {
-                if (InstantChanges && ImageCache.Image != null)
+                if (/*InstantChanges && */ImageCache.Image != null)
                 {
                     Task.Run(() => MainWindowWindow.Dispatcher.Invoke(() =>
                     {
@@ -896,7 +898,7 @@ namespace SEImageToLCD_15BitColor
                 }
                 else
                 {
-                    UpdatePreviewTimed(0);
+                    UpdatePreviewDelayed(0);
                 }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");
