@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:SEImageToLCD_15BitColor"
         xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
         mc:Ignorable="d"
-        Title="Star's Image Converter"
+        Title="SE Image Converter Plus+"
         Height="421"
         Width="750"
         BorderThickness="0.5"
@@ -73,12 +73,12 @@
                     </ContextMenu>
                 </Image.ContextMenu>
             </Image>
-            <Label x:Name="AppTitleText" Content="Star's Image Converter Preview" VerticalAlignment="Center" Margin="0" Foreground="#FFFFFF"/>
+            <Label x:Name="AppTitleText" Content="SE Image Converter Plus+" VerticalAlignment="Center" Margin="0" Foreground="#FFFFFF"/>
         </StackPanel>
         <Border BorderThickness="0,1,0,0" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" BorderBrush="#151515" Opacity="0.5" />
 
         <!--big title-->
-        <Label x:Name="AppBigTitle" Content="Star's Image Converter" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="23" 
+        <Label x:Name="AppBigTitle" Content="Image Converter Plus+" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="23" 
                Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Foreground="White" />
 
         <!--Background Color Rectangle-->
