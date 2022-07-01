@@ -144,8 +144,8 @@ namespace SEImageToLCD_15BitColor
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
-            MainWindowWindow.Title = "SE Image Converter Plus+ v0.8";
-            AppTitleText.Content = "SE Image Converter Plus+ v0.8";
+            MainWindowWindow.Title = "Image Converter Plus+ v0.8";
+            AppTitleText.Content = "Image Converter Plus+ v0.8";
             AppBigTitle.Content = "Image Converter Plus+";
 
             InitImagePreview();
