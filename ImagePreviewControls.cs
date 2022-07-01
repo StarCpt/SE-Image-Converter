@@ -38,8 +38,6 @@ namespace SEImageToLCD_15BitColor
 
         private Timer PreviewConvertTimer;
 
-        private bool mouseCaptured = false;
-
         private Dictionary<ToggleButton, int[]> splitCtrlBtns = new Dictionary<ToggleButton, int[]>();
         private int[] checkedSplitBtnPos = new int[] { 0, 0 };
 
@@ -232,20 +230,18 @@ namespace SEImageToLCD_15BitColor
             start = e.GetPosition(ImagePreviewBorder);
             origin = new Point(tt.X, tt.Y);
             ImagePreview.Cursor = Cursors.Hand;
-            //ImagePreview.CaptureMouse();
-            mouseCaptured = true;
+            ImagePreview.CaptureMouse();
         }
 
         public void Preview_OnMouseLeftBtnUp(object sender, MouseButtonEventArgs e)
         {
-            //ImagePreview.ReleaseMouseCapture();
-            mouseCaptured = false;
+            ImagePreview.ReleaseMouseCapture();
             ImagePreview.Cursor = Cursors.Arrow;
         }
 
         public void Preview_OnMouseMove(object sender, MouseEventArgs e)
         {
-            if (/*ImagePreview.IsMouseCaptured*/mouseCaptured)
+            if (ImagePreview.IsMouseCaptured)
             {
                 TranslateTransform tt = GetTranslateTransform(ImagePreview);
                 ScaleTransform st = GetScaleTransform(ImagePreview);

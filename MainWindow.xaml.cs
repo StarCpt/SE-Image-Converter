@@ -144,8 +144,8 @@ namespace SEImageToLCD_15BitColor
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
-            MainWindowWindow.Title = "Star's Image Converter v0.7";
-            AppTitleText.Content = "Star's Image Converter v0.7";
+            MainWindowWindow.Title = "Star's Image Converter v0.8";
+            AppTitleText.Content = "Star's Image Converter v0.8";
             AppBigTitle.Content = "Star's Image Converter";
 
             InitImagePreview();

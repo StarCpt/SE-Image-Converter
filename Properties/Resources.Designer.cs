@@ -61,12 +61,12 @@ namespace SEImageToLCD_15BitColor.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
-        internal static System.Drawing.Bitmap _15icon_16x16 {
+        internal static System.Drawing.Icon icon16 {
             get {
-                object obj = ResourceManager.GetObject("15icon_16x16", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
+                object obj = ResourceManager.GetObject("icon16", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
             }
         }
     }

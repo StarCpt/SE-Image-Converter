@@ -55,7 +55,7 @@
         <!--Title Bar-->
         <Rectangle x:Name="AppTitleBackground" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Fill="#505050" Opacity="0.9" />
         <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" FlowDirection="LeftToRight" Orientation="Horizontal">
-            <Image x:Name="AppTitleIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,3,0" Height="16" Width="16" Source="/Resources/15icon_16x16.png" Stretch="Uniform"
+            <Image x:Name="AppTitleIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,3,0" Height="16" Width="16" Source="/icon16.png" Stretch="Uniform"
                    IsHitTestVisible="True" WindowChrome.IsHitTestVisibleInChrome="True" MouseLeftButtonDown="AppTitleIcon_MouseLeftButtonChanged" 
                    MouseLeftButtonUp="AppTitleIcon_MouseLeftButtonChanged" LostMouseCapture="AppTitleIcon_LostMouseCapture">
                 <Image.ContextMenu>
