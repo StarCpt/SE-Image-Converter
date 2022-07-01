@@ -104,15 +104,15 @@
         <Border Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="ImagePreviewBorder"
                 Height="350" Width="350" HorizontalAlignment="Center" VerticalAlignment="Center"
                 PreviewDrop="Preview_PreviewDrop" ClipToBounds="True" AllowDrop="True">
+            <Border.ContextMenu>
+                <ContextMenu Style="{StaticResource CustomMenu}">
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="CopyToClipClicked" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan" Click="ResetZoomBtn_Click"/>
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemovePreview" x:Name="RemoveImagePreviewBtn"/>
+                </ContextMenu>
+            </Border.ContextMenu>
             <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview">
-                <Image.ContextMenu>
-                    <ContextMenu Style="{StaticResource CustomMenu}">
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="CopyToClipClicked" />
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard" />
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan" Click="ResetZoomBtn_Click"/>
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemovePreview" x:Name="RemoveImagePreviewBtn"/>
-                    </ContextMenu>
-                </Image.ContextMenu>
             </Image>
         </Border>
         <StackPanel Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" Height="350" Width="350" x:Name="PreviewGrid" Orientation="Horizontal"
@@ -361,10 +361,10 @@
                             </TextBox.ContextMenu>
                         </TextBox>
                         <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
-                                  Content="Show Grid" Margin="0,0,0,5" Height="25" FontSize="12" Grid.Row="2" Grid.ColumnSpan="2" Width="125" 
-                                      Click="ShowSplitGrid_Click" x:Name="ShowSplitGridBtn">
+                                  Content="Show Grid" Margin="0,0,0,5" Height="25" Width="125" Grid.Row="2" Grid.ColumnSpan="2"
+                                  FontSize="12" Click="ShowSplitGrid_Click" x:Name="ShowSplitGridBtn">
                             <ToggleButton.ToolTip>
-                                <ToolTip Style="{StaticResource CustomToolTip}" Content="placeholder text" />
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Show the lcd squares to click on." />
                             </ToggleButton.ToolTip>
                         </ToggleButton>
                     </Grid>

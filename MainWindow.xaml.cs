@@ -505,23 +505,23 @@ namespace SEImageToLCD_15BitColor
 
         private void CopyToClipClicked(object sender, RoutedEventArgs e)
         {
-            if (!previewChanged && !string.IsNullOrEmpty(ConvertedImageStr))
-            {
-                if (ClipboardTimer != null)
-                {
-                    ClipboardTimer.Enabled = false;
-                    ClipboardTimer.Dispose();
-                }
+            //if (!previewChanged && !string.IsNullOrEmpty(ConvertedImageStr))
+            //{
+            //    if (ClipboardTimer != null)
+            //    {
+            //        ClipboardTimer.Enabled = false;
+            //        ClipboardTimer.Dispose();
+            //    }
 
-                ClipboardTimer = new Timer(150)
-                {
-                    Enabled = true,
-                    AutoReset = false,
-                };
-                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
-                ClipboardTimer.Start();
-            }
-            else if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+            //    ClipboardTimer = new Timer(150)
+            //    {
+            //        Enabled = true,
+            //        AutoReset = false,
+            //    };
+            //    ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
+            //    ClipboardTimer.Start();
+            //}
+            if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -603,6 +603,7 @@ namespace SEImageToLCD_15BitColor
             if (InstantChanges)
             {
                 ResetPreviewSplit();
+                UpdatePreviewGrid(true);
                 DoInstantChangeDelayed(true, 0);
             }
         }
@@ -657,10 +658,11 @@ namespace SEImageToLCD_15BitColor
                     ImageWidthSetting.Foreground = Brushes.White;
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
-
+                
                 if (InstantChanges)
                 {
                     ResetPreviewSplit();
+                    UpdatePreviewGrid(true);
                     DoInstantChangeDelayed(true, 50);
                 }
             }

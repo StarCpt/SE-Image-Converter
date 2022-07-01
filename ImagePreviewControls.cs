@@ -54,6 +54,7 @@ namespace SEImageToLCD_15BitColor
             ImagePreviewBorder.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
             ImagePreviewBorder.MouseMove += Preview_OnMouseMove;
             ImagePreviewBorder.SizeChanged += UpdatePreviewTopLeft;
+
             ImagePreviewBorder.SizeChanged += UpdatePreviewGrid;
 
             //PreviewGrid.PreviewMouseWheel += Preview_OnMouseWheelChanged;
@@ -103,6 +104,8 @@ namespace SEImageToLCD_15BitColor
                 ImageSplit_X.Text = "1";
                 ImageSplit_Y.Text = "1";
             }
+            ImageSplitSize = new Size(1, 1);
+            
 
             UpdatePreviewDelayed(0);
         }
@@ -290,6 +293,7 @@ namespace SEImageToLCD_15BitColor
 
                 if (resetZoom)
                 {
+                    UpdatePreviewGrid(true);
                     ResetPreviewZoomAndPan(true);
                 }
             });
@@ -556,11 +560,23 @@ namespace SEImageToLCD_15BitColor
 
         private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e)
         {
+            UpdatePreviewGrid(true);
+        }
+
+        private void ImagePreview_SourceUpdated(object? sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+            UpdatePreviewGrid(true);
+        }
+
+        private void UpdatePreviewGrid(bool reset)
+        {
+            TryGetSplitSize(out ImageSplitSize);
             PreviewGrid.Width = ImagePreviewBorder.Width;
             PreviewGrid.Height = ImagePreviewBorder.Height;
             PreviewGrid.Children.Clear();
             splitCtrlBtns.Clear();
 
+            checkedSplitBtnPos = new int[] { 0, 0 };
             bool firstBtn = true;
             for (int x = 0; x < ImageSplitSize.Width; x++)
             {
@@ -599,10 +615,14 @@ namespace SEImageToLCD_15BitColor
         {
             foreach (var btn in splitCtrlBtns)
             {
-                btn.Key.IsChecked = btn.Key == sender as ToggleButton;
-                if (btn.Key.IsChecked.Value)
+                if (btn.Key == sender as ToggleButton)
                 {
+                    btn.Key.IsChecked = true;
                     checkedSplitBtnPos = btn.Value;
+                }
+                else
+                {
+                    btn.Key.IsChecked = false;
                 }
             }
         }
