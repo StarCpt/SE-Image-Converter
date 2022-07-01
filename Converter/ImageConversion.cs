@@ -53,6 +53,8 @@ namespace SEImageToLCD_15BitColor
         private readonly DitherMode ditherMode;
         private readonly BitDepth colorDepth;
         private readonly Size lcdSize;
+        private readonly Size imageSplitSize;
+        private readonly int[] splitPos;
         private readonly InterpolationMode interpolationMode;
         private MainWindow.ConvertCallback callback;
         private readonly float xOffset;
@@ -65,6 +67,8 @@ namespace SEImageToLCD_15BitColor
             DitherMode ditherMode, 
             BitDepth colorDepth, 
             Size lcdSize, 
+            Size imageSplitSize,
+            int[] splitPos,
             InterpolationMode interpolationMode, 
             MainWindow.ConvertCallback callback,
             float xOffset,
@@ -74,6 +78,8 @@ namespace SEImageToLCD_15BitColor
             this.ditherMode = ditherMode;
             this.colorDepth = colorDepth;
             this.lcdSize = lcdSize;
+            this.imageSplitSize = imageSplitSize;
+            this.splitPos = splitPos;
             this.interpolationMode = interpolationMode;
             this.callback = callback;
             this.xOffset = xOffset;
@@ -95,9 +101,10 @@ namespace SEImageToLCD_15BitColor
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
             MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Size.ToShortString()} to {lcdSize.ToShortString()} {ditherMode.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
 
-            float scale = Math.Min((float)lcdSize.Width / image.Width, (float)lcdSize.Height / image.Height);
-            scale *= MainWindow.previewImageZoom;
-            image = Scaling.ScaleAndOffset(image, scale, xOffset, yOffset, interpolationMode, lcdSize);
+            float zoom = Math.Min((float)lcdSize.Width / image.Width, (float)lcdSize.Height / image.Height);
+            zoom *= MainWindow.previewImageZoom;
+            zoom *= Math.Max(imageSplitSize.Width, imageSplitSize.Height);
+            image = Scaling.ScaleAndOffset(image, zoom, xOffset * imageSplitSize.Width - lcdSize.Width * splitPos[0], yOffset * imageSplitSize.Height - lcdSize.Height * splitPos[1], interpolationMode, lcdSize);
 
             if (!taskCancelled)
             {
@@ -216,7 +223,7 @@ namespace SEImageToLCD_15BitColor
         private readonly ConvertThread.BitDepth colorDepth;
         private readonly InterpolationMode interpolationMode;
         private MainWindow.PreviewConvertCallback callback;
-        private readonly float scale;
+        private readonly float zoom;
         private readonly System.Diagnostics.Stopwatch sw;
         private bool taskCancelled;
 
@@ -233,7 +240,7 @@ namespace SEImageToLCD_15BitColor
             this.colorDepth = colorDepth;
             this.interpolationMode = interpolationMode;
             this.callback = callback;
-            this.scale = scale;
+            this.zoom = scale;
 
             sw = new System.Diagnostics.Stopwatch();
             taskCancelled = false;
@@ -251,7 +258,7 @@ namespace SEImageToLCD_15BitColor
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
             //MainWindow.Logging.Log($"[Thread: {threadId}] Started processing preview, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
 
-            image = Scaling.Scale(image, scale, interpolationMode);
+            image = Scaling.Scale(image, zoom, interpolationMode);
 
             if (taskCancelled)
             {

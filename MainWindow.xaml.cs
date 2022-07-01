@@ -57,12 +57,14 @@ namespace SEImageToLCD_15BitColor
 
         public static Logging Logging { get; private set; }
 
-        ConvertThread ConvertThread;
-        PreviewConvertThread PreviewConvertThread;
+        private ConvertThread ConvertThread;
+        private PreviewConvertThread PreviewConvertThread;
         private Task ConvertTask;
         private Task PreviewConvertTask;
-        ConvertCallback convertCallback;
-        PreviewConvertCallback previewConvertCallback;
+        private ConvertCallback convertCallback;
+        private PreviewConvertCallback previewConvertCallback;
+
+        private bool init = false;
 
         public enum ImageInfoType
         {
@@ -104,6 +106,7 @@ namespace SEImageToLCD_15BitColor
             InstantChanges = true;
             ToggleBtn_InstantChanges.IsChecked = InstantChanges;
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
+            //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
             UpdateCurrentConvertBtnToolTip("No images loaded", true);
             ConvertBtn.IsEnabled = (!InstantChanges && ImageCache.Image != null);
             CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
@@ -148,6 +151,7 @@ namespace SEImageToLCD_15BitColor
             InitImagePreview();
 
             Logging.Log("MainWindow initialized.");
+            init = true;
         }
 
         private void OnBrowseImagesClicked(object sender, RoutedEventArgs e)
@@ -380,7 +384,7 @@ namespace SEImageToLCD_15BitColor
                 {
                     if (resetZoom)
                     {
-                        ResetPreviewZoomAndPan();
+                        ResetPreviewZoomAndPan(true);
                     }
 
                     if (ConvertTask != null && !ConvertTask.IsCompleted)
@@ -389,7 +393,9 @@ namespace SEImageToLCD_15BitColor
                     }
 
                     var tt = GetTranslateTransform(ImagePreview);
-                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize.Value, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Value.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Value.Height)));
+
+                    TryGetSplitSize(out ImageSplitSize);
+                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize.Value, ImageSplitSize, checkedSplitBtnPos, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Value.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Value.Height)));
                     ConvertTask = Task.Run(ConvertThread.ConvertThreadedFast);
 
                     UpdatePreview(image, lcdSize.Value, interpolationMode, colorDepth, ditherMode, previewConvertCallback);
@@ -420,35 +426,6 @@ namespace SEImageToLCD_15BitColor
             ConvertedImageStr = resultStr;
             previewChanged = false;
             CopyToClipBtn.Dispatcher.Invoke(() => CopyToClipBtn.IsEnabled = true);
-        }
-        private void ConvertCallbackCopyToClip(string resultStr)
-        {
-            ConvertedImageStr = resultStr;
-            previewChanged = false;
-            CopyToClipBtn.Dispatcher.Invoke(() =>
-            {
-                CopyToClipBtn.IsEnabled = true;
-            });
-
-            if (ClipboardTimer != null)
-            {
-                ClipboardTimer.Enabled = false;
-                ClipboardTimer.Dispose();
-            }
-
-            ClipboardTimer = new Timer(150)
-            {
-                Enabled = true,
-                AutoReset = false,
-            };
-            ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => 
-            CopyToClipBtn.Dispatcher.Invoke(() => 
-            {
-                try { Clipboard.SetDataObject(resultStr, true); }
-                catch { ShowAcrylDialog("Clipboard error, try again!"); }
-                finally { ClipboardTimer = null; }
-            });
-            ClipboardTimer.Start();
         }
 
         private bool TryGetColorBitDepth(out BitDepth result)
@@ -488,6 +465,7 @@ namespace SEImageToLCD_15BitColor
             if (lcdButtons.Any(b => b.Key.IsChecked == true))
             {
                 result = lcdButtons.FirstOrDefault(b => b.Key.IsChecked == true).Value;
+                //result = new Size(result.Value.Width * ImageSplitSize.Width, result.Value.Height * ImageSplitSize.Height);
                 return true;
             }
             else
@@ -500,6 +478,7 @@ namespace SEImageToLCD_15BitColor
                         return false;
                     }
                     result = new Size(int.Parse(ImageWidthSetting.Text), int.Parse(ImageHeightSetting.Text));
+                    //result = new Size(result.Value.Width * ImageSplitSize.Width, result.Value.Height * ImageSplitSize.Height);
                     return true;
                 }
                 catch (Exception e)
@@ -539,19 +518,47 @@ namespace SEImageToLCD_15BitColor
                     Enabled = true,
                     AutoReset = false,
                 };
-                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
-                CopyToClipBtn.Dispatcher.Invoke(() =>
-                {
-                    try { Clipboard.SetDataObject(ConvertedImageStr, true); }
-                    catch { ShowAcrylDialog("Clipboard error, try again!"); }
-                    finally { ClipboardTimer = null; }
-                });
+                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
                 ClipboardTimer.Start();
             }
             else if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
+        }
+
+        private void SetClipDelayed(string text)
+        {
+            if (ClipboardTimer != null)
+            {
+                ClipboardTimer.Enabled = false;
+                ClipboardTimer.Dispose();
+            }
+
+            ClipboardTimer = new Timer(150)
+            {
+                Enabled = true,
+                AutoReset = false,
+            };
+            ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
+            CopyToClipBtn.Dispatcher.Invoke(() =>
+            {
+                try { Clipboard.SetDataObject(text, true); }
+                catch { ShowAcrylDialog("Clipboard error, try again!"); }
+                finally { ClipboardTimer = null; }
+            });
+        }
+
+        private void ConvertCallbackCopyToClip(string resultStr)
+        {
+            ConvertedImageStr = resultStr;
+            previewChanged = false;
+            CopyToClipBtn.Dispatcher.Invoke(() =>
+            {
+                CopyToClipBtn.IsEnabled = true;
+            });
+
+            SetClipDelayed(resultStr);
         }
 
         private void MainWindowWindow_Deactivated(object sender, EventArgs e)
@@ -595,6 +602,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
+                ResetPreviewSplit();
                 DoInstantChangeDelayed(true, 0);
             }
         }
@@ -616,7 +624,7 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        private void ImageSize_PreviewKeyDown(object sender, KeyEventArgs e)
+        private void MenuTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             //intercepts spaces
             e.Handled = e.Key == Key.Space;
@@ -650,7 +658,11 @@ namespace SEImageToLCD_15BitColor
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
 
-                DoInstantChangeDelayed(true, 50);
+                if (InstantChanges)
+                {
+                    ResetPreviewSplit();
+                    DoInstantChangeDelayed(true, 50);
+                }
             }
         }
 
@@ -770,6 +782,7 @@ namespace SEImageToLCD_15BitColor
             }
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
+            //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
 
             DoInstantChangeDelayed(false, 0);
         }
@@ -892,13 +905,16 @@ namespace SEImageToLCD_15BitColor
             {
                 ImageCache.Image.RotateFlip(type);
 
-                if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
+                if (InstantChanges)
                 {
-                    TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
-                }
-                else
-                {
-                    UpdatePreviewDelayed(0);
+                    if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
+                    {
+                        TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                    }
+                    else
+                    {
+                        UpdatePreviewDelayed(0);
+                    }
                 }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");
@@ -906,6 +922,7 @@ namespace SEImageToLCD_15BitColor
         }
 
         private void ImageTransformClicked(object sender, RoutedEventArgs e) => TransformImage(imageTransformButtons[sender as Button]);
+
     }
 
     public static class Utils

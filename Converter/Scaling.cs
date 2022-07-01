@@ -11,9 +11,9 @@ namespace SEImageToLCD_15BitColor
 {
     public class Scaling
     {
-        public static Bitmap Scale(Bitmap image, float scale, InterpolationMode mode)
+        public static Bitmap Scale(Bitmap image, float zoom, InterpolationMode mode)
         {
-            Bitmap newImage = new Bitmap((image.Width * scale).ToRoundedInt(), (image.Height * scale).ToRoundedInt(), PixelFormat.Format24bppRgb);
+            Bitmap newImage = new Bitmap((image.Width * zoom).ToRoundedInt(), (image.Height * zoom).ToRoundedInt(), PixelFormat.Format24bppRgb);
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
@@ -48,7 +48,7 @@ namespace SEImageToLCD_15BitColor
             return newImage;
         }
 
-        public static Bitmap ScaleAndOffset(Bitmap image, float scale, float xOff, float yOff, InterpolationMode mode, Size size)
+        public static Bitmap ScaleAndOffset(Bitmap image, float zoom, float xOff, float yOff, InterpolationMode mode, Size size)
         {
             Bitmap newImage = new Bitmap(size.Width, size.Height, PixelFormat.Format24bppRgb);
 
@@ -59,7 +59,7 @@ namespace SEImageToLCD_15BitColor
                 g.CompositingMode = CompositingMode.SourceCopy;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(image, xOff, yOff, image.Width * scale, image.Height * scale);
+                g.DrawImage(image, xOff, yOff, image.Width * zoom, image.Height * zoom);
             }
 
             return newImage;
