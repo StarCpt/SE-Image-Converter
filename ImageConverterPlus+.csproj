@@ -41,6 +41,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="ImageConverterPlus+.csproj.user" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="icon16.ico" />
     <Resource Include="icon16.png" />
   </ItemGroup>
