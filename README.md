@@ -1,4 +1,4 @@
-**IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to install the right version for your system. (x86 or x64)
+**IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to install the right version for your system. (x86 or x64)**
 
 # SE-Image-Converter
 Supports 15-bit color with the "Mono Color" mod: https://steamcommunity.com/sharedfiles/filedetails/?id=2174915662
@@ -7,7 +7,11 @@ Allows image and file drag & drop including from the web browser
 
 There may be issues with the transparency effect on pre-win10 systems.
 
-## Zoom & Pan examples (Added in Preview 7)
+## Image Split
+
+https://user-images.githubusercontent.com/86216339/176912846-9369a9e6-71ac-4c37-8ea2-acaede32920c.mp4
+
+## Zoom & Pan (Added in Preview 7)
 
 https://user-images.githubusercontent.com/86216339/176100876-cf5a3472-e836-4ee0-9242-4e82e14d7ea0.mp4
 
