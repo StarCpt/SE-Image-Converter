@@ -335,21 +335,13 @@ namespace SEImageToLCD_15BitColor
                 if (!TryGetColorBitDepth(out BitDepth colorDepth))
                 {
                     colorDepth = BitDepth.Color3;
-                    Logging.Log("Color depth error! Defaulting to 3 bits.");
-                    //if (showErrorDialogs)
-                    {
-                        ShowAcrylDialog("Color depth error! Defaulting to 3 bits.");
-                    }
+                    ShowAcrylDialog("Color depth error! Defaulting to 3 bits.");
                 }
 
                 if (!TryGetInterpolationMode(out InterpolationMode interpolationMode))
                 {
                     interpolationMode = InterpolationMode.NearestNeighbor;
-                    Logging.Log("Scaling mode error! Defaulting to Nearest.");
-                    //if (showErrorDialogs)
-                    {
-                        ShowAcrylDialog("Scaling mode error! Defaulting to Nearest.");
-                    }
+                    ShowAcrylDialog("Scaling mode error! Defaulting to Nearest.");
                 }
 
                 if (!TryGetLCDSize(out Size? lcdSize))
@@ -362,29 +354,21 @@ namespace SEImageToLCD_15BitColor
                     else
                     {
                         lcdSize = new Size(178, 178);
-                        Logging.Log("LCD size error! Defaulting to 178x178.");
-                        //if (showErrorDialogs)
-                        {
-                            ShowAcrylDialog("LCD size error! Defaulting to 178x178.");
-                        }
+                        ShowAcrylDialog("LCD size error! Defaulting to 178x178.");
                     }
                 }
 
                 if (!TryGetDitherMode(out DitherMode ditherMode))
                 {
                     ditherMode = DitherMode.NoDither;
-                    Logging.Log("Dithering option error! Defaulting to None.");
-                    //if (showErrorDialogs)
-                    {
-                        ShowAcrylDialog("Dithering option error! Defaulting to None.");
-                    }
+                    ShowAcrylDialog("Dithering option error! Defaulting to None.");
                 }
 
                 if (image.Image != null)
                 {
                     if (resetZoom)
                     {
-                        ResetPreviewZoomAndPan(true);
+                        ResetPreviewZoomAndPan(false);
                     }
 
                     if (ConvertTask != null && !ConvertTask.IsCompleted)
@@ -424,7 +408,6 @@ namespace SEImageToLCD_15BitColor
         private void ConvertResultCallback(string resultStr)
         {
             ConvertedImageStr = resultStr;
-            previewChanged = false;
             CopyToClipBtn.Dispatcher.Invoke(() => CopyToClipBtn.IsEnabled = true);
         }
 
@@ -465,7 +448,6 @@ namespace SEImageToLCD_15BitColor
             if (lcdButtons.Any(b => b.Key.IsChecked == true))
             {
                 result = lcdButtons.FirstOrDefault(b => b.Key.IsChecked == true).Value;
-                //result = new Size(result.Value.Width * ImageSplitSize.Width, result.Value.Height * ImageSplitSize.Height);
                 return true;
             }
             else
@@ -478,7 +460,6 @@ namespace SEImageToLCD_15BitColor
                         return false;
                     }
                     result = new Size(int.Parse(ImageWidthSetting.Text), int.Parse(ImageHeightSetting.Text));
-                    //result = new Size(result.Value.Width * ImageSplitSize.Width, result.Value.Height * ImageSplitSize.Height);
                     return true;
                 }
                 catch (Exception e)
@@ -505,23 +486,23 @@ namespace SEImageToLCD_15BitColor
 
         private void CopyToClipClicked(object sender, RoutedEventArgs e)
         {
-            //if (!previewChanged && !string.IsNullOrEmpty(ConvertedImageStr))
-            //{
-            //    if (ClipboardTimer != null)
-            //    {
-            //        ClipboardTimer.Enabled = false;
-            //        ClipboardTimer.Dispose();
-            //    }
+            if (!string.IsNullOrEmpty(ConvertedImageStr))
+            {
+                if (ClipboardTimer != null)
+                {
+                    ClipboardTimer.Enabled = false;
+                    ClipboardTimer.Dispose();
+                }
 
-            //    ClipboardTimer = new Timer(150)
-            //    {
-            //        Enabled = true,
-            //        AutoReset = false,
-            //    };
-            //    ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
-            //    ClipboardTimer.Start();
-            //}
-            if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+                ClipboardTimer = new Timer(150)
+                {
+                    Enabled = true,
+                    AutoReset = false,
+                };
+                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
+                ClipboardTimer.Start();
+            }
+            else if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -552,7 +533,6 @@ namespace SEImageToLCD_15BitColor
         private void ConvertCallbackCopyToClip(string resultStr)
         {
             ConvertedImageStr = resultStr;
-            previewChanged = false;
             CopyToClipBtn.Dispatcher.Invoke(() =>
             {
                 CopyToClipBtn.IsEnabled = true;
@@ -582,7 +562,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreviewDelayed(0);
+                UpdatePreviewDelayed(false, 0);
             }
         }
         #region lcd size
@@ -603,8 +583,8 @@ namespace SEImageToLCD_15BitColor
             if (InstantChanges)
             {
                 ResetPreviewSplit();
-                UpdatePreviewGrid(true);
-                DoInstantChangeDelayed(true, 0);
+                //DoInstantChangeDelayed(true, 0);
+                UpdatePreviewDelayed(true, 0);
             }
         }
 
@@ -662,8 +642,8 @@ namespace SEImageToLCD_15BitColor
                 if (InstantChanges)
                 {
                     ResetPreviewSplit();
-                    UpdatePreviewGrid(true);
-                    DoInstantChangeDelayed(true, 50);
+                    //DoInstantChangeDelayed(true, 50);
+                    UpdatePreviewDelayed(true, 0);
                 }
             }
         }
@@ -719,7 +699,7 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                UpdatePreviewDelayed(0);
+                UpdatePreviewDelayed(false, 0);
             }
         }
 
@@ -727,7 +707,7 @@ namespace SEImageToLCD_15BitColor
         {
             if (InstantChanges)
             {
-                UpdatePreviewDelayed(0);
+                UpdatePreviewDelayed(false, 0);
             }
         }
 
@@ -784,7 +764,6 @@ namespace SEImageToLCD_15BitColor
             }
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
-            //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
 
             DoInstantChangeDelayed(false, 0);
         }
@@ -915,7 +894,7 @@ namespace SEImageToLCD_15BitColor
                     }
                     else
                     {
-                        UpdatePreviewDelayed(0);
+                        UpdatePreviewDelayed(false, 0);
                     }
                 }
 

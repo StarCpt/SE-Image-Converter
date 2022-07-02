@@ -101,7 +101,7 @@
         <!--Image Preview-->
         <Label x:Name="ImagePreviewLabel" Content="Image Preview" Grid.Row="5" Grid.Column="3" Grid.RowSpan="2" Foreground="White" 
                HorizontalAlignment="Center" VerticalAlignment="Bottom" Height="30" Margin="0,0,0,35" FontSize="15"/>
-        <Border Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="ImagePreviewBorder"
+        <Border Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="ImagePreviewBorder" Background="Black" Visibility="Hidden"
                 Height="350" Width="350" HorizontalAlignment="Center" VerticalAlignment="Center"
                 PreviewDrop="Preview_PreviewDrop" ClipToBounds="True" AllowDrop="True">
             <Border.ContextMenu>
@@ -347,6 +347,9 @@
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
+                            <TextBox.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Width" />
+                            </TextBox.ToolTip>
                         </TextBox>
                         <Label Grid.ColumnSpan="2" Content="Split Image" Foreground="White" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
                         <Label Content="by" Foreground="DarkGray" HorizontalAlignment="Center" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,7" VerticalAlignment="Bottom" Height="25"/>
@@ -359,6 +362,9 @@
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
+                            <TextBox.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" Content="Height" />
+                            </TextBox.ToolTip>
                         </TextBox>
                         <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                   Content="Show Grid" Margin="0,0,0,5" Height="25" Width="125" Grid.Row="2" Grid.ColumnSpan="2"

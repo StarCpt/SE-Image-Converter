@@ -32,7 +32,6 @@ namespace SEImageToLCD_15BitColor
         private int PreviewBorderHeight;
         private Point PreviewTopLeft;
         public static float previewImageZoom = 1f;
-        private static bool previewChanged = true;
 
         private Size ImageSplitSize = new Size(1, 1);
 
@@ -57,11 +56,6 @@ namespace SEImageToLCD_15BitColor
 
             ImagePreviewBorder.SizeChanged += UpdatePreviewGrid;
 
-            //PreviewGrid.PreviewMouseWheel += Preview_OnMouseWheelChanged;
-            //PreviewGrid.MouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-            //PreviewGrid.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
-            //PreviewGrid.PreviewMouseMove += Preview_OnMouseMove;
-
             PreviewGrid.Visibility = Visibility.Hidden;
             ShowSplitGridBtn.IsChecked = false;
 
@@ -74,12 +68,12 @@ namespace SEImageToLCD_15BitColor
             TranslateTransform tt = new();
             group.Children.Add(tt);
             ImagePreview.RenderTransform = group;
-            ImagePreview.RenderTransformOrigin = new Point(0d, 0d);
+            ImagePreview.RenderTransformOrigin = new Point(0.0, 0.0);
         }
 
         public void ResetPreviewZoomAndPan(bool update)
         {
-            ImagePreviewBorder.Background = Brushes.Black;
+            ImagePreviewBorder.Visibility = Visibility.Visible;
 
             var st = GetScaleTransform(ImagePreview);
             st.ScaleX = 1d;
@@ -93,7 +87,7 @@ namespace SEImageToLCD_15BitColor
 
             if (update)
             {
-                UpdatePreviewDelayed(0);
+                UpdatePreviewDelayed(false, 0);
             }
         }
 
@@ -103,11 +97,12 @@ namespace SEImageToLCD_15BitColor
             {
                 ImageSplit_X.Text = "1";
                 ImageSplit_Y.Text = "1";
-            }
-            ImageSplitSize = new Size(1, 1);
-            
 
-            UpdatePreviewDelayed(0);
+                ImageSplitSize = new Size(1, 1);
+
+                //UpdatePreviewDelayed(0);
+                //UpdatePreviewGrid();
+            }
         }
 
         public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
@@ -124,8 +119,13 @@ namespace SEImageToLCD_15BitColor
             PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
         }
 
-        public void UpdatePreviewDelayed(ushort delay)
+        public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
         {
+            if (resetZoom)
+            {
+                ResetPreviewZoomAndPan(false);
+            }
+
             if (ImageCache.Image == null ||
                 !TryGetLCDSize(out Size? size) ||
                 !TryGetInterpolationMode(out InterpolationMode interpolation) ||
@@ -199,7 +199,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)st.ScaleX;
 
-            UpdatePreviewDelayed(100);
+            UpdatePreviewDelayed(false, 100);
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -221,7 +221,7 @@ namespace SEImageToLCD_15BitColor
 
             previewImageZoom = (float)zoom;
 
-            UpdatePreviewDelayed(0);
+            UpdatePreviewDelayed(false, 0);
 
             tt.X = ((PreviewTopLeft.X * 2) + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX)) / 2;
             tt.Y = ((PreviewTopLeft.Y * 2) + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY)) / 2;
@@ -269,7 +269,6 @@ namespace SEImageToLCD_15BitColor
 
         private void ChangePreviewThreadSafe(BitmapImage image, bool resetZoom)
         {
-            previewChanged = true;
             image.Freeze();
             ImagePreview.Dispatcher.Invoke(() =>
             {
@@ -280,20 +279,20 @@ namespace SEImageToLCD_15BitColor
                     if (lcdSize.Value.Width * ImageSplitSize.Width > lcdSize.Value.Height * ImageSplitSize.Height)
                     {
                         ImagePreviewBorder.Width = PreviewBorderWidth;
-                        ImagePreviewBorder.Height = (PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / (lcdSize.Value.Width * ImageSplitSize.Width))).ToRoundedInt();
+                        ImagePreviewBorder.Height = (PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / ((double)lcdSize.Value.Width * ImageSplitSize.Width))).ToRoundedInt();
                     }
                     else
                     {
-                        ImagePreviewBorder.Width = (PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / (lcdSize.Value.Height * ImageSplitSize.Height))).ToRoundedInt();
+                        ImagePreviewBorder.Width = (PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / ((double)lcdSize.Value.Height * ImageSplitSize.Height))).ToRoundedInt();
                         ImagePreviewBorder.Height = PreviewBorderHeight;
                     }
                 }
 
+                ImagePreviewBorder.Visibility = Visibility.Visible;
                 ImagePreviewLabel.Visibility = Visibility.Hidden;
 
                 if (resetZoom)
                 {
-                    UpdatePreviewGrid(true);
                     ResetPreviewZoomAndPan(true);
                 }
             });
@@ -307,7 +306,8 @@ namespace SEImageToLCD_15BitColor
             ConvertedImageStr = string.Empty;
             CopyToClipBtn.IsEnabled = false;
             ResetPreviewZoomAndPan(false);
-            ImagePreviewBorder.Background = Brushes.Transparent;
+
+            ImagePreviewBorder.Visibility = Visibility.Hidden;
             ImagePreviewLabel.Visibility = Visibility.Visible;
         }
 
@@ -497,24 +497,27 @@ namespace SEImageToLCD_15BitColor
 
         private void ImageSplit_TextChanged(object sender, TextChangedEventArgs e)
         {
-            TextBox box = sender as TextBox;
-
-            if (box.Text.Length > 1)
+            if (init)
             {
-                box.Text = "9";
-                box.CaretIndex = 1;
-            }
+                TextBox box = sender as TextBox;
 
-            if (init && InstantChanges)
-            {
-                TryGetSplitSize(out ImageSplitSize);
-                DoInstantChangeDelayed(true, 50);
+                if (box.Text.Length > 1)
+                {
+                    box.Text = "9";
+                    box.CaretIndex = 1;
+                }
+
+                if (InstantChanges)
+                {
+                    TryGetSplitSize(out ImageSplitSize);
+                    UpdatePreviewGrid();
+                    DoInstantChangeDelayed(true, 50);
+                }
             }
         }
 
         private void ImageSplit_Pasting(object sender, DataObjectPastingEventArgs e)
         {
-
             if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
             {
                 string text = (string)e.SourceDataObject.GetData(typeof(string));
@@ -558,17 +561,9 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e)
-        {
-            UpdatePreviewGrid(true);
-        }
+        private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e) => UpdatePreviewGrid();
 
-        private void ImagePreview_SourceUpdated(object? sender, System.Windows.Data.DataTransferEventArgs e)
-        {
-            UpdatePreviewGrid(true);
-        }
-
-        private void UpdatePreviewGrid(bool reset)
+        private void UpdatePreviewGrid()
         {
             TryGetSplitSize(out ImageSplitSize);
             PreviewGrid.Width = ImagePreviewBorder.Width;
@@ -587,10 +582,6 @@ namespace SEImageToLCD_15BitColor
                     {
                         Name = $"x{x.ToString()}y{y.ToString()}",
                         Style = (Style)FindResource("PreviewSplitBtn"),
-                        //Background = Brushes.Transparent,
-                        //BorderBrush = new SolidColorBrush(Color.FromRgb(50, 50, 50)),
-                        //BorderThickness = new Thickness(0.5),
-                        //Opacity = 1.0,
                         Width = ImagePreviewBorder.Width / ImageSplitSize.Width,
                         Height = ImagePreviewBorder.Height / ImageSplitSize.Height,
                     };
