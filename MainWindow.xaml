@@ -106,8 +106,8 @@
                 PreviewDrop="Preview_PreviewDrop" ClipToBounds="True" AllowDrop="True">
             <Border.ContextMenu>
                 <ContextMenu Style="{StaticResource CustomMenu}">
-                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="CopyToClipClicked" />
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="CopyToClipClicked" />
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan" Click="ResetZoomBtn_Click"/>
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemovePreview" x:Name="RemoveImagePreviewBtn"/>
                 </ContextMenu>
@@ -121,7 +121,7 @@
 
         <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                       local:ScrollAnimationBehavior.IsEnabled="True"
-                      local:ScrollAnimationBehavior.TimeDuration="00:00:00.125"
+                      local:ScrollAnimationBehavior.TimeDuration="00:00:00.12"
                       local:ScrollAnimationBehavior.PointsToScroll="40" 
                       FocusVisualStyle="{x:Null}" Margin="0,0,-5,0"
                       VerticalScrollBarVisibility="Auto" CanContentScroll="True">

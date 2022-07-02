@@ -320,11 +320,6 @@ namespace SEImageToLCD_15BitColor
             return (byte)num.Clamp(byte.MinValue, byte.MaxValue);
         }
 
-        public static int ToRoundedInt(this float num)
-        {
-            return (int)Math.Round(num);
-        }
-
         public static int ToRoundedInt(this double num)
         {
             return (int)Math.Round(num);
