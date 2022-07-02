@@ -19,30 +19,10 @@ namespace SEImageToLCD_15BitColor
             {
                 g.InterpolationMode = mode;
                 g.SmoothingMode = SmoothingMode.HighQuality;
-                g.CompositingMode = CompositingMode.SourceCopy;
+                g.CompositingMode = CompositingMode.SourceOver;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.DrawImage(image, 0, 0, newImage.Width, newImage.Height);
-            }
-
-            return newImage;
-        }
-
-        public static Bitmap ScaleAndPad(Bitmap image, float scale, InterpolationMode mode, Size lcdSize)
-        {
-            Bitmap newImage = new Bitmap(lcdSize.Width, lcdSize.Height, PixelFormat.Format24bppRgb);
-
-            int xOffset = (int)Math.Round((lcdSize.Width - (image.Width * scale)) / 2f);
-            int yOffset = (int)Math.Round((lcdSize.Height - (image.Height * scale)) / 2f);
-
-            using (Graphics g = Graphics.FromImage(newImage))
-            {
-                g.InterpolationMode = mode;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-                g.CompositingMode = CompositingMode.SourceCopy;
-                g.CompositingQuality = CompositingQuality.HighQuality;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(image, xOffset, yOffset, image.Width * scale, image.Height * scale);
             }
 
             return newImage;
@@ -56,7 +36,7 @@ namespace SEImageToLCD_15BitColor
             {
                 g.InterpolationMode = mode;
                 g.SmoothingMode = SmoothingMode.HighQuality;
-                g.CompositingMode = CompositingMode.SourceCopy;
+                g.CompositingMode = CompositingMode.SourceOver;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.DrawImage(image, xOff, yOff, image.Width * zoom, image.Height * zoom);

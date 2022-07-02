@@ -19,8 +19,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using Brushes = System.Windows.Media.Brushes;
 using System.Windows.Controls.Primitives;
-using System.Net;
-using HtmlAgilityPack;
 using System.Diagnostics;
 using BitDepth = SEImageToLCD_15BitColor.ConvertThread.BitDepth;
 using DitherMode = SEImageToLCD_15BitColor.ConvertThread.DitherMode;
@@ -30,7 +28,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
-using System.Windows.Media.Animation;
 using System.Timers;
 
 namespace SEImageToLCD_15BitColor
@@ -486,23 +483,7 @@ namespace SEImageToLCD_15BitColor
 
         private void CopyToClipClicked(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(ConvertedImageStr))
-            {
-                if (ClipboardTimer != null)
-                {
-                    ClipboardTimer.Enabled = false;
-                    ClipboardTimer.Dispose();
-                }
-
-                ClipboardTimer = new Timer(150)
-                {
-                    Enabled = true,
-                    AutoReset = false,
-                };
-                ClipboardTimer.Elapsed += (object sender, ElapsedEventArgs e) => SetClipDelayed(ConvertedImageStr);
-                ClipboardTimer.Start();
-            }
-            else if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+            if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -765,14 +746,14 @@ namespace SEImageToLCD_15BitColor
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
 
-            DoInstantChangeDelayed(false, 0);
+            ApplyInstantChanges(false, 0);
         }
         /// <summary>
         /// does not check if instant change is enabled!
         /// </summary>
         /// <param name="resetZoom"></param>
         /// <param name="delay"></param>
-        private void DoInstantChangeDelayed(bool resetZoom, ushort delay)
+        private void ApplyInstantChanges(bool resetZoom, ushort delay)
         {
             if (ConvertTimer != null)
             {

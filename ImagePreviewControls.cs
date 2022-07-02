@@ -17,9 +17,7 @@ using Size = System.Drawing.Size;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 using Point = System.Windows.Point;
 using System.Timers;
-using SixLabors;
 using System.Windows.Controls.Primitives;
-//using System.Data;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -267,7 +265,7 @@ namespace SEImageToLCD_15BitColor
                 .Children.First(tr => tr is ScaleTransform);
         }
 
-        private void ChangePreviewThreadSafe(BitmapImage image, bool resetZoom)
+        private void ChangePreviewThreadSafe(BitmapImage image)
         {
             image.Freeze();
             ImagePreview.Dispatcher.Invoke(() =>
@@ -291,10 +289,10 @@ namespace SEImageToLCD_15BitColor
                 ImagePreviewBorder.Visibility = Visibility.Visible;
                 ImagePreviewLabel.Visibility = Visibility.Hidden;
 
-                if (resetZoom)
-                {
-                    ResetPreviewZoomAndPan(true);
-                }
+                //if (resetZoom)
+                //{
+                //    ResetPreviewZoomAndPan(true);
+                //}
             });
         }
 
@@ -457,10 +455,7 @@ namespace SEImageToLCD_15BitColor
         }
 
         public delegate void PreviewConvertCallback(BitmapImage resultPreviewImg);
-        private void PreviewConvertResultCallback(BitmapImage resultPreviewImg)
-        {
-            ChangePreviewThreadSafe(resultPreviewImg, false);
-        }
+        private void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
 
         private void ResetZoomBtn_Click(object sender, RoutedEventArgs e) => ResetPreviewZoomAndPan(true);
 
@@ -511,7 +506,7 @@ namespace SEImageToLCD_15BitColor
                 {
                     TryGetSplitSize(out ImageSplitSize);
                     UpdatePreviewGrid();
-                    DoInstantChangeDelayed(true, 50);
+                    ApplyInstantChanges(true, 50);
                 }
             }
         }
@@ -585,10 +580,7 @@ namespace SEImageToLCD_15BitColor
                         Width = ImagePreviewBorder.Width / ImageSplitSize.Width,
                         Height = ImagePreviewBorder.Height / ImageSplitSize.Height,
                     };
-                    //btn.PreviewMouseWheel += Preview_OnMouseWheelChanged;
-                    //btn.PreviewMouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-                    //btn.PreviewMouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
-                    //btn.PreviewMouseMove += Preview_OnMouseMove;
+
                     if (firstBtn)
                     {
                         btn.IsChecked = true;
