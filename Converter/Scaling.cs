@@ -19,7 +19,7 @@ namespace SEImageToLCD_15BitColor
             {
                 g.InterpolationMode = mode;
                 g.SmoothingMode = SmoothingMode.HighQuality;
-                g.CompositingMode = CompositingMode.SourceOver;
+                g.CompositingMode = CompositingMode.SourceCopy;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.DrawImage(image, 0, 0, newImage.Width, newImage.Height);
@@ -36,7 +36,7 @@ namespace SEImageToLCD_15BitColor
             {
                 g.InterpolationMode = mode;
                 g.SmoothingMode = SmoothingMode.HighQuality;
-                g.CompositingMode = CompositingMode.SourceOver;
+                g.CompositingMode = CompositingMode.SourceCopy;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.DrawImage(image, xOff, yOff, image.Width * zoom, image.Height * zoom);

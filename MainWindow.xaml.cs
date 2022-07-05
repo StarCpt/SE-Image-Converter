@@ -37,6 +37,8 @@ namespace SEImageToLCD_15BitColor
     /// </summary>
     public partial class MainWindow : Window
     {
+        public const string version = "0.8.4";
+
         private string ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
         public static MainWindow Static { get; private set; }
@@ -141,8 +143,8 @@ namespace SEImageToLCD_15BitColor
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
-            MainWindowWindow.Title = "Image Converter Plus+ v0.8.3";
-            AppTitleText.Content = "SE Image Converter Plus+ v0.8.3";
+            MainWindowWindow.Title = $"Image Converter Plus+ v{version}";
+            AppTitleText.Content = $"Image Converter Plus+ v{version}";
             AppBigTitle.Content = "Image Converter Plus+";
 
             InitImagePreview();
@@ -387,7 +389,7 @@ namespace SEImageToLCD_15BitColor
                 }
                 else
                 {
-                    Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()}), Image is null");
+                    Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({(image.FileNameOrImageSource == null ? "FileNameOrImageSource is Null" : image.FileNameOrImageSource.ToString())}), Image is null");
                     ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
                     return false;
                 }
@@ -563,8 +565,6 @@ namespace SEImageToLCD_15BitColor
 
             if (InstantChanges)
             {
-                ResetPreviewSplit();
-                //DoInstantChangeDelayed(true, 0);
                 UpdatePreviewDelayed(true, 0);
             }
         }
@@ -619,11 +619,9 @@ namespace SEImageToLCD_15BitColor
                     ImageWidthSetting.Foreground = Brushes.White;
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
-                
+
                 if (InstantChanges)
                 {
-                    ResetPreviewSplit();
-                    //DoInstantChangeDelayed(true, 50);
                     UpdatePreviewDelayed(true, 0);
                 }
             }

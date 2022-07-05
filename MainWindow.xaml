@@ -112,13 +112,12 @@
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemovePreview" x:Name="RemoveImagePreviewBtn"/>
                 </ContextMenu>
             </Border.ContextMenu>
-            <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview">
-            </Image>
+            <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview" />
         </Border>
         <StackPanel Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" Height="350" Width="350" x:Name="PreviewGrid" Orientation="Horizontal"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent">
-        </StackPanel>
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent" PreviewDrop="Preview_PreviewDrop" AllowDrop="True" />
 
+        <!--Menu-->
         <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                       local:ScrollAnimationBehavior.IsEnabled="True"
                       local:ScrollAnimationBehavior.TimeDuration="00:00:00.12"

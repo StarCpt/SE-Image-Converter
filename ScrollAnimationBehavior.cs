@@ -143,24 +143,8 @@ namespace SEImageToLCD_15BitColor
 
         private static void AnimateScroll(ScrollViewer scrollViewer, double ToValue)
         {
-            //DoubleAnimation verticalAnimation = new DoubleAnimation();
-
-            //verticalAnimation.From = scrollViewer.VerticalOffset;
-            //verticalAnimation.To = ToValue;
-            //verticalAnimation.Duration = new Duration(GetTimeDuration(scrollViewer));
-
-            //Storyboard storyboard = new Storyboard();
-
-            //storyboard.Children.Add(verticalAnimation);
-            //Storyboard.SetTarget(verticalAnimation, scrollViewer);
-            //Storyboard.SetTargetProperty(verticalAnimation, new PropertyPath(ScrollAnimationBehavior.VerticalOffsetProperty));
-            //storyboard.Begin();
-
             scrollViewer.BeginAnimation(VerticalOffsetProperty, null);
-            DoubleAnimation verticalAnimation = new DoubleAnimation();
-            verticalAnimation.From = scrollViewer.VerticalOffset;
-            verticalAnimation.To = ToValue;
-            verticalAnimation.Duration = new Duration(GetTimeDuration(scrollViewer));
+            DoubleAnimation verticalAnimation = new DoubleAnimation(scrollViewer.VerticalOffset, ToValue, GetTimeDuration(scrollViewer));
             scrollViewer.BeginAnimation(VerticalOffsetProperty, verticalAnimation);
         }
 
@@ -298,50 +282,19 @@ namespace SEImageToLCD_15BitColor
                 return;
             }
 
-            double mouseWheelChange = (double)e.Delta;
+            double mouseWheelChange = e.Delta;
             ScrollViewer scroller = (ScrollViewer)sender;
 
-            //if (scroller.VerticalOffset != intendedLocation && lastDelta.Clamp(-1, 1) != mouseWheelChange.Clamp(-1, 1))
-            //{
-            //    intendedLocation = scroller.VerticalOffset;
-            //}
+            bool alreadyReachedEnd = (e.Delta < 0 && intendedLocation >= scroller.ScrollableHeight) || (e.Delta > 0 && intendedLocation <= 0);
 
-            //lastDelta = mouseWheelChange;
-            bool alreadyReachedEnd = (e.Delta < 0 && intendedLocation == scroller.ScrollableHeight) || (e.Delta > 0 && intendedLocation == 0);
-
-            //double newVOffset = GetVerticalOffset(scroller) - (mouseWheelChange / 3);
-            double newVOffset = intendedLocation - (mouseWheelChange / 2/* * 2*/);
-
-            if (!alreadyReachedEnd)
-            {
-                scroller.ScrollToVerticalOffset(intendedLocation);
-            }
-
-            if (newVOffset < 0)
-            {
-                //AnimateScroll(scroller, 0);
-                newVOffset = 0;
-            }
-
-            if (newVOffset > scroller.ScrollableHeight)
-            {
-                newVOffset = scroller.ScrollableHeight;
-            }
-
-            //else if (newVOffset > scroller.ScrollableHeight)
-            //{
-            //    AnimateScroll(scroller, scroller.ScrollableHeight);
-            //}
-            //else
-            //{
-            //    AnimateScroll(scroller, newVOffset);
-            //}
+            double newVOffset = intendedLocation - (mouseWheelChange / 2);
 
             if (!alreadyReachedEnd)
             {
                 AnimateScroll(scroller, newVOffset);
             }
-            intendedLocation = newVOffset;
+
+            intendedLocation = newVOffset.Clamp(0, scroller.ScrollableHeight);
 
             e.Handled = true;
         }

@@ -18,6 +18,7 @@ using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 using Point = System.Windows.Point;
 using System.Timers;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media.Animation;
 
 namespace SEImageToLCD_15BitColor
 {
@@ -60,10 +61,10 @@ namespace SEImageToLCD_15BitColor
             PreviewBorderWidth = 350;
             PreviewBorderHeight = 350;
 
-            TransformGroup group = new();
-            ScaleTransform st = new();
+            TransformGroup group = new TransformGroup();
+            ScaleTransform st = new ScaleTransform();
             group.Children.Add(st);
-            TranslateTransform tt = new();
+            TranslateTransform tt = new TranslateTransform();
             group.Children.Add(tt);
             ImagePreview.RenderTransform = group;
             ImagePreview.RenderTransformOrigin = new Point(0.0, 0.0);
@@ -88,6 +89,8 @@ namespace SEImageToLCD_15BitColor
                 UpdatePreviewDelayed(false, 0);
             }
         }
+
+        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => ResetPreviewSplit();
 
         public void ResetPreviewSplit()
         {
@@ -178,7 +181,14 @@ namespace SEImageToLCD_15BitColor
             ScaleTransform st = GetScaleTransform(ImagePreview);
             TranslateTransform tt = GetTranslateTransform(ImagePreview);
 
-            double zoom = e.Delta > 0 ? 0.2 : -0.2;
+            double zoomAmount = 0.2;
+
+            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
+            {
+                zoomAmount = 0.02;
+            }
+
+            double zoom = e.Delta > 0 ? zoomAmount : -zoomAmount;
 
             if ((e.Delta < 0 && st.ScaleX <= 0.4) || (e.Delta > 0 && st.ScaleX >= 10))
             {
@@ -192,12 +202,12 @@ namespace SEImageToLCD_15BitColor
             absX = relative.X * st.ScaleX + tt.X;
             absY = relative.Y * st.ScaleY + tt.Y;
 
+
+
             st.ScaleX = (st.ScaleX + zoom).Clamp(0.4, 10);
             st.ScaleY = (st.ScaleY + zoom).Clamp(0.4, 10);
 
             previewImageZoom = (float)st.ScaleX;
-
-            UpdatePreviewDelayed(false, 100);
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -205,9 +215,10 @@ namespace SEImageToLCD_15BitColor
             start = e.GetPosition(ImagePreviewBorder);
             origin = new Point(tt.X, tt.Y);
 
+            UpdatePreviewDelayed(false, 100);
+
             e.Handled = true;
         }
-
 
         private void SetPreviewZoom(double zoom)
         {
@@ -288,11 +299,6 @@ namespace SEImageToLCD_15BitColor
 
                 ImagePreviewBorder.Visibility = Visibility.Visible;
                 ImagePreviewLabel.Visibility = Visibility.Hidden;
-
-                //if (resetZoom)
-                //{
-                //    ResetPreviewZoomAndPan(true);
-                //}
             });
         }
 
@@ -461,16 +467,16 @@ namespace SEImageToLCD_15BitColor
 
         private void ZoomToFit_Click(object sender, RoutedEventArgs e)
         {
-            double zoom = Math.Min(ImagePreviewBorder.ActualWidth / ImagePreview.ActualWidth, ImagePreviewBorder.ActualHeight / ImagePreview.ActualHeight);
-            if (previewImageZoom != zoom)
+            //double zoom = ImageCache.Image.Width < ImageCache.Image.Height ? (double)ImageCache.Image.Width / ImageCache.Image.Height : (double)ImageCache.Image.Height / ImageCache.Image.Width;
+            if (previewImageZoom != 1f)
             {
-                SetPreviewZoom(zoom);
+                SetPreviewZoom(1.0);
             }
         }
 
         private void ZoomToFill_Click(object sender, RoutedEventArgs e)
         {
-            double zoom = Math.Max(ImagePreviewBorder.ActualWidth / ImagePreview.ActualWidth, ImagePreviewBorder.ActualHeight / ImagePreview.ActualHeight);
+            double zoom = ImageCache.Image.Width > ImageCache.Image.Height ? (double)ImageCache.Image.Width / ImageCache.Image.Height : (double)ImageCache.Image.Height / ImageCache.Image.Width;
             if (previewImageZoom != zoom)
             {
                 SetPreviewZoom(zoom);
@@ -568,6 +574,26 @@ namespace SEImageToLCD_15BitColor
 
             checkedSplitBtnPos = new int[] { 0, 0 };
             bool firstBtn = true;
+
+            ContextMenu imgSplitMenu = new ContextMenu
+            {
+                Style = (Style)FindResource("CustomMenu"),
+            };
+            MenuItem menuItemCopyToClip = new MenuItem
+            {
+                Style = (Style)FindResource("CustomMenuItem"),
+                Header = "Copy to Clipboard",
+            };
+            menuItemCopyToClip.Click += PreviewGridCopyToClip;
+            imgSplitMenu.Items.Add(menuItemCopyToClip);
+            MenuItem menuItemResetSplit = new MenuItem
+            {
+                Style = (Style)FindResource("CustomMenuItem"),
+                Header = "Reset Image Split",
+            };
+            menuItemResetSplit.Click += ResetPreviewSplit;
+            imgSplitMenu.Items.Add(menuItemResetSplit);
+
             for (int x = 0; x < ImageSplitSize.Width; x++)
             {
                 StackPanel column = new StackPanel();
@@ -587,6 +613,7 @@ namespace SEImageToLCD_15BitColor
                         firstBtn = false;
                     }
                     btn.Click += SplitCtrlBtn_Click;
+                    btn.ContextMenu = imgSplitMenu;
                     column.Children.Add(btn);
                     splitCtrlBtns.Add(btn, new int[]{ x, y });
                 }
@@ -613,6 +640,35 @@ namespace SEImageToLCD_15BitColor
         private void ShowSplitGrid_Click(object sender, RoutedEventArgs e)
         {
             PreviewGrid.Visibility = (bool)(sender as ToggleButton).IsChecked ? Visibility.Visible : Visibility.Hidden;
+        }
+
+        private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
+        {
+            ToggleButton openedOver = (ToggleButton)((ContextMenu)((MenuItem)sender).Parent).PlacementTarget;
+            if (openedOver != null && splitCtrlBtns.ContainsKey(openedOver))
+            {
+                foreach (var btn in splitCtrlBtns)
+                {
+                    if (btn.Key == openedOver)
+                    {
+                        btn.Key.IsChecked = true;
+                        checkedSplitBtnPos = btn.Value;
+                    }
+                    else
+                    {
+                        btn.Key.IsChecked = false;
+                    }
+                }
+
+                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+                {
+                    ShowAcrylDialog($"Convert an image first!");
+                }
+            }
+            else
+            {
+                ShowAcrylDialog("Could not find square menu was opened over!");
+            }
         }
     }
 }

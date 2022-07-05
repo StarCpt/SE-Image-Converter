@@ -256,7 +256,6 @@ namespace SEImageToLCD_15BitColor
         {
             sw.Start();
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
-            //MainWindow.Logging.Log($"[Thread: {threadId}] Started processing preview, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
 
             image = Scaling.Scale(image, zoom, interpolationMode);
 
