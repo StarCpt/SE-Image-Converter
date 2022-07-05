@@ -602,6 +602,7 @@ namespace SEImageToLCD_15BitColor
                     Header = "Convert From Clipboard",
                 };
                 menuItemConvertFromClip.Click += PasteFromClipboard;
+                imgSplitMenu.Items.Add(menuItemConvertFromClip);
                 MenuItem menuItemCopyToClip = new MenuItem
                 {
                     Style = (Style)FindResource("CustomMenuItem"),
