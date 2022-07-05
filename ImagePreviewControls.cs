@@ -30,7 +30,7 @@ namespace SEImageToLCD_15BitColor
         private int PreviewBorderWidth;
         private int PreviewBorderHeight;
         private Point PreviewTopLeft;
-        public static float previewImageZoom = 1f;
+        public static float imagePreviewZoom = 1f;
 
         private Size ImageSplitSize = new Size(1, 1);
 
@@ -82,7 +82,7 @@ namespace SEImageToLCD_15BitColor
             tt.X = 0d;
             tt.Y = 0d;
 
-            previewImageZoom = 1f;
+            imagePreviewZoom = 1f;
 
             if (update)
             {
@@ -90,9 +90,9 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => ResetPreviewSplit();
+        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => ResetImageSplit();
 
-        public void ResetPreviewSplit()
+        public void ResetImageSplit()
         {
             if (init)
             {
@@ -109,7 +109,7 @@ namespace SEImageToLCD_15BitColor
         public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
         {
             float scale = Math.Min((float)lcdSize.Width * ImageSplitSize.Width / image.Image.Size.Width, (float)lcdSize.Height * ImageSplitSize.Height / image.Image.Size.Height);
-            scale *= previewImageZoom;
+            scale *= imagePreviewZoom;
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
@@ -136,7 +136,7 @@ namespace SEImageToLCD_15BitColor
                 return;
             }
             float scale = Math.Min((float)size.Value.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (float)size.Value.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
-            scale *= previewImageZoom;
+            scale *= imagePreviewZoom;
 
             if (PreviewConvertTimer != null)
             {
@@ -207,7 +207,7 @@ namespace SEImageToLCD_15BitColor
             st.ScaleX = (st.ScaleX + zoom).Clamp(0.4, 10);
             st.ScaleY = (st.ScaleY + zoom).Clamp(0.4, 10);
 
-            previewImageZoom = (float)st.ScaleX;
+            imagePreviewZoom = (float)st.ScaleX;
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -228,7 +228,7 @@ namespace SEImageToLCD_15BitColor
             st.ScaleX = zoom;
             st.ScaleY = zoom;
 
-            previewImageZoom = (float)zoom;
+            imagePreviewZoom = (float)zoom;
 
             UpdatePreviewDelayed(false, 0);
 
@@ -288,11 +288,11 @@ namespace SEImageToLCD_15BitColor
                     if (lcdSize.Value.Width * ImageSplitSize.Width > lcdSize.Value.Height * ImageSplitSize.Height)
                     {
                         ImagePreviewBorder.Width = PreviewBorderWidth;
-                        ImagePreviewBorder.Height = (PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / ((double)lcdSize.Value.Width * ImageSplitSize.Width))).ToRoundedInt();
+                        ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / ((double)lcdSize.Value.Width * ImageSplitSize.Width));
                     }
                     else
                     {
-                        ImagePreviewBorder.Width = (PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / ((double)lcdSize.Value.Height * ImageSplitSize.Height))).ToRoundedInt();
+                        ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / ((double)lcdSize.Value.Height * ImageSplitSize.Height));
                         ImagePreviewBorder.Height = PreviewBorderHeight;
                     }
                 }
@@ -339,7 +339,7 @@ namespace SEImageToLCD_15BitColor
                 Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
                 if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap", false), true, convertCallback, previewConvertCallback))
                 {
-                    UpdateBrowseImagesBtn("Drag & Droped Image", null);
+                    UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
                     UpdateCurrentConvertBtnToolTip("Drag & Droped Image", true);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
                 }
@@ -453,9 +453,9 @@ namespace SEImageToLCD_15BitColor
                     }
                 }
             }
-            catch
+            catch (Exception e)
             {
-                ShowAcrylDialog("Error occurred while decoding image! (It might be a video!)");
+                ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
                 return null;
             }
         }
@@ -467,8 +467,7 @@ namespace SEImageToLCD_15BitColor
 
         private void ZoomToFit_Click(object sender, RoutedEventArgs e)
         {
-            //double zoom = ImageCache.Image.Width < ImageCache.Image.Height ? (double)ImageCache.Image.Width / ImageCache.Image.Height : (double)ImageCache.Image.Height / ImageCache.Image.Width;
-            if (previewImageZoom != 1f)
+            if (imagePreviewZoom != 1f)
             {
                 SetPreviewZoom(1.0);
             }
@@ -477,7 +476,7 @@ namespace SEImageToLCD_15BitColor
         private void ZoomToFill_Click(object sender, RoutedEventArgs e)
         {
             double zoom = ImageCache.Image.Width > ImageCache.Image.Height ? (double)ImageCache.Image.Width / ImageCache.Image.Height : (double)ImageCache.Image.Height / ImageCache.Image.Width;
-            if (previewImageZoom != zoom)
+            if (imagePreviewZoom != zoom)
             {
                 SetPreviewZoom(zoom);
             }

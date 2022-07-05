@@ -102,7 +102,7 @@ namespace SEImageToLCD_15BitColor
             MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Size.ToShortString()} to {lcdSize.ToShortString()} {ditherMode.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
 
             float zoom = Math.Min((float)lcdSize.Width * imageSplitSize.Width / image.Width, (float)lcdSize.Height * imageSplitSize.Height / image.Height);
-            zoom *= MainWindow.previewImageZoom;
+            zoom *= MainWindow.imagePreviewZoom;
             //zoom *= Math.Max(imageSplitSize.Width, imageSplitSize.Height);
             image = Scaling.ScaleAndOffset(image, zoom, xOffset * imageSplitSize.Width - lcdSize.Width * splitPos[0], yOffset * imageSplitSize.Height - lcdSize.Height * splitPos[1], interpolationMode, lcdSize);
 

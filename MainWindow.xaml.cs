@@ -563,6 +563,8 @@ namespace SEImageToLCD_15BitColor
             ImageWidthSetting.Foreground = Brushes.DarkGray;
             ImageHeightSetting.Foreground = Brushes.DarkGray;
 
+            ResetImageSplit();
+
             if (InstantChanges)
             {
                 UpdatePreviewDelayed(true, 0);
@@ -619,6 +621,8 @@ namespace SEImageToLCD_15BitColor
                     ImageWidthSetting.Foreground = Brushes.White;
                     ImageHeightSetting.Foreground = Brushes.White;
                 }
+
+                ResetImageSplit();
 
                 if (InstantChanges)
                 {
@@ -822,15 +826,11 @@ namespace SEImageToLCD_15BitColor
 
         private void UpdateCurrentConvertBtnToolTip(string tooltip, bool enable)
         {
-            switch (string.IsNullOrEmpty(tooltip))
+            if (string.IsNullOrEmpty(tooltip))
             {
-                case true:
-                    ConvertBtnToolTip.Content = "No images loaded";
-                    break;
-                case false:
-                    ConvertBtnToolTip.Content = tooltip;
-                    break;
+                ConvertBtnToolTip.Content = "No images loaded";
             }
+            else ConvertBtnToolTip.Content = tooltip;
         }
 
         private void OpenLogs_Clicked(object sender, RoutedEventArgs e) => Logging.OpenLogFileAsync();
