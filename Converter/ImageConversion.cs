@@ -102,7 +102,7 @@ namespace SEImageToLCD_15BitColor
             MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Size.ToShortString()} to {lcdSize.ToShortString()} {ditherMode.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
 
             float zoom = Math.Min((float)lcdSize.Width * imageSplitSize.Width / image.Width, (float)lcdSize.Height * imageSplitSize.Height / image.Height);
-            zoom *= MainWindow.imagePreviewZoom;
+            zoom *= MainWindow.imagePreviewScale;
             //zoom *= Math.Max(imageSplitSize.Width, imageSplitSize.Height);
             image = Scaling.ScaleAndOffset(image, zoom, xOffset * imageSplitSize.Width - lcdSize.Width * splitPos[0], yOffset * imageSplitSize.Height - lcdSize.Height * splitPos[1], interpolationMode, lcdSize);
 
@@ -227,6 +227,8 @@ namespace SEImageToLCD_15BitColor
         private readonly System.Diagnostics.Stopwatch sw;
         private bool taskCancelled;
 
+        private const bool debug = true;
+
         public PreviewConvertThread(
             Bitmap image,
             ConvertThread.DitherMode ditherMode,
@@ -265,6 +267,10 @@ namespace SEImageToLCD_15BitColor
                 sw.Stop();
                 return;
             }
+            else if (debug)
+            {
+                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap scaled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
 
             Rectangle rectangle = new Rectangle(0, 0, image.Width, image.Height);
             BitmapData bitmapData = image.LockBits(rectangle, ImageLockMode.ReadWrite, image.PixelFormat);
@@ -276,6 +282,11 @@ namespace SEImageToLCD_15BitColor
             int imgByteSize = Math.Abs(bitmapData.Stride) * image.Height;
             byte[] rawImgBytes = new byte[imgByteSize];
             System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
+
+            if (debug)
+            {
+                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap locked, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
 
             switch (ditherMode)
             {
@@ -293,12 +304,21 @@ namespace SEImageToLCD_15BitColor
                 sw.Stop();
                 return;
             }
+            else if (debug)
+            {
+                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap processed, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
 
             System.Runtime.InteropServices.Marshal.Copy(rawImgBytes, 0, ptr, imgByteSize);
             image.UnlockBits(bitmapData);
 
             if (!taskCancelled)
             {
+                if (debug)
+                {
+                    MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished conversion, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+                }
+
                 callback(Utils.BitmapToBitmapImage(image));
                 image.Dispose();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");

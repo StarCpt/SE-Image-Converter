@@ -170,7 +170,8 @@ namespace SEImageToLCD_15BitColor
                     UpdateCurrentConvertBtnToolTip(dialog.FileName, true);
                     if (InstantChanges && ImageCache.Image != null)
                     {
-                        TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                        UpdatePreviewDelayed(true, 0);
+                        //TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
                     }
                 }
                 else
@@ -516,10 +517,10 @@ namespace SEImageToLCD_15BitColor
         private void ConvertCallbackCopyToClip(string resultStr)
         {
             ConvertedImageStr = resultStr;
-            CopyToClipBtn.Dispatcher.Invoke(() =>
-            {
-                CopyToClipBtn.IsEnabled = true;
-            });
+            //CopyToClipBtn.Dispatcher.Invoke(() =>
+            //{
+            //    CopyToClipBtn.IsEnabled = true;
+            //});
 
             SetClipDelayed(resultStr);
         }
@@ -626,7 +627,7 @@ namespace SEImageToLCD_15BitColor
 
                 if (InstantChanges)
                 {
-                    UpdatePreviewDelayed(true, 0);
+                    UpdatePreviewDelayed(true, 50);
                 }
             }
         }
@@ -669,7 +670,7 @@ namespace SEImageToLCD_15BitColor
         public static bool isMouseOverSizeTextbox = false;
         private void MenuTextBox_MouseEnteredOrLeft(object sender, MouseEventArgs e)
         {
-            isMouseOverSizeTextbox = (sender as TextBox).IsMouseOver;
+            isMouseOverSizeTextbox = (sender as UIElement).IsMouseOver;
         }
         #endregion lcd size
         private void ScaleOption_Clicked(object sender, RoutedEventArgs e)
@@ -748,6 +749,7 @@ namespace SEImageToLCD_15BitColor
 
             RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
 
+            //UpdatePreviewDelayed(false, 0);
             ApplyInstantChanges(false, 0);
         }
         /// <summary>
@@ -835,7 +837,8 @@ namespace SEImageToLCD_15BitColor
 
         private void OpenLogs_Clicked(object sender, RoutedEventArgs e) => Logging.OpenLogFileAsync();
 
-        //custom "Click" event for the app icon
+        #region custom "Click" event for the app icon
+
         bool LeftMouseDownOnIcon = false;
         private void AppTitleIcon_MouseLeftButtonChanged(object sender, MouseButtonEventArgs e)
         {
@@ -858,6 +861,8 @@ namespace SEImageToLCD_15BitColor
         }
 
         private void OpenAppDirBtn_Click(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
+
+        #endregion custom "Click" event for the app icon
 
         private void TransformImage(RotateFlipType type)
         {
@@ -919,7 +924,7 @@ namespace SEImageToLCD_15BitColor
             return $"{val.Width}x{val.Height}";
         }
 
-        //from https://stackoverflow.com/questions/6484357/converting-bitmapimage-to-bitmap-and-vice-versa
+        //https://stackoverflow.com/questions/6484357/converting-bitmapimage-to-bitmap-and-vice-versa
         public static Bitmap BitmapSourceToBitmap(BitmapSource bitmapImage)
         {
             using (MemoryStream outStream = new MemoryStream())
@@ -933,20 +938,7 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        public static Bitmap BitmapImageToBitmap(BitmapImage bitmapImage)
-        {
-            using (MemoryStream outStream = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(bitmapImage));
-                enc.Save(outStream);
-                Bitmap bitmap = new Bitmap(outStream);
-
-                return new Bitmap(bitmap);
-            }
-        }
-
-        //Source: https://stackoverflow.com/questions/94456/load-a-wpf-bitmapimage-from-a-system-drawing-bitmap
+        //https://stackoverflow.com/questions/94456/load-a-wpf-bitmapimage-from-a-system-drawing-bitmap
         public static BitmapImage BitmapToBitmapImage(Bitmap bitmap)
         {
             using (MemoryStream memory = new MemoryStream())
