@@ -37,7 +37,7 @@ namespace SEImageToLCD_15BitColor
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "0.8.5";
+        public const string version = "0.8.6";
 
         private string ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
@@ -143,9 +143,9 @@ namespace SEImageToLCD_15BitColor
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
-            MainWindowWindow.Title = $"Image Converter Plus+ v{version}";
-            AppTitleText.Content = $"Image Converter Plus+ v{version}";
-            AppBigTitle.Content = "Image Converter Plus+";
+            MainWindowWindow.Title = $"SE Image Converter++ v{version}";
+            AppTitleText.Content = $"SE Image Converter++ v{version}";
+            AppBigTitle.Content = "SE Image Converter++";
 
             InitImagePreview();
 
@@ -708,16 +708,26 @@ namespace SEImageToLCD_15BitColor
             else if (Clipboard.ContainsFileDropList())
             {
                 System.Collections.Specialized.StringCollection filedroplist = Clipboard.GetFileDropList();
-                foreach (string file in filedroplist)
+                for (int i = 0; i < filedroplist.Count; i++)
                 {
-                    if (TryConvertFromFile(file))
+                    if (TryConvertFromFile(filedroplist[i]))
                     {
-                        UpdateBrowseImagesBtn(file.GetFileName(), file);
-                        UpdateCurrentConvertBtnToolTip(file, true);
+                        UpdateBrowseImagesBtn(filedroplist[i].GetFileName(), filedroplist[i]);
+                        UpdateCurrentConvertBtnToolTip(filedroplist[i], true);
                         Logging.Log("Loaded from Clipboard (FileDrop)");
                         break;
                     }
                 }
+                //foreach (string file in filedroplist)
+                //{
+                //    if (TryConvertFromFile(file))
+                //    {
+                //        UpdateBrowseImagesBtn(file.GetFileName(), file);
+                //        UpdateCurrentConvertBtnToolTip(file, true);
+                //        Logging.Log("Loaded from Clipboard (FileDrop)");
+                //        break;
+                //    }
+                //}
             }
             else
             {

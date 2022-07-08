@@ -41,7 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="ImageConverterPlus+.csproj.user" />
+    <None Include="ImageConverter++.csproj.user" />
   </ItemGroup>
 
   <ItemGroup>
