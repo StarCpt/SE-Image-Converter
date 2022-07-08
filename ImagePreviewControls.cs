@@ -30,7 +30,7 @@ namespace SEImageToLCD_15BitColor
         private const int PreviewBorderWidth = 350;
         private const int PreviewBorderHeight = 350;
         private Point PreviewTopLeft;
-        public static float imagePreviewScale { get; private set; } = 1f;
+        public static double imagePreviewScale { get; private set; } = 1f;
 
         private Size ImageSplitSize = new Size(1, 1);
 
@@ -71,7 +71,7 @@ namespace SEImageToLCD_15BitColor
 
         public void ResetPreviewZoomAndPan(bool update)
         {
-            ImagePreviewBorder.Visibility = Visibility.Visible;
+            //ImagePreviewBorder.Visibility = Visibility.Visible;
 
             var st = GetScaleTransform(ImagePreview);
             st.ScaleX = 1d;
@@ -81,7 +81,7 @@ namespace SEImageToLCD_15BitColor
             tt.X = 0d;
             tt.Y = 0d;
 
-            imagePreviewScale = 1f;
+            imagePreviewScale = 1.0d;
 
             if (update)
             {
@@ -104,7 +104,7 @@ namespace SEImageToLCD_15BitColor
 
         public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
         {
-            float scale = Math.Min((float)lcdSize.Width * ImageSplitSize.Width / image.Image.Size.Width, (float)lcdSize.Height * ImageSplitSize.Height / image.Image.Size.Height);
+            double scale = Math.Min((double)lcdSize.Width * ImageSplitSize.Width / image.Image.Size.Width, (double)lcdSize.Height * ImageSplitSize.Height / image.Image.Size.Height);
             scale *= imagePreviewScale;
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
@@ -118,6 +118,8 @@ namespace SEImageToLCD_15BitColor
 
         public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
         {
+
+
             if (resetZoom)
             {
                 ResetPreviewZoomAndPan(false);
@@ -131,7 +133,7 @@ namespace SEImageToLCD_15BitColor
             {
                 return;
             }
-            float scale = Math.Min((float)size.Value.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (float)size.Value.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
+            double scale = Math.Min((double)size.Value.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (double)size.Value.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
             scale *= imagePreviewScale;
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
@@ -208,7 +210,7 @@ namespace SEImageToLCD_15BitColor
             st.ScaleX = (st.ScaleX + zoom).Clamp(0.4, 10);
             st.ScaleY = (st.ScaleY + zoom).Clamp(0.4, 10);
 
-            imagePreviewScale = (float)st.ScaleX;
+            imagePreviewScale = st.ScaleX;
 
             tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
             tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
@@ -229,7 +231,7 @@ namespace SEImageToLCD_15BitColor
             st.ScaleX = zoom;
             st.ScaleY = zoom;
 
-            imagePreviewScale = (float)zoom;
+            imagePreviewScale = zoom;
 
             UpdatePreviewDelayed(false, 0);
 
@@ -468,18 +470,23 @@ namespace SEImageToLCD_15BitColor
 
         private void ZoomToFit_Click(object sender, RoutedEventArgs e)
         {
-            if (imagePreviewScale != 1f)
+            if (imagePreviewScale != 1.0d)
             {
-                SetPreviewZoom(1.0);
+                SetPreviewZoom(1.0d);
             }
         }
 
         private void ZoomToFill_Click(object sender, RoutedEventArgs e)
         {
-            double zoom = ImageCache.Image.Width > ImageCache.Image.Height ? (double)ImageCache.Image.Width / ImageCache.Image.Height : (double)ImageCache.Image.Height / ImageCache.Image.Width;
-            if (imagePreviewScale != zoom)
+            if (ImageCache.Image != null && TryGetLCDSize(out Size? lcdSize))
             {
-                SetPreviewZoom(zoom);
+                double imageXRatio = (double)ImageCache.Image.Width / (lcdSize.Value.Width * ImageSplitSize.Width);
+                double imageYRatio = (double)ImageCache.Image.Height / (lcdSize.Value.Height * ImageSplitSize.Height);
+                double zoom = imageXRatio > imageYRatio ? imageXRatio / imageYRatio : imageYRatio / imageXRatio;
+                if (imagePreviewScale != zoom)
+                {
+                    SetPreviewZoom(zoom);
+                }
             }
         }
 
@@ -508,12 +515,13 @@ namespace SEImageToLCD_15BitColor
                     box.CaretIndex = 1;
                 }
 
-                if (InstantChanges)
+                if (InstantChanges && TryGetSplitSize(out ImageSplitSize))
                 {
-                    TryGetSplitSize(out ImageSplitSize);
                     UpdatePreviewGrid();
-                    //ApplyInstantChanges(true, 50);
-                    UpdatePreviewDelayed(true, 100);
+                    if (ImageCache.Image != null)
+                    {
+                        UpdatePreviewDelayed(true, 100);
+                    }
                 }
             }
         }
@@ -567,8 +575,7 @@ namespace SEImageToLCD_15BitColor
 
         private void UpdatePreviewGrid()
         {
-            TryGetSplitSize(out ImageSplitSize);
-            if (!TryGetLCDSize(out Size? lcdSize))
+            if (!TryGetSplitSize(out ImageSplitSize) || !TryGetLCDSize(out Size? lcdSize))
             {
                 return;
             }
@@ -596,13 +603,6 @@ namespace SEImageToLCD_15BitColor
                 {
                     Style = (Style)FindResource("CustomMenu"),
                 };
-                MenuItem menuItemConvertFromClip = new MenuItem
-                {
-                    Style = (Style)FindResource("CustomMenuItem"),
-                    Header = "Convert From Clipboard",
-                };
-                menuItemConvertFromClip.Click += PasteFromClipboard;
-                imgSplitMenu.Items.Add(menuItemConvertFromClip);
                 MenuItem menuItemCopyToClip = new MenuItem
                 {
                     Style = (Style)FindResource("CustomMenuItem"),
@@ -610,6 +610,13 @@ namespace SEImageToLCD_15BitColor
                 };
                 menuItemCopyToClip.Click += PreviewGridCopyToClip;
                 imgSplitMenu.Items.Add(menuItemCopyToClip);
+                MenuItem menuItemConvertFromClip = new MenuItem
+                {
+                    Style = (Style)FindResource("CustomMenuItem"),
+                    Header = "Convert From Clipboard",
+                };
+                menuItemConvertFromClip.Click += PasteFromClipboard;
+                imgSplitMenu.Items.Add(menuItemConvertFromClip);
                 MenuItem menuItemResetSplit = new MenuItem
                 {
                     Style = (Style)FindResource("CustomMenuItem"),

@@ -101,7 +101,7 @@ namespace SEImageToLCD_15BitColor
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
             MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Size.ToShortString()} to {lcdSize.ToShortString()} {ditherMode.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
 
-            float zoom = Math.Min((float)lcdSize.Width * imageSplitSize.Width / image.Width, (float)lcdSize.Height * imageSplitSize.Height / image.Height);
+            double zoom = Math.Min((double)lcdSize.Width * imageSplitSize.Width / image.Width, (double)lcdSize.Height * imageSplitSize.Height / image.Height);
             zoom *= MainWindow.imagePreviewScale;
             //zoom *= Math.Max(imageSplitSize.Width, imageSplitSize.Height);
             image = Scaling.ScaleAndOffset(image, zoom, xOffset * imageSplitSize.Width - lcdSize.Width * splitPos[0], yOffset * imageSplitSize.Height - lcdSize.Height * splitPos[1], interpolationMode, lcdSize);
@@ -223,7 +223,7 @@ namespace SEImageToLCD_15BitColor
         private readonly ConvertThread.BitDepth colorDepth;
         private readonly InterpolationMode interpolationMode;
         private MainWindow.PreviewConvertCallback callback;
-        private readonly float zoom;
+        private readonly double zoom;
         private readonly System.Diagnostics.Stopwatch sw;
         private bool taskCancelled;
 
@@ -235,7 +235,7 @@ namespace SEImageToLCD_15BitColor
             ConvertThread.BitDepth colorDepth,
             InterpolationMode interpolationMode,
             MainWindow.PreviewConvertCallback callback,
-            float scale)
+            double scale)
         {
             this.image = new Bitmap(image);
             this.ditherMode = ditherMode;

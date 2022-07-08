@@ -37,7 +37,7 @@ namespace SEImageToLCD_15BitColor
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "0.8.4";
+        public const string version = "0.8.5";
 
         private string ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
@@ -295,19 +295,13 @@ namespace SEImageToLCD_15BitColor
                     }
                     else
                     {
-                        //if (showErrorDialogs)
-                        {
-                            ShowAcrylDialog("This file type is not supported!");
-                        }
+                        ShowAcrylDialog("This file type is not supported!");
                         return false;
                     }
                 }
                 else
                 {
-                    //if (showErrorDialogs)
-                    {
-                        ShowAcrylDialog("This file type is not supported!");
-                    }
+                    ShowAcrylDialog("This file type is not supported! (2)");
                     return false;
                 }
             }
@@ -315,10 +309,7 @@ namespace SEImageToLCD_15BitColor
             {
                 Logging.Log($"Caught exception at TryConvertFromFile(string, bool, bool) ({imagePath})");
                 Logging.Log(e.ToString());
-                //if (showErrorDialogs)
-                {
-                    ShowAcrylDialog("Error occurred while decoding the file! Make sure file type is valid.");
-                }
+                ShowAcrylDialog("Error occurred while decoding the file! Make sure file type is valid.");
                 return false;
             }
         }
