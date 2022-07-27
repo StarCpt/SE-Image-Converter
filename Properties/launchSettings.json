@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ImageConverter++": {
+      "commandName": "Project",
+      "sqlDebugging": false,
+      "nativeDebugging": false
+    }
+  }
+}

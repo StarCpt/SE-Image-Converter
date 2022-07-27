@@ -205,7 +205,7 @@ namespace SEImageToLCD_15BitColor
             if (!taskCancelled)
             {
                 callback(convertedStrB.ToString());
-                MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion complete, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+                MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion & callback complete, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {
@@ -294,7 +294,13 @@ namespace SEImageToLCD_15BitColor
                     ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
                     break;
                 case ConvertThread.DitherMode.FloydSteinberg:
-                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
+                    //double start = sw.Elapsed.TotalMilliseconds;
+                    //for (int i = 0; i < 100; i++)
+                    //{
+                        //Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
+                        Dithering.DitherCPP(rawImgBytes, imgByteSize, image.Width, bitmapData.Stride, 255.0 / (Math.Pow(2, (int)colorDepth) - 1));
+                    //}
+                    //MainWindow.Logging.Log($"100 iterations took {(sw.Elapsed.TotalMilliseconds - start).ToString("0.000")}");
                     break;
             }
 
@@ -322,7 +328,7 @@ namespace SEImageToLCD_15BitColor
                 //callback(Utils.BitmapToBitmapImage(image));
                 callback(Utils.ByteArrToBitmapImage(rawImgBytes, image.Width, image.Height/*, bitmapData.Stride, imgColorChannels*/));
                 image.Dispose();
-                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Callback completed, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {

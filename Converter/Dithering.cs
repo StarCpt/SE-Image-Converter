@@ -4,11 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace SEImageToLCD_15BitColor
 {
     public class Dithering
     {
+        [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int DitherCPP([In, Out]byte[] colorArr, int imgByteSize, int width, int imgStride, double colorStepInterval);
+
         public static void ChangeBitDepthAndDitherFastThreaded(byte[] colorArr, int colorChannels, int width, byte colorDepth, int imgStride)
         {
             int[] bigColorArr = new int[colorArr.Length];
