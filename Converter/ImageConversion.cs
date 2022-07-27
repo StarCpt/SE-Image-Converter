@@ -309,8 +309,8 @@ namespace SEImageToLCD_15BitColor
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap processed, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
 
-            System.Runtime.InteropServices.Marshal.Copy(rawImgBytes, 0, ptr, imgByteSize);
-            image.UnlockBits(bitmapData);
+            //System.Runtime.InteropServices.Marshal.Copy(rawImgBytes, 0, ptr, imgByteSize);
+            //image.UnlockBits(bitmapData);
 
             if (!taskCancelled)
             {
@@ -319,7 +319,8 @@ namespace SEImageToLCD_15BitColor
                     MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished conversion, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 }
 
-                callback(Utils.BitmapToBitmapImage(image));
+                //callback(Utils.BitmapToBitmapImage(image));
+                callback(Utils.ByteArrToBitmapImage(rawImgBytes, image.Width, image.Height/*, bitmapData.Stride, imgColorChannels*/));
                 image.Dispose();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }

@@ -278,7 +278,7 @@ namespace SEImageToLCD_15BitColor
                 .Children.First(tr => tr is ScaleTransform);
         }
 
-        private void ChangePreviewThreadSafe(BitmapImage image)
+        private void ChangePreviewThreadSafe(BitmapSource image)
         {
             image.Freeze();
             ImagePreview.Dispatcher.Invoke(() =>
@@ -463,8 +463,8 @@ namespace SEImageToLCD_15BitColor
             }
         }
 
-        public delegate void PreviewConvertCallback(BitmapImage resultPreviewImg);
-        private void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
+        public delegate void PreviewConvertCallback(BitmapSource resultPreviewImg);
+        private void PreviewConvertResultCallback(BitmapSource resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
 
         private void ResetZoomBtn_Click(object sender, RoutedEventArgs e) => ResetPreviewZoomAndPan(true);
 

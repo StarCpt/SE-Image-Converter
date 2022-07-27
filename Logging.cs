@@ -78,5 +78,4 @@ namespace SEImageToLCD_15BitColor
             Process.Start(editor, LogFilePath);
         }
     }
-
 }

@@ -955,5 +955,16 @@ namespace SEImageToLCD_15BitColor
                 return bitmapimage;
             }
         }
+
+        public static WriteableBitmap ByteArrToBitmapImage(byte[] byteArr, int width, int height/*, int stride, int channels*/)
+        {
+            WriteableBitmap image = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr24, null);
+
+            image.Lock();
+            System.Runtime.InteropServices.Marshal.Copy(byteArr, 0, image.BackBuffer, byteArr.Length);
+            image.Unlock();
+
+            return image;
+        }
     }
 }
