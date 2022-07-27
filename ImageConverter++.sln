@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.31911.196
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ImageConverter++", "ImageConverter++.csproj", "{D0EB418A-0470-4CCC-805A-490B4B459665}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Image Processor", "..\IC++ Image Processing\IC++ Image Processing.vcxproj", "{FA5CC79D-EBA8-4720-927F-F466EBE12623}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Image Processor", "Image Processor\IC++ Image Processing.vcxproj", "{FA5CC79D-EBA8-4720-927F-F466EBE12623}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
