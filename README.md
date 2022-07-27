@@ -1,5 +1,7 @@
 **IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to install the right version for your system. (x86 or x64)**
 
+Dev branch for c++ stuff 
+
 # Image Converter++
 Supports 15-bit color with the "Mono Color" mod: https://steamcommunity.com/sharedfiles/filedetails/?id=2174915662
 
