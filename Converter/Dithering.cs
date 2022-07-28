@@ -11,8 +11,7 @@ namespace SEImageToLCD_15BitColor
     public class Dithering
     {
         [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
-        //public static extern int ChangeBitDepthAndDitherFastThreadedCPP([In, Out] byte[] colorArr, int imgByteSize, int width, int imgStride, double colorStepInterval);
-        public static extern int ChangeBitDepthAndDitherFastThreadedCPP([In, Out] byte[] colorArr, int imgByteSize, int width, int imgStride, int colorStepInterval);
+        public static extern int ChangeBitDepthAndDitherFastThreadedCPP([In, Out] byte[] colorArr, int imgByteSize, int width, int imgStride, int colorDepth);
         [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern byte ChangeBitDepthFastCPP(int singleChannelColor, double colorStepInterval);
 
@@ -21,12 +20,12 @@ namespace SEImageToLCD_15BitColor
             int[] bigColorArr = new int[colorArr.Length];
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);
 
-            ////Task.WaitAll(new Task[3]
-            ////{
-            ////    Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 0, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
-            ////    Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 1, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
-            ////    Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 2, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
-            ////});
+            Task.WaitAll(new Task[3]
+            {
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 0, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 1, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+                Task.Run(() => ChangeBitDepthAndDitherThread(colorArr, bigColorArr, colorChannels, 2, width, imgStride, FloydSteinbergOffsetAndWeight, colorStepInterval)),
+            });
         }
 
         private static void ChangeBitDepthAndDitherThread(byte[] colorArr, int[] bigColorArr, int colorChannels, int channel, int width, int imgStride, int[,] ditherArr, double colorStepInterval)
