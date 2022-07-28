@@ -77,19 +77,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\SEImageToLCD 15BitColor\bin\Debug\net5.0-windows</OutDir>
+    <OutDir>..\bin\Debug\net5.0-windows</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\SEImageToLCD 15BitColor\bin\Release\net5.0-windows</OutDir>
+    <OutDir>..\bin\Release\net5.0-windows</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\SEImageToLCD 15BitColor\bin\Debug\net5.0-windows</OutDir>
+    <OutDir>..\bin\Debug\net5.0-windows</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\SEImageToLCD 15BitColor\bin\Release\net5.0-windows</OutDir>
+    <OutDir>..\bin\Release\net5.0-windows</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

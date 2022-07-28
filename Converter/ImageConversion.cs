@@ -9,11 +9,15 @@ using System.IO;
 using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
 using System.Drawing.Imaging;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace SEImageToLCD_15BitColor
 {
     public static class ConvertUtils
     {
+        [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ChangeBitDepthCPP(byte[] colorArr, int arrayLength, int colorDepth);
+
         public static void ChangeBitDepth(byte[] colorArr, byte colorDepth)
         {
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);
@@ -130,7 +134,7 @@ namespace SEImageToLCD_15BitColor
             int imgByteSize = Math.Abs(bitmapData.Stride) * image.Height;
             byte[] rawImgBytes = new byte[imgByteSize];
 
-            System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
+            Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
 
             if (!taskCancelled)
             {
@@ -147,10 +151,10 @@ namespace SEImageToLCD_15BitColor
             switch (ditherMode)
             {
                 case DitherMode.NoDither:
-                    ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
+                    //ConvertUtils.ChangeBitDepthCPP(rawImgBytes, imgByteSize, (int)colorDepth);
                     break;
                 case DitherMode.FloydSteinberg:
-                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
+                    //Dithering.ChangeBitDepthAndDitherFastThreadedCPP(rawImgBytes, imgByteSize, image.Width, bitmapData.Stride, 255.0 / (Math.Pow(2, (int)colorDepth) - 1));
                     break;
             }
 
@@ -281,7 +285,7 @@ namespace SEImageToLCD_15BitColor
             int strideDiff = bitmapData.Stride - imgByteWidth;
             int imgByteSize = Math.Abs(bitmapData.Stride) * image.Height;
             byte[] rawImgBytes = new byte[imgByteSize];
-            System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
+            Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
 
             if (debug)
             {
@@ -291,16 +295,13 @@ namespace SEImageToLCD_15BitColor
             switch (ditherMode)
             {
                 case ConvertThread.DitherMode.NoDither:
-                    ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
+                    //ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
+                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, 3, image.Width, (byte)colorDepth, bitmapData.Stride);
                     break;
                 case ConvertThread.DitherMode.FloydSteinberg:
-                    //double start = sw.Elapsed.TotalMilliseconds;
-                    //for (int i = 0; i < 100; i++)
-                    //{
-                        //Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
-                        Dithering.DitherCPP(rawImgBytes, imgByteSize, image.Width, bitmapData.Stride, 255.0 / (Math.Pow(2, (int)colorDepth) - 1));
-                    //}
-                    //MainWindow.Logging.Log($"100 iterations took {(sw.Elapsed.TotalMilliseconds - start).ToString("0.000")}");
+                    //ConvertUtils.ChangeBitDepthCPP(rawImgBytes, imgByteSize, (int)colorDepth);
+                    //Dithering.ChangeBitDepthAndDitherFastThreaded2(rawImgBytes, 3, image.Width, (byte)colorDepth, bitmapData.Stride);
+                    Dithering.ChangeBitDepthAndDitherFastThreadedCPP(rawImgBytes, imgByteSize, image.Width, bitmapData.Stride, (int)colorDepth);
                     break;
             }
 
