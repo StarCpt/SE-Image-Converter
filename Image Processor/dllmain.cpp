@@ -36,7 +36,7 @@ int32_t preCalcTable[4][2] =
     { 3, 0 },
 };
 
-const float preCalcArr[4] = { 0.4375f, 0.1875f, 0.3125f, 0.0625f };
+const float_t preCalcArr[4] = { 0.4375f, 0.1875f, 0.3125f, 0.0625f };
 
 const int32_t ditherIterations = 4;
 const int32_t colorChannels = 3;
@@ -48,7 +48,7 @@ uint8_t ChangeBitDepthFast(int32_t singleChannelColor, double_t colorStepInterva
 
 extern "C" __declspec(dllexport) int32_t ChangeBitDepthCPP(uint8_t colorArr[], int32_t arrayLength, int32_t colorDepth)
 {
-    double colorStepInterval = 255.0 / ((pow(2, colorDepth)) - 1);
+    double_t colorStepInterval = 255.0 / ((pow(2, colorDepth)) - 1);
 
     for (int32_t i = 0; i < arrayLength; i++)
     {
@@ -58,23 +58,23 @@ extern "C" __declspec(dllexport) int32_t ChangeBitDepthCPP(uint8_t colorArr[], i
     return 0;
 }
 
-int32_t DitherThread(uint8_t colorArr[], int32_t width, int32_t realWidth, int32_t imgStride, int32_t strideDiff, int32_t arrSizeMinusStrideDiff, double colorStepInterval, int32_t bigColorArr[], int32_t channel)
+int32_t DitherThread(uint8_t colorArr[], int32_t width, int32_t realWidth, int32_t imgStride, int32_t strideDiff, int32_t arrSizeMinusStrideDiff, double_t colorStepInterval, int32_t bigColorArr[], int32_t channel)
 {
-    for (int c = channel; c < arrSizeMinusStrideDiff;)
+    for (int32_t c = channel; c < arrSizeMinusStrideDiff;)
     {
         int32_t oldColor = bigColorArr[c] + colorArr[c];
         colorArr[c] = ChangeBitDepthFast(oldColor, colorStepInterval);
         int32_t error = oldColor - colorArr[c];
 
-        for (int i = 0; i < ditherIterations; i++)
+        for (int32_t i = 0; i < ditherIterations; i++)
         {
             int32_t offsetPos = c + preCalcTable[i][1];
             int32_t offsetPosX = (c % imgStride / colorChannels) + ditherArr[i][1];
 
-            if (!(offsetPos >= arrSizeMinusStrideDiff || offsetPos < 0) &&
-                !(offsetPosX < 0 || offsetPosX >= width))
+            if (offsetPos >= 0 && offsetPos < arrSizeMinusStrideDiff &&
+                offsetPosX >= 0 && offsetPosX < width)
             {
-                bigColorArr[offsetPos] += (int32_t)std::nearbyint(error * preCalcArr[i]);
+                bigColorArr[offsetPos] += (int32_t)nearbyintf(error * preCalcArr[i]);
             }
         }
 
@@ -88,7 +88,7 @@ int32_t DitherThread(uint8_t colorArr[], int32_t width, int32_t realWidth, int32
     return 0;
 }
 
-extern "C" __declspec(dllexport) int ChangeBitDepthAndDitherFastThreadedCPP(uint8_t colorArr[], int imgByteSize, int width, int imgStride, int colorDepth)
+extern "C" __declspec(dllexport) int32_t ChangeBitDepthAndDitherFastThreadedCPP(uint8_t colorArr[], int32_t imgByteSize, int32_t width, int32_t imgStride, int32_t colorDepth)
 {
     int32_t* bigColorArr = new int32_t[imgByteSize];
     for (int32_t i = 0; i < imgByteSize; i++)
@@ -96,7 +96,7 @@ extern "C" __declspec(dllexport) int ChangeBitDepthAndDitherFastThreadedCPP(uint
         bigColorArr[i] = 0;
     }
 
-    double colorStepInterval = 255.0 / (std::pow(2, colorDepth) - 1);
+    double_t colorStepInterval = 255.0 / (std::pow(2, colorDepth) - 1);
 
     int32_t realWidth = width * colorChannels;
     int32_t strideDiff = imgStride - realWidth;

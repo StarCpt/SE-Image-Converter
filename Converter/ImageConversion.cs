@@ -341,7 +341,8 @@ namespace SEImageToLCD_15BitColor
     {
         public static byte ToByte(this double num)
         {
-            return (byte)num.Clamp(byte.MinValue, byte.MaxValue);
+            return (byte)Math.Clamp(num, byte.MinValue, byte.MaxValue);
+
         }
 
         public static int ToRoundedInt(this float num)

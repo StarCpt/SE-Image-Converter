@@ -12,8 +12,6 @@ namespace SEImageToLCD_15BitColor
     {
         [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int ChangeBitDepthAndDitherFastThreadedCPP([In, Out] byte[] colorArr, int imgByteSize, int width, int imgStride, int colorDepth);
-        [DllImport("Image Processor.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern byte ChangeBitDepthFastCPP(int singleChannelColor, double colorStepInterval);
 
         public static void ChangeBitDepthAndDitherFastThreaded(byte[] colorArr, int colorChannels, int width, byte colorDepth, int imgStride)
         {
@@ -44,11 +42,10 @@ namespace SEImageToLCD_15BitColor
                 {
                     int offsetPos = c + (imgStride * ditherArr[i, 1]) + (ditherArr[i, 0] * colorChannels);
                     int offsetPosX = (c % imgStride / colorChannels) + ditherArr[i, 1];
-                    bool isOutOfRange = offsetPos >= colorArr.Length - strideDiff || offsetPos < 0;
-                    bool isBeforeWidth = offsetPosX < 0;
-                    bool isAfterWidth = offsetPosX > width - 1;
+                    bool isWithinRange = offsetPos >= 0 && offsetPos < colorArr.Length - strideDiff;
+                    bool isWithinWidth = offsetPosX >= 0 && offsetPosX < width;
 
-                    if (!isOutOfRange && !isBeforeWidth && !isAfterWidth)
+                    if (isWithinRange && isWithinWidth)
                     {
                         bigColorArr[offsetPos] += (int)Math.Round((error * ditherArr[i, 2]) / 16f);
                     }
