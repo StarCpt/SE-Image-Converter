@@ -1,4 +1,4 @@
-**IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to install the right version for your system. (x86 or x64)**
+**IMPORTANT: If you do not have .Net 5 installed you will need to install it from Microsoft. Make sure to install the right version for your system. (.Net 5 desktop runtime, pick x86 or x64 depending on your system.)** Search for .net 5 on google or use this link: https://dotnet.microsoft.com/en-us/download/dotnet/5.0
 
 Dev branch for c++ stuff 
 
