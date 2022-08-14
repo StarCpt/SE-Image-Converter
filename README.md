@@ -4,6 +4,7 @@ Dev branch for c++ stuff
 
 # Image Converter++
 Supports 15-bit color with the "Mono Color" mod: https://steamcommunity.com/sharedfiles/filedetails/?id=2174915662
+Use 3-Bit mode if you don't have the mono color mod installed.
 
 Allows image and file drag & drop including from the web browser
 
