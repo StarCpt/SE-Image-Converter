@@ -7,11 +7,12 @@ Supports 15-bit color with the "Mono Color" mod: https://steamcommunity.com/shar
 
 Use 3-Bit mode if you don't have the mono color mod installed.
 
+
 Allows image and file drag & drop including from the web browser
 
 **There may be issues with the window transparency effect on pre-win10 systems.*
 
-##### DM Darklord#5769 on discord for any questions or suggestions, alternatively you can open an issue about bugs/suggestions!
+##### Message Darklord#5769 on discord for any questions or suggestions. alternatively you can create an issue.
 
 ## Image Split
 
