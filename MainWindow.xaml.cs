@@ -37,7 +37,7 @@ namespace SEImageToLCD_15BitColor
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "0.8.6";
+        public const string version = "0.9";
 
         private string ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
@@ -143,13 +143,13 @@ namespace SEImageToLCD_15BitColor
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
-            MainWindowWindow.Title = $"SE Image Converter++ v{version}";
-            AppTitleText.Content = $"SE Image Converter++ v{version}";
-            AppBigTitle.Content = "SE Image Converter++";
+            MainWindowWindow.Title = $"SE Image Converter+ v{version}";
+            AppTitleText.Content = $"SE Image Converter+ v{version}";
+            AppBigTitle.Content = "SE Image Converter+";
 
             InitImagePreview();
 
-            Logging.Log("MainWindow initialized.");
+            Logging.Log("MainWindow initialized");
             init = true;
         }
 

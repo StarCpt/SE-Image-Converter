@@ -301,7 +301,7 @@ namespace SEImageToLCD_15BitColor
                 }
 
                 ImagePreviewBorder.Visibility = Visibility.Visible;
-                ImagePreviewLabel.Visibility = Visibility.Hidden;
+                ImagePreviewTextBlock.Visibility = Visibility.Hidden;
             });
         }
 
@@ -315,7 +315,7 @@ namespace SEImageToLCD_15BitColor
             ResetPreviewZoomAndPan(false);
 
             ImagePreviewBorder.Visibility = Visibility.Hidden;
-            ImagePreviewLabel.Visibility = Visibility.Visible;
+            ImagePreviewTextBlock.Visibility = Visibility.Visible;
         }
 
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
