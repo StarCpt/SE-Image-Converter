@@ -19,6 +19,7 @@ using Point = System.Windows.Point;
 using System.Timers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Animation;
+using System.ComponentModel;
 
 namespace ImageConverterPlus
 {
@@ -56,9 +57,6 @@ namespace ImageConverterPlus
             ImagePreviewBorder.SizeChanged += UpdatePreviewTopLeft;
 
             ImagePreviewBorder.SizeChanged += UpdatePreviewGrid;
-
-            PreviewGrid.Visibility = Visibility.Hidden;
-            ShowSplitGridBtn.IsChecked = false;
 
             TransformGroup group = new TransformGroup();
             ScaleTransform st = new ScaleTransform();
@@ -176,7 +174,7 @@ namespace ImageConverterPlus
 
         public void Preview_OnMouseWheelChanged(object sender, MouseWheelEventArgs e)
         {
-            if (PreviewGrid.IsVisible)
+            if (viewModel.ShowPreviewGrid)
             {
                 return;
             }
@@ -207,8 +205,8 @@ namespace ImageConverterPlus
 
 
 
-            st.ScaleX = (st.ScaleX + zoom).Clamp(0.4, 10);
-            st.ScaleY = (st.ScaleY + zoom).Clamp(0.4, 10);
+            st.ScaleX = Math.Clamp(st.ScaleX + zoom, 0.4, 10);
+            st.ScaleY = Math.Clamp(st.ScaleY + zoom, 0.4, 10);
 
             imagePreviewScale = st.ScaleX;
 
@@ -327,7 +325,7 @@ namespace ImageConverterPlus
                 {
                     if (TryConvertFromFile(file))
                     {
-                        UpdateBrowseImagesBtn(file.GetFileName(), file);
+                        UpdateBrowseImagesBtn(Path.GetFileName(file), file);
                         UpdateCurrentConvertBtnToolTip(file, true);
                         Logging.Log("Image Drag & Dropped (FileDrop)");
                         return;
@@ -466,9 +464,7 @@ namespace ImageConverterPlus
         public delegate void PreviewConvertCallback(BitmapImage resultPreviewImg);
         private void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
 
-        private void ResetZoomBtn_Click(object sender, RoutedEventArgs e) => ResetPreviewZoomAndPan(true);
-
-        private void ZoomToFit_Click(object sender, RoutedEventArgs e)
+        public void ZoomToFit_Click()
         {
             if (imagePreviewScale != 1.0d)
             {
@@ -476,7 +472,7 @@ namespace ImageConverterPlus
             }
         }
 
-        private void ZoomToFill_Click(object sender, RoutedEventArgs e)
+        public void ZoomToFill_Click()
         {
             if (ImageCache.Image != null && TryGetLCDSize(out Size? lcdSize))
             {
@@ -490,14 +486,9 @@ namespace ImageConverterPlus
             }
         }
 
-        public static bool IsOneToNine(string str)
-        {
-            return !str.Any(c => c < '1' || c > '9');
-        }
-
         private void ImageSplit_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            if (!IsOneToNine(e.Text))
+            if (!Helpers.IsNumeric(e.Text))
             {
                 e.Handled = true;
             }
@@ -515,7 +506,7 @@ namespace ImageConverterPlus
                     box.CaretIndex = 1;
                 }
 
-                if (InstantChanges && TryGetSplitSize(out ImageSplitSize))
+                if (viewModel.InstantChanges && TryGetSplitSize(out ImageSplitSize))
                 {
                     UpdatePreviewGrid();
                     if (ImageCache.Image != null)
@@ -531,7 +522,7 @@ namespace ImageConverterPlus
             if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
             {
                 string text = (string)e.SourceDataObject.GetData(typeof(string));
-                if (!IsNumeric(text))
+                if (!Helpers.IsNumeric(text))
                 {
                     e.CancelCommand();
                 }
@@ -551,7 +542,7 @@ namespace ImageConverterPlus
             {
                 int num = int.Parse(thisTextBox.Text);
                 int changeDirection = e.Delta > 0 ? 1 : -1;
-                thisTextBox.Text = (num + changeDirection).Clamp(1, 9).ToString();
+                thisTextBox.Text = Math.Clamp(num + changeDirection, 1, 9).ToString();
             }
         }
 
@@ -669,11 +660,6 @@ namespace ImageConverterPlus
                     btn.Key.IsChecked = false;
                 }
             }
-        }
-
-        private void ShowSplitGrid_Click(object sender, RoutedEventArgs e)
-        {
-            PreviewGrid.Visibility = (bool)(sender as ToggleButton).IsChecked ? Visibility.Visible : Visibility.Hidden;
         }
 
         private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)

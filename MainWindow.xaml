@@ -6,7 +6,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ImageConverterPlus"
         xmlns:vm="clr-namespace:ImageConverterPlus.ViewModels"
+        xmlns:controls="clr-namespace:ImageConverterPlus.Controls"
         xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
+        xmlns:drawing="clr-namespace:System.Drawing;assembly=System.Drawing.Common"
         mc:Ignorable="d"
         Title="SE Image Converter+"
         Height="450"
@@ -56,7 +58,17 @@
         </Grid.RowDefinitions>
         
         <!--Window Background-->
-        <Rectangle x:Name="backgroundbrush" Grid.Row="1" Grid.Column="0" Grid.RowSpan="6" Grid.ColumnSpan="4" Fill="#202020" Opacity="0.9" />
+        <Rectangle x:Name="backgroundbrush" Grid.Row="1" Grid.Column="0" Grid.RowSpan="6" Grid.ColumnSpan="4" Fill="#202020" Opacity="0.9">
+            <Rectangle.Style>
+                <Style TargetType="Rectangle">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                            <Setter Property="Opacity" Value="0.9" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Rectangle.Style>
+        </Rectangle>
 
         <!--Title Bar-->
         <Rectangle x:Name="AppTitleBackground" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" Fill="#505050" Opacity="0.9" />
@@ -66,7 +78,9 @@
                    MouseLeftButtonUp="AppTitleIcon_MouseLeftButtonChanged" LostMouseCapture="AppTitleIcon_LostMouseCapture">
                 <Image.ContextMenu>
                     <ContextMenu Style="{StaticResource CustomMenu}">
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Open Log" Click="OpenLogs_Clicked">
+                        <MenuItem Style="{StaticResource CustomMenuItem}"
+                                  Header="Open Log"
+                                  Command="{Binding OpenLogsCommand}">
                             <MenuItem.ToolTip>
                                 <ToolTip Style="{StaticResource CustomToolTip}" x:Name="OpenLogBtnToolTip" />
                             </MenuItem.ToolTip>
@@ -114,15 +128,16 @@
                 <ContextMenu Style="{StaticResource CustomMenu}">
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard" Click="CopyToClipClicked" />
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard" Click="PasteFromClipboard" />
-                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan" Click="ResetZoomBtn_Click" />
+                    <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan" Command="{Binding ResetZoomAndPanCommand}" />
                     <MenuItem Style="{StaticResource CustomMenuItem}" Header="Remove" Click="RemovePreview" x:Name="RemoveImagePreviewBtn" />
                 </ContextMenu>
             </Border.ContextMenu>
             <Grid>
                 <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview" />
-                <StackPanel Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="PreviewGrid" Orientation="Horizontal"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            PreviewDrop="Preview_PreviewDrop" AllowDrop="True" />
+                <StackPanel Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="PreviewGrid"
+                            PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
+                            Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </Border>
 
@@ -143,7 +158,7 @@
                 <!--Cool buttons from Dopamine player-->
                 <StackPanel Grid.Column="0" Width="145" Margin="0,5" >
                     <Button Style="{StaticResource TransparentRoundedButton}" Content="Browse Files" Margin="0,5,0,5" 
-                            x:Name="BrowseFilesBtn" Height="40" FontSize="15" Click="OnBrowseImagesClicked">
+                            x:Name="BrowseFilesBtn" Height="40" FontSize="15" Command="{Binding BrowseFilesCommand}">
                         <Button.ToolTip>
                             <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
                         </Button.ToolTip>
@@ -170,9 +185,10 @@
                     </Grid>
                     <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                   Content="Dithering" Margin="5,5" Height="25"
-                                  FontSize="12" x:Name="ToggleBtn_Dithering" Click="DitherOption_Clicked">        
+                                  FontSize="12" IsChecked="{Binding EnableDithering}">        
                         <ToggleButton.ToolTip>
-                            <ToolTip Style="{StaticResource CustomToolTip}" Content="Applies Floyd-Steinberg error diffusion during conversion.&#x0a;Helps with color banding issues." />
+                            <ToolTip Style="{StaticResource CustomToolTip}"
+                                     Content="Applies Floyd-Steinberg error diffusion during conversion.&#x0a;Helps with color banding issues." />
                         </ToggleButton.ToolTip>
                     </ToggleButton>
                     <Grid Margin="5">
@@ -182,7 +198,8 @@
                             <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}" x:Name="ToggleBtn_ScaleNearest"
                                           Content="Nearest" Height="25" Width="125" Margin="0,3,0,3" Click="ScaleOption_Clicked">
                                 <ToggleButton.ToolTip>
-                                    <ToolTip Style="{StaticResource CustomToolTip}" Content="&apos;Lowest quality&apos;. Leaves jagged edges.&#x0a;May be better for extremely low resolution images" />
+                                    <ToolTip Style="{StaticResource CustomToolTip}"
+                                             Content="&apos;Lowest quality&apos;. Leaves jagged edges.&#x0a;May be better for extremely low resolution images" />
                                 </ToggleButton.ToolTip>
                             </ToggleButton>
                             <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}" x:Name="ToggleBtn_ScaleBilinear"
@@ -201,31 +218,43 @@
                             <Label Margin="0,2,0,0" Grid.ColumnSpan="2" Content="Image Controls" Foreground="White" HorizontalContentAlignment="Center" VerticalAlignment="Top" />
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Button Style="{StaticResource TransparentRoundedButtonSmall}" Width="38" Height="30" 
-                                    FontSize="15" Content="⮁" Margin="0,5,0,5" Click="ImageTransformClicked" x:Name="ToggleBtn_FlipVertical">
+                                        FontSize="15" Content="⮁" Margin="0,5,0,5"
+                                        Command="{Binding ImageTransformCommand}"
+                                        CommandParameter="{x:Static drawing:RotateFlipType.RotateNoneFlipY}">
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource CustomToolTip}" Content="Flip Vertically" />
                                     </Button.ToolTip>
                                 </Button>
                                 <Button Style="{StaticResource TransparentRoundedButtonSmall}" Width="38" Height="30" FontSize="15" 
-                                    Content="⮂" Margin="3,5,3,5" Click="ImageTransformClicked" x:Name="ToggleBtn_FlipHorizontal">
+                                        Content="⮂" Margin="3,5,3,5"
+                                        Command="{Binding ImageTransformCommand}"
+                                        CommandParameter="{x:Static drawing:RotateFlipType.RotateNoneFlipX}">
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource CustomToolTip}" Content="Flip Horizontally" />
                                     </Button.ToolTip>
                                 </Button>
                                 <Button Style="{StaticResource TransparentRoundedButtonSmall}" 
-                                    Width="38" Height="30" FontSize="15" Content="⭮" 
-                                    Margin="0,5,0,5" Click="ImageTransformClicked" x:Name="ToggleBtn_RotateRight">
+                                        Width="38" Height="30" FontSize="15" Content="⭮" 
+                                        Margin="0,5,0,5"
+                                        Command="{Binding ImageTransformCommand}"
+                                        CommandParameter="{x:Static drawing:RotateFlipType.Rotate90FlipNone}">
                                     <Button.ToolTip>
                                         <ToolTip Style="{StaticResource CustomToolTip}" Content="Rotate 90°" />
                                     </Button.ToolTip>
                                 </Button>
                             </StackPanel>
-                            <Button Style="{StaticResource TransparentRoundedButtonSmall}" Width="125" Height="25"
-                                    Margin="0,0,0,5" Content="Zoom to Fit" Click="ZoomToFit_Click" />
-                            <Button Style="{StaticResource TransparentRoundedButtonSmall}" Width="125" Height="25"
-                                    Margin="0,0,0,5" Content="Zoom to Fill" Click="ZoomToFill_Click" />
-                            <Button Style="{StaticResource TransparentRoundedButtonSmall}" Width="125" Height="25"
-                                    Margin="0,0,0,5" Content="Reset Zoom &amp; Pan" Click="ResetZoomBtn_Click" />
+                            <Button Style="{StaticResource TransparentRoundedButtonSmall}"
+                                    Width="125" Height="25"
+                                    Margin="0,0,0,5" Content="Zoom to Fit"
+                                    Command="{Binding ZoomToFitCommand}" />
+                            <Button Style="{StaticResource TransparentRoundedButtonSmall}"
+                                    Width="125" Height="25"
+                                    Margin="0,0,0,5" Content="Zoom to Fill"
+                                    Command="{Binding ZoomToFillCommand}" />
+                            <Button Style="{StaticResource TransparentRoundedButtonSmall}"
+                                    Width="125" Height="25"
+                                    Margin="0,0,0,5" Content="Reset Zoom &amp; Pan"
+                                    Command="{Binding ResetZoomAndPanCommand}" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -234,9 +263,7 @@
                 <StackPanel Grid.Column="2" Width="145" Margin="0,5">
                     <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                   Content="Instant Mode" Margin="5,20,5,0"
-                                  Height="25" x:Name="ToggleBtn_InstantChanges"
-                                  Click="ToggleBtn_InstantChanges_Click"
-                                  IsChecked="{Binding InstantChanges}">
+                                  Height="25" IsChecked="{Binding InstantChanges}">
                         <ToggleButton.ToolTip>
                             <ToolTip Style="{StaticResource CustomToolTip}" Content="Apply Changes Instantly" />
                         </ToggleButton.ToolTip>
@@ -253,32 +280,50 @@
                         </Grid.RowDefinitions>
                         <Border Background="#05FFFFFF" Grid.ColumnSpan="3" Grid.RowSpan="2" CornerRadius="4" BorderThickness="0" />
                         <TextBlock Grid.ColumnSpan="2" Text="Custom LCD Size" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBox Background="#25303030" Grid.Column="0" Grid.Row="1" Margin="0,2,0,0" Text="178" x:Name="ImageWidthSetting"
-                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
-                                 Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput"
-                                 TextChanged="ImageSize_TextChanged_Manually" PreviewKeyDown="MenuTextBox_PreviewKeyDown"
-                                 DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
-                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
+                        <controls:PositiveIntegerTextBox Background="#25303030" Grid.Column="0" Grid.Row="1" Margin="0,2,0,0" x:Uid="ImageWidthSetting"
+                                                         VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
+                                                         Height="20" Width="45" HorizontalAlignment="Center"
+                                                         DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
+                                                         MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft"
+                                                         Minimum="1" Maximum="999" Value="{Binding LCDWidth}">
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
                             <TextBox.ToolTip>
                                 <ToolTip Style="{StaticResource CustomToolTip}" Content="Width" />
                             </TextBox.ToolTip>
-                        </TextBox>
-                        <TextBox Background="#25303030" Grid.Column="1" Grid.Row="1" Margin="0,2,0,0" Text="178" x:Name="ImageHeightSetting"
-                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
-                                 Height="20" Width="45" HorizontalAlignment="Center" PreviewTextInput="ImageSize_PreviewTextInput" 
-                                 TextChanged="ImageSize_TextChanged_Manually" PreviewKeyDown="MenuTextBox_PreviewKeyDown"
-                                 DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
-                                 MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft">
+                            <controls:PositiveIntegerTextBox.Style>
+                                <Style TargetType="controls:PositiveIntegerTextBox">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LCDSizePresetPicked}" Value="True">
+                                            <Setter Property="Foreground" Value="DarkGray" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </controls:PositiveIntegerTextBox.Style>
+                        </controls:PositiveIntegerTextBox>
+                        <controls:PositiveIntegerTextBox Background="#25303030" Grid.Column="1" Grid.Row="1" Margin="0,2,0,0" x:Uid="ImageHeightSetting"
+                                                         VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
+                                                         Height="20" Width="45" HorizontalAlignment="Center"
+                                                         DataObject.Pasting="ImageSize_Pasting" PreviewMouseWheel="ImageSize_MouseWheel" ContextMenuService.IsEnabled="False"
+                                                         MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft"
+                                                         Minimum="1" Maximum="999" Value="{Binding LCDHeight}">
                             <TextBox.ContextMenu>
                                 <ContextMenu IsEnabled="False"/>
                             </TextBox.ContextMenu>
                             <TextBox.ToolTip>
                                 <ToolTip Style="{StaticResource CustomToolTip}" Content="Height" />
                             </TextBox.ToolTip>
-                        </TextBox>
+                            <controls:PositiveIntegerTextBox.Style>
+                                <Style TargetType="controls:PositiveIntegerTextBox">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding LCDSizePresetPicked}" Value="True">
+                                            <Setter Property="Foreground" Value="DarkGray" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </controls:PositiveIntegerTextBox.Style>
+                        </controls:PositiveIntegerTextBox>
                         <Label Content="x" Foreground="DarkGray" HorizontalAlignment="Center" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,7" VerticalAlignment="Bottom" Height="25"/>
                     </Grid>
                     <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
@@ -350,7 +395,7 @@
                         </TextBox>
                         <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                   Content="Show Grid" Margin="0,0,0,5" Height="25" Width="125" Grid.Row="2" Grid.ColumnSpan="2"
-                                  FontSize="12" Click="ShowSplitGrid_Click" x:Name="ShowSplitGridBtn">
+                                  FontSize="12" IsChecked="{Binding ShowPreviewGrid}">
                             <ToggleButton.ToolTip>
                                 <ToolTip Style="{StaticResource CustomToolTip}" Content="Show the split squares to copy." />
                             </ToggleButton.ToolTip>

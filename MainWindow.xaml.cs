@@ -45,12 +45,10 @@ namespace ImageConverterPlus
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
         public static MainWindow Static { get; private set; }
         private MainWindowViewModel viewModel;
-        private static bool InstantChanges;
 
         private readonly Dictionary<ToggleButton, Size> lcdButtons;
         private readonly Dictionary<ToggleButton, InterpolationMode> scaleButtons;
         private readonly Dictionary<ToggleButton, BitDepth> colorBitDepthButtons;
-        private readonly Dictionary<Button, RotateFlipType> imageTransformButtons;
 
         private static bool lcdPicked;
 
@@ -102,17 +100,13 @@ namespace ImageConverterPlus
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
             ToggleBtn_3BitColor.IsChecked = true;
             ToggleBtn_LCDPanel.IsChecked = true;
-            ToggleBtn_Dithering.IsChecked = true;
             lcdPicked = true;
             ToggleBtn_ScaleBicubic.IsChecked = true;
-            ImageWidthSetting.Foreground = Brushes.DarkGray;
-            ImageHeightSetting.Foreground = Brushes.DarkGray;
-            InstantChanges = true;
-            ToggleBtn_InstantChanges.IsChecked = InstantChanges;
-            RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
+            viewModel.LCDSizePresetPicked = true;
+            RemoveImagePreviewBtn.IsEnabled = !viewModel.InstantChanges;
             //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
             UpdateCurrentConvertBtnToolTip("No images loaded", true);
-            ConvertBtn.IsEnabled = (!InstantChanges && ImageCache.Image != null);
+            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
             OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
 
@@ -138,13 +132,6 @@ namespace ImageConverterPlus
                 { ToggleBtn_5BitColor, BitDepth.Color5 },
             };
 
-            imageTransformButtons = new()
-            {
-                { ToggleBtn_FlipVertical, RotateFlipType.RotateNoneFlipY },
-                { ToggleBtn_FlipHorizontal, RotateFlipType.RotateNoneFlipX },
-                { ToggleBtn_RotateRight, RotateFlipType.Rotate90FlipNone },
-            };
-
             convertCallback = new ConvertCallback(ConvertResultCallback);
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
@@ -158,7 +145,7 @@ namespace ImageConverterPlus
             init = true;
         }
 
-        private void OnBrowseImagesClicked(object sender, RoutedEventArgs e)
+        public void BrowseImageFiles()
         {
             Microsoft.Win32.OpenFileDialog dialog = new()
             {
@@ -171,9 +158,9 @@ namespace ImageConverterPlus
                 var supportedFlag = IsFileTypeSupported(dialog.FileName);
                 if (supportedFlag != IsFileSupportedEnum.NotSupported && TryGetImageInfo(dialog.FileName, supportedFlag, out ImageCache))
                 {
-                    UpdateBrowseImagesBtn(dialog.FileName.GetFileName(), dialog.FileName);
+                    UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
                     UpdateCurrentConvertBtnToolTip(dialog.FileName, true);
-                    if (InstantChanges && ImageCache.Image != null)
+                    if (viewModel.InstantChanges && ImageCache.Image != null)
                     {
                         UpdatePreviewDelayed(true, 0);
                         //TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
@@ -450,12 +437,7 @@ namespace ImageConverterPlus
             {
                 try
                 {
-                    if (ImageWidthSetting.Text.TrimStart('0').Length == 0 || ImageHeightSetting.Text.TrimStart('0').Length == 0)
-                    {
-                        result = Size.Empty;
-                        return false;
-                    }
-                    result = new Size(int.Parse(ImageWidthSetting.Text), int.Parse(ImageHeightSetting.Text));
+                    result = new Size(viewModel.LCDWidth, viewModel.LCDHeight);
                     return true;
                 }
                 catch (Exception e)
@@ -468,7 +450,7 @@ namespace ImageConverterPlus
         }
         private bool TryGetDitherMode(out DitherMode result)
         {
-            if (ToggleBtn_Dithering.IsChecked == true)
+            if (viewModel.EnableDithering)
             {
                 result = DitherMode.FloydSteinberg;
                 return true;
@@ -540,7 +522,7 @@ namespace ImageConverterPlus
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            if (InstantChanges)
+            if (viewModel.InstantChanges)
             {
                 UpdatePreviewDelayed(false, 0);
             }
@@ -555,27 +537,22 @@ namespace ImageConverterPlus
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            ImageWidthSetting.Text = lcdButtons[thisBtn].Width.ToString();
-            ImageHeightSetting.Text = lcdButtons[thisBtn].Height.ToString();
-            ImageWidthSetting.Foreground = Brushes.DarkGray;
-            ImageHeightSetting.Foreground = Brushes.DarkGray;
+            viewModel.LCDWidth = lcdButtons[thisBtn].Width;
+            viewModel.LCDHeight = lcdButtons[thisBtn].Height;
+            viewModel.LCDSizePresetPicked = true;
 
             ResetImageSplit();
 
-            if (InstantChanges)
+            if (viewModel.InstantChanges)
             {
                 UpdatePreviewDelayed(true, 0);
             }
         }
 
-        public static bool IsNumeric(string str)
-        {
-            return !str.Any(c => c < '0' || c > '9');
-        }
-
         private void ImageSize_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            if (!IsNumeric(e.Text))
+            return;
+            if (!Helpers.IsNumeric(e.Text))
             {
                 e.Handled = true;
             }
@@ -587,12 +564,14 @@ namespace ImageConverterPlus
 
         private void MenuTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            return;
             //intercepts spaces
             e.Handled = e.Key == Key.Space;
         }
 
         private void ImageSize_TextChanged_Manually(object sender, TextChangedEventArgs e)
         {
+            return;
             if (!lcdPicked)
             {
                 TextBox box = sender as TextBox;
@@ -604,7 +583,7 @@ namespace ImageConverterPlus
                 }
                 else if (trimmedTextLength != box.Text.Length)
                 {
-                    int removeLength = (box.Text.Length - 3).Clamp(0, 3);
+                    int removeLength = Math.Clamp(box.Text.Length - 3, 0, 3);
                     box.Text = box.Text.Substring(removeLength);
                     box.CaretIndex = e.Changes.Last().Offset - removeLength + e.Changes.Last().AddedLength;
                 }
@@ -615,13 +594,12 @@ namespace ImageConverterPlus
                     {
                         btn.Key.IsChecked = false;
                     }
-                    ImageWidthSetting.Foreground = Brushes.White;
-                    ImageHeightSetting.Foreground = Brushes.White;
+                    viewModel.LCDSizePresetPicked = false;
                 }
 
                 ResetImageSplit();
 
-                if (InstantChanges)
+                if (viewModel?.InstantChanges ?? false)
                 {
                     UpdatePreviewDelayed(true, 50);
                 }
@@ -630,11 +608,11 @@ namespace ImageConverterPlus
 
         private void ImageSize_Pasting(object sender, DataObjectPastingEventArgs e)
         {
-
+            return;
             if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
             {
                 string text = (string)e.SourceDataObject.GetData(typeof(string));
-                if (!IsNumeric(text))
+                if (!Helpers.IsNumeric(text))
                 {
                     e.CancelCommand();
                 }
@@ -659,7 +637,7 @@ namespace ImageConverterPlus
                 lcdPicked = false;
                 int num = int.Parse(thisTextBox.Text);
                 int changeDirection = e.Delta > 0 ? 1 : -1;
-                thisTextBox.Text = (num + changeDirection).Clamp(0, 999).ToString();
+                thisTextBox.Text = Math.Clamp(num + changeDirection, 0, 999).ToString();
             }
         }
 
@@ -677,15 +655,15 @@ namespace ImageConverterPlus
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            if (InstantChanges)
+            if (viewModel.InstantChanges)
             {
                 UpdatePreviewDelayed(false, 0);
             }
         }
 
-        private void DitherOption_Clicked(object sender, RoutedEventArgs e)
+        private void EnableDitheringChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (InstantChanges)
+            if (viewModel.InstantChanges)
             {
                 UpdatePreviewDelayed(false, 0);
             }
@@ -717,7 +695,7 @@ namespace ImageConverterPlus
                 {
                     if (TryConvertFromFile(filedroplist[i]))
                     {
-                        UpdateBrowseImagesBtn(filedroplist[i].GetFileName(), filedroplist[i]);
+                        UpdateBrowseImagesBtn(System.IO.Path.GetFileName(filedroplist[i]), filedroplist[i]);
                         UpdateCurrentConvertBtnToolTip(filedroplist[i], true);
                         Logging.Log("Loaded from Clipboard (FileDrop)");
                         break;
@@ -742,18 +720,17 @@ namespace ImageConverterPlus
 
         private void ShowAcrylDialog(string message) => new AcrylicDialog(MainWindowWindow, message).ShowDialog();
 
-        private void ToggleBtn_InstantChanges_Click(object sender, RoutedEventArgs e)
+        private void InstantChangesEnabledChanged(object? sender, PropertyChangedEventArgs e)
         {
-            InstantChanges = (ToggleBtn_InstantChanges.IsChecked == true);
-            Logging.Log($"Instant Changes {(InstantChanges ? "en" : "dis")}abled");
+            Logging.Log($"Instant Changes {(viewModel.InstantChanges ? "en" : "dis")}abled");
 
-            ConvertBtn.IsEnabled = (!InstantChanges && ImageCache.Image != null);
+            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             if (!ConvertBtn.IsEnabled)
             {
                 UpdateCurrentConvertBtnToolTip("No images loaded", true);
             }
 
-            RemoveImagePreviewBtn.IsEnabled = !InstantChanges;
+            RemoveImagePreviewBtn.IsEnabled = !viewModel.InstantChanges;
 
             //UpdatePreviewDelayed(false, 0);
             ApplyInstantChanges(false, 0);
@@ -803,7 +780,7 @@ namespace ImageConverterPlus
 
         private void UpdateBrowseImagesBtn(string text, string fullpath)
         {
-            ConvertBtn.IsEnabled = (!InstantChanges && ImageCache.Image != null);
+            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             if (!string.IsNullOrEmpty(text))
             {
                 if (!string.IsNullOrEmpty(fullpath))
@@ -841,8 +818,6 @@ namespace ImageConverterPlus
             else ConvertBtnToolTip.Content = tooltip;
         }
 
-        private void OpenLogs_Clicked(object sender, RoutedEventArgs e) => Logging.OpenLogFileAsync();
-
         #region custom "Click" event for the app icon
 
         bool LeftMouseDownOnIcon = false;
@@ -870,13 +845,13 @@ namespace ImageConverterPlus
 
         #endregion custom "Click" event for the app icon
 
-        private void TransformImage(RotateFlipType type)
+        public void TransformImage(RotateFlipType type)
         {
             if (ImageCache.Image != null)
             {
                 ImageCache.Image.RotateFlip(type);
 
-                if (InstantChanges)
+                if (viewModel.InstantChanges)
                 {
                     if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
                     {
@@ -892,73 +867,16 @@ namespace ImageConverterPlus
             }
         }
 
-        private void ImageTransformClicked(object sender, RoutedEventArgs e) => TransformImage(imageTransformButtons[sender as Button]);
-
-    }
-
-    public static class Utils
-    {
-        public static T Clamp<T>(this T val, T min, T max) where T : IComparable<T>
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (val.CompareTo(min) < 0) return min;
-            else if (val.CompareTo(max) > 0) return max;
-            else return val;
-        }
-
-        public static double ClampDoubleExt(this double val, double min, double max)
-        {
-            if (min > max)
+            switch (e.PropertyName)
             {
-                if (val > min) return min;
-                else if (val < max) return max;
-                else return val;
-            }
-            else
-            {
-                if (val < min) return min;
-                else if (val > max) return max;
-                else return val;
-            }
-        }
-
-        public static string GetFileName(this string filePath)
-        {
-            return filePath.Split('\\').LastOrDefault();
-        }
-
-        public static string ToShortString(this Size val)
-        {
-            return $"{val.Width}x{val.Height}";
-        }
-
-        //https://stackoverflow.com/questions/6484357/converting-bitmapimage-to-bitmap-and-vice-versa
-        public static Bitmap BitmapSourceToBitmap(BitmapSource bitmapImage)
-        {
-            using (MemoryStream outStream = new MemoryStream())
-            {
-                BitmapEncoder enc = new BmpBitmapEncoder();
-                enc.Frames.Add(BitmapFrame.Create(bitmapImage));
-                enc.Save(outStream);
-                Bitmap bitmap = new(outStream);
-
-                return bitmap;
-            }
-        }
-
-        //https://stackoverflow.com/questions/94456/load-a-wpf-bitmapimage-from-a-system-drawing-bitmap
-        public static BitmapImage BitmapToBitmapImage(Bitmap bitmap)
-        {
-            using (MemoryStream memory = new MemoryStream())
-            {
-                bitmap.Save(memory, ImageFormat.Bmp);
-                memory.Position = 0;
-                BitmapImage bitmapimage = new();
-                bitmapimage.BeginInit();
-                bitmapimage.StreamSource = memory;
-                bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapimage.EndInit();
-
-                return bitmapimage;
+                case nameof(MainWindowViewModel.InstantChanges):
+                    InstantChangesEnabledChanged(sender, e);
+                    break;
+                case nameof(MainWindowViewModel.EnableDithering):
+                    EnableDitheringChanged(sender, e);
+                    break;
             }
         }
     }

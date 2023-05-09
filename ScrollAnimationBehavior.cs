@@ -294,7 +294,7 @@ namespace ImageConverterPlus
                 AnimateScroll(scroller, newVOffset);
             }
 
-            intendedLocation = newVOffset.Clamp(0, scroller.ScrollableHeight);
+            intendedLocation = Math.Clamp(newVOffset, 0, scroller.ScrollableHeight);
 
             e.Handled = true;
         }
