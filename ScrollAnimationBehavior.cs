@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     public static class ScrollAnimationBehavior
     {

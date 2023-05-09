@@ -10,7 +10,7 @@ using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
 using System.Drawing.Imaging;
 using System.Threading;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     public static class ConvertUtils
     {

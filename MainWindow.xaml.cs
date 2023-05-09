@@ -20,8 +20,8 @@ using System.IO;
 using Brushes = System.Windows.Media.Brushes;
 using System.Windows.Controls.Primitives;
 using System.Diagnostics;
-using BitDepth = SEImageToLCD_15BitColor.ConvertThread.BitDepth;
-using DitherMode = SEImageToLCD_15BitColor.ConvertThread.DitherMode;
+using BitDepth = ImageConverterPlus.ConvertThread.BitDepth;
+using DitherMode = ImageConverterPlus.ConvertThread.DitherMode;
 using Size = System.Drawing.Size;
 using Timer = System.Timers.Timer;
 using SixLabors.ImageSharp;
@@ -29,8 +29,10 @@ using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
 using System.Timers;
+using ImageConverterPlus.ViewModels;
+using System.ComponentModel;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -42,6 +44,7 @@ namespace SEImageToLCD_15BitColor
         private string ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
         public static MainWindow Static { get; private set; }
+        private MainWindowViewModel viewModel;
         private static bool InstantChanges;
 
         private readonly Dictionary<ToggleButton, Size> lcdButtons;
@@ -95,6 +98,8 @@ namespace SEImageToLCD_15BitColor
 
             Static = this;
             InitializeComponent();
+            viewModel = (MainWindowViewModel)this.DataContext;
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
             ToggleBtn_3BitColor.IsChecked = true;
             ToggleBtn_LCDPanel.IsChecked = true;
             ToggleBtn_Dithering.IsChecked = true;
@@ -888,6 +893,7 @@ namespace SEImageToLCD_15BitColor
         }
 
         private void ImageTransformClicked(object sender, RoutedEventArgs e) => TransformImage(imageTransformButtons[sender as Button]);
+
     }
 
     public static class Utils

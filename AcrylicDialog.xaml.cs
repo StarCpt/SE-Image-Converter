@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Threading;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     /// <summary>
     /// Interaction logic for Window1.xaml

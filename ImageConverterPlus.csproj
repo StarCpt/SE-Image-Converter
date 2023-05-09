@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
-    <RootNamespace>SEImageToLCD_15BitColor</RootNamespace>
+    <RootNamespace>ImageConverterPlus</RootNamespace>
     <UseWPF>true</UseWPF>
     <PackageIcon>15icon_16x16.png</PackageIcon>
     <PackageIconUrl />

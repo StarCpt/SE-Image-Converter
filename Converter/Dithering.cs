@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     public class Dithering
     {

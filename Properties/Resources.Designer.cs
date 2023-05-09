@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace SEImageToLCD_15BitColor.Properties {
+namespace ImageConverterPlus.Properties {
     using System;
     
     

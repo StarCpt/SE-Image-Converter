@@ -1,10 +1,11 @@
-﻿<Window x:Class="SEImageToLCD_15BitColor.MainWindow"
+﻿<Window x:Class="ImageConverterPlus.MainWindow"
         x:Name="MainWindowWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:SEImageToLCD_15BitColor"
+        xmlns:local="clr-namespace:ImageConverterPlus"
+        xmlns:vm="clr-namespace:ImageConverterPlus.ViewModels"
         xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
         mc:Ignorable="d"
         Title="SE Image Converter+"
@@ -35,6 +36,10 @@
         <Label x:Key="custombrushlabelkey" x:Name="custombrushlabel" Foreground="#DDDDDD" />
         <SolidColorBrush x:Key="Brush_Accent" Color="#25FFFFFF" />
     </Window.Resources>
+
+    <Window.DataContext>
+        <vm:MainWindowViewModel />
+    </Window.DataContext>
 
     <Grid>
         <Grid.ColumnDefinitions>
@@ -229,7 +234,9 @@
                 <StackPanel Grid.Column="2" Width="145" Margin="0,5">
                     <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                   Content="Instant Mode" Margin="5,20,5,0"
-                                  Height="25" x:Name="ToggleBtn_InstantChanges" Click="ToggleBtn_InstantChanges_Click">
+                                  Height="25" x:Name="ToggleBtn_InstantChanges"
+                                  Click="ToggleBtn_InstantChanges_Click"
+                                  IsChecked="{Binding InstantChanges}">
                         <ToggleButton.ToolTip>
                             <ToolTip Style="{StaticResource CustomToolTip}" Content="Apply Changes Instantly" />
                         </ToggleButton.ToolTip>

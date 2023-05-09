@@ -20,7 +20,7 @@ using System.Timers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Animation;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     partial class MainWindow
     {

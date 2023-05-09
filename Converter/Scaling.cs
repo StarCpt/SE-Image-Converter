@@ -7,7 +7,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     public class Scaling
     {
