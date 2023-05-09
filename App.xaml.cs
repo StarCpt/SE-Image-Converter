@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     /// <summary>
     /// Interaction logic for App.xaml

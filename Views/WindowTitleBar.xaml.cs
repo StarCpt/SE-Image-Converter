@@ -10,28 +10,24 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Threading;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Views
 {
     /// <summary>
-    /// Interaction logic for Window1.xaml
+    /// Interaction logic for WindowTitleBar.xaml
     /// </summary>
-    public partial class AcrylicDialog : Window
+    public partial class WindowTitleBar : UserControl
     {
-        public AcrylicDialog(Window parent, string message)
+        public WindowTitleBar()
         {
             InitializeComponent();
-            this.Owner = parent;
-            DialogMessage.Text = message;
-            MainWindow.Logging.Log($"AcrylicDialog: {message}");
         }
 
-        private void DialogCloseBtn_Click(object sender, RoutedEventArgs e)
+        private void GC_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
-            this.Owner.Focus();
+            GC.Collect();
         }
     }
 }

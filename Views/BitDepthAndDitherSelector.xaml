@@ -1,0 +1,63 @@
+﻿<UserControl x:Class="ImageConverterPlus.Views.BitDepthAndDitherSelector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:local="clr-namespace:ImageConverterPlus.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="70" d:DesignWidth="145">
+
+    <UserControl.Resources>
+        <Style x:Key="Color3Button" TargetType="Button" BasedOn="{StaticResource TransparentLeftRoundedButtonSmall}">
+            <Setter Property="Height" Value="25" />
+        </Style>
+        <Style x:Key="Color5Button" TargetType="Button" BasedOn="{StaticResource TransparentRightRoundedButtonSmall}">
+            <Setter Property="Height" Value="25" />
+        </Style>
+        <Style x:Key="DitherButton" TargetType="ToggleButton" BasedOn="{StaticResource TransparentRoundedToggleButtonSmall}">
+            <Setter Property="Height" Value="25" />
+            <Setter Property="Margin" Value="0,10,0,0" />
+        </Style>
+    </UserControl.Resources>
+    <StackPanel>
+        <UniformGrid Columns="2">
+            <Button Content="3 Bit" ToolTip="Monospace Font">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Click">
+                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="ColorDepth" Value="Color3" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource Color3Button}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ColorDepth}" Value="Color3">
+                                <Setter Property="Background" Value="#10F0F0F0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Content="5 Bit" ToolTip="Requires Mono Color Mod">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Click">
+                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="ColorDepth" Value="Color5" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource Color5Button}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ColorDepth}" Value="Color5">
+                                <Setter Property="Background" Value="#10F0F0F0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </UniformGrid>
+        <ToggleButton Style="{StaticResource DitherButton}"
+                      Content="Dithering" Height="25"
+                      IsChecked="{Binding EnableDithering}"
+                      ToolTip="Applies error-diffusion dithering to reduce color banding." />
+    </StackPanel>
+</UserControl>
