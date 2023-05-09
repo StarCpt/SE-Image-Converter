@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Base
 {
     public abstract class CommandBase : ICommand
     {

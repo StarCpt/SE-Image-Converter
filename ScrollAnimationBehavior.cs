@@ -88,7 +88,7 @@ namespace ImageConverterPlus
 
         private static void OnVerticalOffsetChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
         {
-            ScrollViewer scrollViewer = target as ScrollViewer;
+            ScrollViewer scrollViewer = (ScrollViewer)target;
 
             if (scrollViewer != null)
             {

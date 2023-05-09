@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
 namespace ImageConverterPlus.Controls
@@ -16,8 +18,9 @@ namespace ImageConverterPlus.Controls
                 nameof(Maximum),
                 typeof(int),
                 typeof(PositiveIntegerTextBox),
-                new PropertyMetadata(
+                new FrameworkPropertyMetadata(
                     default(int),
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
                     MaximumPropertyChanged));
 
         public static readonly DependencyProperty MinimumProperty =
@@ -25,8 +28,9 @@ namespace ImageConverterPlus.Controls
                 nameof(Minimum),
                 typeof(int),
                 typeof(PositiveIntegerTextBox),
-                new PropertyMetadata(
+                new FrameworkPropertyMetadata(
                     default(int),
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
                     MinimumPropertyChanged));
 
         public static readonly DependencyProperty ValueProperty =
@@ -34,9 +38,12 @@ namespace ImageConverterPlus.Controls
                 nameof(Value),
                 typeof(int),
                 typeof(PositiveIntegerTextBox),
-                new PropertyMetadata(
+                new FrameworkPropertyMetadata(
                     default(int),
+                    FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
                     ValuePropertyChanged));
+
+        public RoutedPropertyChangedEventHandler<int> ValueChanged = delegate { };
 
         public int Maximum
         {
@@ -151,6 +158,12 @@ namespace ImageConverterPlus.Controls
         private static void ValuePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             ((PositiveIntegerTextBox)d).Text = e.NewValue.ToString();
+            ((PositiveIntegerTextBox)d).OnValueChanged((int)e.OldValue, (int)e.NewValue);
+        }
+
+        protected virtual void OnValueChanged(int oldValue, int newValue)
+        {
+            ValueChanged.Invoke(this, new RoutedPropertyChangedEventArgs<int>(oldValue, newValue));
         }
     }
 }

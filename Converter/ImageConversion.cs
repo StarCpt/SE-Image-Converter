@@ -91,7 +91,6 @@ namespace ImageConverterPlus
 
         public void CancelTask()
         {
-            callback = null;
             taskCancelled = true;
         }
 
@@ -250,7 +249,6 @@ namespace ImageConverterPlus
 
         public void CancelTask()
         {
-            callback = null;
             taskCancelled = true;
         }
 
@@ -319,7 +317,7 @@ namespace ImageConverterPlus
                     MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished conversion, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 }
 
-                callback(Utils.BitmapToBitmapImage(image));
+                callback(Helpers.BitmapToBitmapImage(image));
                 image.Dispose();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }

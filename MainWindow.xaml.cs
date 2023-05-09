@@ -41,16 +41,13 @@ namespace ImageConverterPlus
     {
         public const string version = "0.9";
 
-        private string ConvertedImageStr;
+        private string? ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
         public static MainWindow Static { get; private set; }
         private MainWindowViewModel viewModel;
 
-        private readonly Dictionary<ToggleButton, Size> lcdButtons;
         private readonly Dictionary<ToggleButton, InterpolationMode> scaleButtons;
         private readonly Dictionary<ToggleButton, BitDepth> colorBitDepthButtons;
-
-        private static bool lcdPicked;
 
         private Timer ClipboardTimer;
         private Timer ConvertTimer;
@@ -63,8 +60,6 @@ namespace ImageConverterPlus
         private Task PreviewConvertTask;
         private ConvertCallback convertCallback;
         private PreviewConvertCallback previewConvertCallback;
-
-        private bool init = false;
 
         public enum ImageInfoType
         {
@@ -99,11 +94,7 @@ namespace ImageConverterPlus
             viewModel = (MainWindowViewModel)this.DataContext;
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
             ToggleBtn_3BitColor.IsChecked = true;
-            ToggleBtn_LCDPanel.IsChecked = true;
-            lcdPicked = true;
             ToggleBtn_ScaleBicubic.IsChecked = true;
-            viewModel.LCDSizePresetPicked = true;
-            RemoveImagePreviewBtn.IsEnabled = !viewModel.InstantChanges;
             //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
             UpdateCurrentConvertBtnToolTip("No images loaded", true);
             ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
@@ -111,14 +102,6 @@ namespace ImageConverterPlus
             OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
 
             //add buttons to their respective dictionaries.
-            lcdButtons = new()
-            {
-                { ToggleBtn_LCDPanel, new(178, 178) },
-                { ToggleBtn_TextPanel, new(178, 107) },
-                { ToggleBtn_WidePanelWide, new(356, 178) },
-                { ToggleBtn_WidePanelTall, new(178, 356) },
-            };
-
             scaleButtons = new()
             {
                 { ToggleBtn_ScaleNearest, InterpolationMode.NearestNeighbor },
@@ -142,7 +125,6 @@ namespace ImageConverterPlus
             InitImagePreview();
 
             Logging.Log("MainWindow initialized");
-            init = true;
         }
 
         public void BrowseImageFiles()
@@ -162,6 +144,7 @@ namespace ImageConverterPlus
                     UpdateCurrentConvertBtnToolTip(dialog.FileName, true);
                     if (viewModel.InstantChanges && ImageCache.Image != null)
                     {
+                        viewModel.ImageSplitSize = new Size(1, 1);
                         UpdatePreviewDelayed(true, 0);
                         //TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
                     }
@@ -243,7 +226,7 @@ namespace ImageConverterPlus
             }
         }
 
-        private void OnConvertClicked(object sender, RoutedEventArgs e)
+        public void OnConvertClicked(object? param)
         {
             if (ImageCache.Image != null)
             {
@@ -283,6 +266,7 @@ namespace ImageConverterPlus
                 {
                     if (TryGetImageInfo(imagePath, supportedFlag, out ImageInfo bitImageInfo))
                     {
+                        viewModel.ImageSplitSize = new Size(1, 1);
                         return TryConvertImageThreaded(bitImageInfo, true, convertCallback, previewConvertCallback);
                     }
                     else
@@ -327,25 +311,8 @@ namespace ImageConverterPlus
                     ShowAcrylDialog("Scaling mode error! Defaulting to Nearest.");
                 }
 
-                if (!TryGetLCDSize(out Size? lcdSize))
-                {
-                    if (lcdSize.HasValue)
-                    {
-                        RemovePreview();
-                        return true;
-                    }
-                    else
-                    {
-                        lcdSize = new Size(178, 178);
-                        ShowAcrylDialog("LCD size error! Defaulting to 178x178.");
-                    }
-                }
-
-                if (!TryGetDitherMode(out DitherMode ditherMode))
-                {
-                    ditherMode = DitherMode.NoDither;
-                    ShowAcrylDialog("Dithering option error! Defaulting to None.");
-                }
+                Size lcdSize = GetLCDSize();
+                DitherMode ditherMode = GetDitherMode();
 
                 if (image.Image != null)
                 {
@@ -361,11 +328,10 @@ namespace ImageConverterPlus
 
                     var tt = GetTranslateTransform(ImagePreview);
 
-                    TryGetSplitSize(out ImageSplitSize);
-                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize.Value, ImageSplitSize, checkedSplitBtnPos, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Value.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Value.Height)));
+                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize, ImageSplitSize, checkedSplitBtnPos, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Height)));
                     ConvertTask = Task.Run(ConvertThread.ConvertThreadedFast);
 
-                    UpdatePreview(image, lcdSize.Value, interpolationMode, colorDepth, ditherMode, previewConvertCallback);
+                    UpdatePreview(image, lcdSize, interpolationMode, colorDepth, ditherMode, previewConvertCallback);
 
                     ImageCache = image;
 
@@ -420,49 +386,24 @@ namespace ImageConverterPlus
                 return false;
             }
         }
-        private bool TryGetLCDSize(out Size? result)
+        [Obsolete]
+        private Size GetLCDSize()
         {
-            if (lcdButtons == null)
-            {
-                result = null;
-                return false;
-            }
-
-            if (lcdButtons.Any(b => b.Key.IsChecked == true))
-            {
-                result = lcdButtons.FirstOrDefault(b => b.Key.IsChecked == true).Value;
-                return true;
-            }
-            else
-            {
-                try
-                {
-                    result = new Size(viewModel.LCDWidth, viewModel.LCDHeight);
-                    return true;
-                }
-                catch (Exception e)
-                {
-                    Logging.Log(e.ToString());
-                    result = null;
-                    return false;
-                }
-            }
+            return viewModel.LCDSize;
         }
-        private bool TryGetDitherMode(out DitherMode result)
+        private DitherMode GetDitherMode()
         {
             if (viewModel.EnableDithering)
             {
-                result = DitherMode.FloydSteinberg;
-                return true;
+                return DitherMode.FloydSteinberg;
             }
             else //PLACEHOLDER!! CHANGE WHEN THERE ARE MORE THAN 1 OPTION
             {
-                result = DitherMode.NoDither;
-                return true;
+                return DitherMode.NoDither;
             }
         }
 
-        private void CopyToClipClicked(object sender, RoutedEventArgs e)
+        public void CopyToClipClicked(object? param)
         {
             if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
             {
@@ -503,20 +444,9 @@ namespace ImageConverterPlus
             SetClipDelayed(resultStr);
         }
 
-        private void MainWindowWindow_Deactivated(object sender, EventArgs e)
-        {
-            backgroundbrush.Fill.Opacity = 1;
-            AppTitleBackground.Fill.Opacity = 1;
-        }
-        private void MainWindowWindow_Activated(object sender, EventArgs e)
-        {
-            backgroundbrush.Fill.Opacity = 0.9;
-            AppTitleBackground.Fill.Opacity = 0.9;
-        }
-
         private void ColorDepthOption_Clicked(object sender, RoutedEventArgs e)
         {
-            ToggleButton thisBtn = sender as ToggleButton;
+            ToggleButton thisBtn = (ToggleButton)sender;
             foreach (var btn in colorBitDepthButtons)
             {
                 btn.Key.IsChecked = (btn.Key == thisBtn);
@@ -527,129 +457,16 @@ namespace ImageConverterPlus
                 UpdatePreviewDelayed(false, 0);
             }
         }
-        #region lcd size
-        private void LCDOption_Clicked(object sender, RoutedEventArgs e)
-        {
-            lcdPicked = true;
-            ToggleButton thisBtn = sender as ToggleButton;
-            foreach (var btn in lcdButtons)
-            {
-                btn.Key.IsChecked = (btn.Key == thisBtn);
-            }
-
-            viewModel.LCDWidth = lcdButtons[thisBtn].Width;
-            viewModel.LCDHeight = lcdButtons[thisBtn].Height;
-            viewModel.LCDSizePresetPicked = true;
-
-            ResetImageSplit();
-
-            if (viewModel.InstantChanges)
-            {
-                UpdatePreviewDelayed(true, 0);
-            }
-        }
-
-        private void ImageSize_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            return;
-            if (!Helpers.IsNumeric(e.Text))
-            {
-                e.Handled = true;
-            }
-            else
-            {
-                lcdPicked = false;
-            }
-        }
-
-        private void MenuTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            return;
-            //intercepts spaces
-            e.Handled = e.Key == Key.Space;
-        }
-
-        private void ImageSize_TextChanged_Manually(object sender, TextChangedEventArgs e)
-        {
-            return;
-            if (!lcdPicked)
-            {
-                TextBox box = sender as TextBox;
-                int trimmedTextLength = box.Text.TrimStart('0').Length;
-                if (trimmedTextLength > 3)
-                {
-                    box.Text = "999";
-                    box.CaretIndex = 3;
-                }
-                else if (trimmedTextLength != box.Text.Length)
-                {
-                    int removeLength = Math.Clamp(box.Text.Length - 3, 0, 3);
-                    box.Text = box.Text.Substring(removeLength);
-                    box.CaretIndex = e.Changes.Last().Offset - removeLength + e.Changes.Last().AddedLength;
-                }
-
-                if (lcdButtons != null)
-                {
-                    foreach (var btn in lcdButtons)
-                    {
-                        btn.Key.IsChecked = false;
-                    }
-                    viewModel.LCDSizePresetPicked = false;
-                }
-
-                ResetImageSplit();
-
-                if (viewModel?.InstantChanges ?? false)
-                {
-                    UpdatePreviewDelayed(true, 50);
-                }
-            }
-        }
-
-        private void ImageSize_Pasting(object sender, DataObjectPastingEventArgs e)
-        {
-            return;
-            if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
-            {
-                string text = (string)e.SourceDataObject.GetData(typeof(string));
-                if (!Helpers.IsNumeric(text))
-                {
-                    e.CancelCommand();
-                }
-                else
-                {
-                    lcdPicked = false;
-                }
-            }
-            else
-            {
-                e.CancelCommand();
-            }
-        }
-
-        public void ImageSize_MouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            e.Handled = true;
-            TextBox thisTextBox = sender as TextBox;
-
-            if (!string.IsNullOrEmpty(thisTextBox.Text))
-            {
-                lcdPicked = false;
-                int num = int.Parse(thisTextBox.Text);
-                int changeDirection = e.Delta > 0 ? 1 : -1;
-                thisTextBox.Text = Math.Clamp(num + changeDirection, 0, 999).ToString();
-            }
-        }
 
         public static bool isMouseOverSizeTextbox = false;
         private void MenuTextBox_MouseEnteredOrLeft(object sender, MouseEventArgs e)
         {
-            isMouseOverSizeTextbox = (sender as UIElement).IsMouseOver;
+            isMouseOverSizeTextbox = ((UIElement)sender).IsMouseOver;
         }
-        #endregion lcd size
+
         private void ScaleOption_Clicked(object sender, RoutedEventArgs e)
         {
-            ToggleButton thisBtn = sender as ToggleButton;
+            ToggleButton thisBtn = (ToggleButton)sender;
             foreach (var btn in scaleButtons)
             {
                 btn.Key.IsChecked = (btn.Key == thisBtn);
@@ -680,7 +497,7 @@ namespace ImageConverterPlus
         {
             if (Clipboard.ContainsImage())
             {
-                var image = Utils.BitmapSourceToBitmap(Clipboard.GetImage());
+                var image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
                 if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, convertCallback, previewConvertCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from Clipboard", null);
@@ -729,8 +546,6 @@ namespace ImageConverterPlus
             {
                 UpdateCurrentConvertBtnToolTip("No images loaded", true);
             }
-
-            RemoveImagePreviewBtn.IsEnabled = !viewModel.InstantChanges;
 
             //UpdatePreviewDelayed(false, 0);
             ApplyInstantChanges(false, 0);
@@ -877,6 +692,35 @@ namespace ImageConverterPlus
                 case nameof(MainWindowViewModel.EnableDithering):
                     EnableDitheringChanged(sender, e);
                     break;
+                case nameof(MainWindowViewModel.LCDSize):
+                    LCDSizeChanged(sender, e);
+                    break;
+                case nameof(MainWindowViewModel.ImageSplitSize):
+                    ImageSplitSizeChanged(sender, e);
+                    break;
+
+            }
+        }
+
+        private void LCDSizeChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            viewModel.ImageSplitSize = new Size(1, 1);
+
+            if (viewModel?.InstantChanges ?? false)
+            {
+                UpdatePreviewDelayed(true, 50);
+            }
+        }
+
+        private void ImageSplitSizeChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (viewModel.InstantChanges)
+            {
+                UpdatePreviewGrid();
+                if (ImageCache.Image != null)
+                {
+                    UpdatePreviewDelayed(true, 100);
+                }
             }
         }
     }

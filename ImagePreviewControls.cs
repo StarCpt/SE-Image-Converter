@@ -11,7 +11,6 @@ using System.Windows.Media.Imaging;
 using HtmlAgilityPack;
 using System.Net;
 using System.IO;
-//using System.Drawing;
 using Bitmap = System.Drawing.Bitmap;
 using Size = System.Drawing.Size;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
@@ -20,6 +19,8 @@ using System.Timers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Animation;
 using System.ComponentModel;
+using DitherMode = ImageConverterPlus.ConvertThread.DitherMode;
+using BitDepth = ImageConverterPlus.ConvertThread.BitDepth;
 
 namespace ImageConverterPlus
 {
@@ -33,7 +34,7 @@ namespace ImageConverterPlus
         private Point PreviewTopLeft;
         public static double imagePreviewScale { get; private set; } = 1f;
 
-        private Size ImageSplitSize = new Size(1, 1);
+        private Size ImageSplitSize => viewModel.ImageSplitSize;
 
         private Timer PreviewConvertTimer;
 
@@ -87,20 +88,9 @@ namespace ImageConverterPlus
             }
         }
 
-        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => ResetImageSplit();
+        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
 
-        public void ResetImageSplit()
-        {
-            if (init)
-            {
-                ImageSplit_X.Text = "1";
-                ImageSplit_Y.Text = "1";
-
-                ImageSplitSize = new Size(1, 1);
-            }
-        }
-
-        public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, ConvertThread.BitDepth colorDepth, ConvertThread.DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
+        public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, BitDepth colorDepth, DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
         {
             double scale = Math.Min((double)lcdSize.Width * ImageSplitSize.Width / image.Image.Size.Width, (double)lcdSize.Height * ImageSplitSize.Height / image.Image.Size.Height);
             scale *= imagePreviewScale;
@@ -116,22 +106,22 @@ namespace ImageConverterPlus
 
         public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
         {
-
-
             if (resetZoom)
             {
                 ResetPreviewZoomAndPan(false);
             }
 
             if (ImageCache.Image == null ||
-                !TryGetLCDSize(out Size? size) ||
                 !TryGetInterpolationMode(out InterpolationMode interpolation) ||
-                !TryGetColorBitDepth(out ConvertThread.BitDepth depth) ||
-                !TryGetDitherMode(out ConvertThread.DitherMode dither))
+                !TryGetColorBitDepth(out ConvertThread.BitDepth depth))
             {
                 return;
             }
-            double scale = Math.Min((double)size.Value.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (double)size.Value.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
+
+            Size size = GetLCDSize();
+            DitherMode dither = GetDitherMode();
+
+            double scale = Math.Min((double)size.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (double)size.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
             scale *= imagePreviewScale;
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
@@ -284,18 +274,16 @@ namespace ImageConverterPlus
                 ImagePreview.Source = image;
                 CopyToClipBtn.IsEnabled = true;
 
-                if (TryGetLCDSize(out Size? lcdSize))
+                Size lcdSize = GetLCDSize();
+                if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
                 {
-                    if (lcdSize.Value.Width * ImageSplitSize.Width > lcdSize.Value.Height * ImageSplitSize.Height)
-                    {
-                        ImagePreviewBorder.Width = PreviewBorderWidth;
-                        ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / ((double)lcdSize.Value.Width * ImageSplitSize.Width));
-                    }
-                    else
-                    {
-                        ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / ((double)lcdSize.Value.Height * ImageSplitSize.Height));
-                        ImagePreviewBorder.Height = PreviewBorderHeight;
-                    }
+                    ImagePreviewBorder.Width = PreviewBorderWidth;
+                    ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
+                }
+                else
+                {
+                    ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
+                    ImagePreviewBorder.Height = PreviewBorderHeight;
                 }
 
                 ImagePreviewBorder.Visibility = Visibility.Visible;
@@ -464,7 +452,7 @@ namespace ImageConverterPlus
         public delegate void PreviewConvertCallback(BitmapImage resultPreviewImg);
         private void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
 
-        public void ZoomToFit_Click()
+        public void ZoomToFit()
         {
             if (imagePreviewScale != 1.0d)
             {
@@ -472,12 +460,13 @@ namespace ImageConverterPlus
             }
         }
 
-        public void ZoomToFill_Click()
+        public void ZoomToFill()
         {
-            if (ImageCache.Image != null && TryGetLCDSize(out Size? lcdSize))
+            if (ImageCache.Image != null)
             {
-                double imageXRatio = (double)ImageCache.Image.Width / (lcdSize.Value.Width * ImageSplitSize.Width);
-                double imageYRatio = (double)ImageCache.Image.Height / (lcdSize.Value.Height * ImageSplitSize.Height);
+                Size lcdSize = GetLCDSize();
+                double imageXRatio = (double)ImageCache.Image.Width / (lcdSize.Width * ImageSplitSize.Width);
+                double imageYRatio = (double)ImageCache.Image.Height / (lcdSize.Height * ImageSplitSize.Height);
                 double zoom = imageXRatio > imageYRatio ? imageXRatio / imageYRatio : imageYRatio / imageXRatio;
                 if (imagePreviewScale != zoom)
                 {
@@ -486,99 +475,29 @@ namespace ImageConverterPlus
             }
         }
 
-        private void ImageSplit_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        [Obsolete]
+        private Size GetImageSplitSize()
         {
-            if (!Helpers.IsNumeric(e.Text))
-            {
-                e.Handled = true;
-            }
-        }
-
-        private void ImageSplit_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (init)
-            {
-                TextBox box = sender as TextBox;
-
-                if (box.Text.Length > 1)
-                {
-                    box.Text = "9";
-                    box.CaretIndex = 1;
-                }
-
-                if (viewModel.InstantChanges && TryGetSplitSize(out ImageSplitSize))
-                {
-                    UpdatePreviewGrid();
-                    if (ImageCache.Image != null)
-                    {
-                        UpdatePreviewDelayed(true, 100);
-                    }
-                }
-            }
-        }
-
-        private void ImageSplit_Pasting(object sender, DataObjectPastingEventArgs e)
-        {
-            if (e.SourceDataObject.GetDataPresent(DataFormats.UnicodeText, true))
-            {
-                string text = (string)e.SourceDataObject.GetData(typeof(string));
-                if (!Helpers.IsNumeric(text))
-                {
-                    e.CancelCommand();
-                }
-            }
-            else
-            {
-                e.CancelCommand();
-            }
-        }
-
-        public void ImageSplit_MouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            e.Handled = true;
-            TextBox thisTextBox = sender as TextBox;
-
-            if (!string.IsNullOrEmpty(thisTextBox.Text))
-            {
-                int num = int.Parse(thisTextBox.Text);
-                int changeDirection = e.Delta > 0 ? 1 : -1;
-                thisTextBox.Text = Math.Clamp(num + changeDirection, 1, 9).ToString();
-            }
-        }
-
-        private bool TryGetSplitSize(out Size result)
-        {
-            try
-            {
-                int sizeX = int.Parse(ImageSplit_X.Text);
-                int sizeY = int.Parse(ImageSplit_Y.Text);
-                result = new Size(sizeX, sizeY);
-                return true;
-            }
-            catch
-            {
-                result = Size.Empty;
-                return false;
-            }
+            return viewModel.ImageSplitSize;
         }
 
         private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e) => UpdatePreviewGrid();
 
         private void UpdatePreviewGrid()
         {
-            if (!TryGetSplitSize(out ImageSplitSize) || !TryGetLCDSize(out Size? lcdSize))
-            {
-                return;
-            }
+            Size lcdSize = GetLCDSize();
 
-            if (lcdSize.Value.Width * ImageSplitSize.Width > lcdSize.Value.Height * ImageSplitSize.Height)
+            int splitX = viewModel.ImageSplitWidth;
+            int splitY = viewModel.ImageSplitHeight;
+
+            if (lcdSize.Width * splitX > lcdSize.Height * splitY)
             {
                 ImagePreviewBorder.Width = PreviewBorderWidth;
-                ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Value.Height * ImageSplitSize.Height) / ((double)lcdSize.Value.Width * ImageSplitSize.Width));
+                ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Height * splitY) / ((double)lcdSize.Width * splitX));
             }
             else
             {
-                ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Value.Width * ImageSplitSize.Width) / ((double)lcdSize.Value.Height * ImageSplitSize.Height));
+                ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Width * splitX) / ((double)lcdSize.Height * splitY));
                 ImagePreviewBorder.Height = PreviewBorderHeight;
             }
 
