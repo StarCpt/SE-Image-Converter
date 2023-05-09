@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "ImageConverterPlus": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "hotReloadEnabled": true
+    }
+  }
+}

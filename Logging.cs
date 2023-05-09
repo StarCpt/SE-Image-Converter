@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus
 {
     public class Logging
     {

@@ -12,7 +12,7 @@
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="3">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White"/>
+                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -31,7 +31,7 @@
         </Setter>
     </Style>
 
-    <!-- TransparentRoundedButton -->
+    <!-- TransparentRoundedButton (small) -->
     <Style x:Key="TransparentRoundedButtonSmall" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
@@ -41,7 +41,65 @@
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White"/>
+                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity"  Value="0.7"/>
+                            <Setter Property="Background" Value="#05FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity"  Value="0.5"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- TransparentLeftRoundedButton (small) -->
+    <Style x:Key="TransparentLeftRoundedButtonSmall" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="#00000000" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4,0,0,4">
+                        <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity"  Value="0.7"/>
+                            <Setter Property="Background" Value="#05FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity"  Value="0.5"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- TransparentRightRoundedButton (small) -->
+    <Style x:Key="TransparentRightRoundedButtonSmall" TargetType="Button">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="#00000000" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="0,4,4,0">
+                        <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -65,12 +123,12 @@
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
         <Setter Property="Background" Value="#00000000" />
+        <Setter Property="Foreground" Value="#ffffff" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4">
-                        <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White"/>
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" Content="{TemplateBinding Content}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -118,60 +176,9 @@
             </Setter.Value>
         </Setter>
     </Style>
-
-    <!-- Theme-matching Custom Tooltip -->
-    <Style x:Key="CustomToolTip" TargetType="ToolTip">
-        <Setter Property="OverridesDefaultStyle" Value="True" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ToolTip">
-                    <Grid>
-                        <Border Background="#D0303030" CornerRadius="2" BorderThickness="0" BorderBrush="#00000000" />
-                        <Label Content="{TemplateBinding Content}" Foreground="White" FontSize="12" />
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- Custom Context Menu Item -->
-    <Style x:Key="CustomMenuItem" TargetType="MenuItem">
-        <Setter Property="OverridesDefaultStyle" Value="True"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="MenuItem">
-                    <StackPanel Background="#00000000" Margin="0,1,0,0">
-                        <Label Content="{TemplateBinding Header}" Background="{TemplateBinding Background}" Foreground="White" Padding="10,5" FontSize="12" />
-                    </StackPanel>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Opacity" Value="0.7" />
-                            <Setter Property="Background" Value="#454545" />
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.5"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <Style x:Key="CustomMenu" TargetType="ContextMenu">
-        <Setter Property="OverridesDefaultStyle" Value="True"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ContextMenu">
-                    <StackPanel Background="#252525">
-                        <Border Margin="0,2" />
-                        <StackPanel IsItemsHost="True">
-                        </StackPanel>
-                        <Border Margin="0,2.5" />
-                    </StackPanel>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+    
+    <!--Scrollbar Color-->
+    <SolidColorBrush x:Key="Brush_Accent" Color="#25FFFFFF" />
 
     <!--Scrollbar style literally ripped from dopamine player
     https://github.com/digimezzo/dopamine-windows/blob/cac327d46172a38a33014c1b261cfbb354caa4ca/Dopamine/Resources/Styles/ScrollBar.xaml-->

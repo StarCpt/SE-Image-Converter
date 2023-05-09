@@ -1,13 +1,15 @@
-﻿<Application x:Class="SEImageToLCD_15BitColor.App"
+﻿<Application x:Class="ImageConverterPlus.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:SEImageToLCD_15BitColor"
+             xmlns:local="clr-namespace:ImageConverterPlus"
              xmlns:AttachedBehavior="SEImageToLCD_15BitColor.ScrollAnimationBehavior"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="\CustomControlsDictionary.xaml" />
+                <ResourceDictionary Source="\Themes\Generic.xaml" />
+                <ResourceDictionary Source="\Converters.xaml" />
                 <!--  FluentWPF Controls  -->
                 <ResourceDictionary Source="pack://application:,,,/FluentWPF;component/Styles/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>

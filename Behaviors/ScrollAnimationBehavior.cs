@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace SEImageToLCD_15BitColor
+namespace ImageConverterPlus.Behaviors
 {
     public static class ScrollAnimationBehavior
     {
@@ -88,7 +88,7 @@ namespace SEImageToLCD_15BitColor
 
         private static void OnVerticalOffsetChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
         {
-            ScrollViewer scrollViewer = target as ScrollViewer;
+            ScrollViewer scrollViewer = (ScrollViewer)target;
 
             if (scrollViewer != null)
             {
@@ -124,15 +124,13 @@ namespace SEImageToLCD_15BitColor
         {
             var target = sender;
 
-            if (target != null && target is ScrollViewer)
+            if (target != null && target is ScrollViewer scroller)
             {
-                ScrollViewer scroller = target as ScrollViewer;
                 scroller.Loaded += new RoutedEventHandler(scrollerLoaded);
             }
 
-            if (target != null && target is ListBox)
+            if (target != null && target is ListBox listbox)
             {
-                ListBox listbox = target as ListBox;
                 listbox.Loaded += new RoutedEventHandler(listboxLoaded);
             }
         }
@@ -179,17 +177,13 @@ namespace SEImageToLCD_15BitColor
 
         private static void UpdateScrollPosition(object sender)
         {
-            ListBox listbox = sender as ListBox;
-
-            if (listbox != null)
+            if (sender is ListBox listbox)
             {
                 double scrollTo = 0;
 
                 for (int i = 0; i < (listbox.SelectedIndex); i++)
                 {
-                    ListBoxItem tempItem = listbox.ItemContainerGenerator.ContainerFromItem(listbox.Items[i]) as ListBoxItem;
-
-                    if (tempItem != null)
+                    if (listbox.ItemContainerGenerator.ContainerFromItem(listbox.Items[i]) is ListBoxItem tempItem)
                     {
                         scrollTo += tempItem.ActualHeight;
                     }
@@ -221,9 +215,10 @@ namespace SEImageToLCD_15BitColor
 
         private static void scrollerLoaded(object sender, RoutedEventArgs e)
         {
-            ScrollViewer scroller = sender as ScrollViewer;
-
-            SetEventHandlersForScrollViewer(scroller);
+            if (sender is ScrollViewer scroller)
+            {
+                SetEventHandlersForScrollViewer(scroller);
+            }
         }
 
         #endregion
@@ -233,7 +228,7 @@ namespace SEImageToLCD_15BitColor
         // and https://stackoverflow.com/questions/665719/wpf-animate-listbox-scrollviewer-horizontaloffset?rq=1
         public static class FindVisualChildHelper
         {
-            public static T GetFirstChildOfType<T>(DependencyObject dependencyObject) where T : DependencyObject
+            public static T? GetFirstChildOfType<T>(DependencyObject dependencyObject) where T : DependencyObject
             {
                 if (dependencyObject == null)
                 {
@@ -258,17 +253,18 @@ namespace SEImageToLCD_15BitColor
 
         private static void listboxLoaded(object sender, RoutedEventArgs e)
         {
-            ListBox listbox = sender as ListBox;
+            if (sender is ListBox listbox)
+            {
+                _listBoxScroller = FindVisualChildHelper.GetFirstChildOfType<ScrollViewer>(listbox);
+                SetEventHandlersForScrollViewer(_listBoxScroller);
 
-            _listBoxScroller = FindVisualChildHelper.GetFirstChildOfType<ScrollViewer>(listbox);
-            SetEventHandlersForScrollViewer(_listBoxScroller);
+                SetTimeDuration(_listBoxScroller, new TimeSpan(0, 0, 0, 0, 200));
+                SetPointsToScroll(_listBoxScroller, 16.0);
 
-            SetTimeDuration(_listBoxScroller, new TimeSpan(0, 0, 0, 0, 200));
-            SetPointsToScroll(_listBoxScroller, 16.0);
-
-            listbox.SelectionChanged += new SelectionChangedEventHandler(ListBoxSelectionChanged);
-            listbox.Loaded += new RoutedEventHandler(ListBoxLoaded);
-            listbox.LayoutUpdated += new EventHandler(ListBoxLayoutUpdated);
+                listbox.SelectionChanged += new SelectionChangedEventHandler(ListBoxSelectionChanged);
+                listbox.Loaded += new RoutedEventHandler(ListBoxLoaded);
+                listbox.LayoutUpdated += new EventHandler(ListBoxLayoutUpdated);
+            }
         }
 
         #endregion
@@ -294,7 +290,7 @@ namespace SEImageToLCD_15BitColor
                 AnimateScroll(scroller, newVOffset);
             }
 
-            intendedLocation = newVOffset.Clamp(0, scroller.ScrollableHeight);
+            intendedLocation = Math.Clamp(newVOffset, 0, scroller.ScrollableHeight);
 
             e.Handled = true;
         }
