@@ -24,7 +24,6 @@ namespace ImageConverterPlus.ViewModels
         private static MainWindow view => MainWindow.Static; //temp
 
         public bool EnableDithering { get => enableDithering; set => SetValue(ref enableDithering, value); }
-        public bool InstantChanges { get => instantChanges; set => SetValue(ref instantChanges, value); }
         public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
         public int LCDWidth { get => lcdWidth; set => SetValue(ref lcdWidth, value); }
         public int LCDHeight { get => lcdHeight; set => SetValue(ref lcdHeight, value); }
@@ -70,11 +69,9 @@ namespace ImageConverterPlus.ViewModels
         public ICommand ZoomToFillCommand { get; }
         public ICommand ResetZoomAndPanCommand { get; }
         public ICommand ImageTransformCommand { get; }
-        public ICommand ConvertImageCommand { get; }
         public ICommand CopyImageToClipboardCommand { get; }
 
         private bool enableDithering;
-        private bool instantChanges;
         private LCDPresetType selectedLCD;
         private int lcdWidth;
         private int lcdHeight;
@@ -90,11 +87,9 @@ namespace ImageConverterPlus.ViewModels
             ZoomToFillCommand = new ButtonCommand(ExecuteZoomToFillCommand);
             ResetZoomAndPanCommand = new ButtonCommand(ExecuteResetZoomAndPanCommand);
             ImageTransformCommand = new ButtonCommand(ExecuteImageTransformCommand);
-            ConvertImageCommand = new ButtonCommand(ExecuteConvertImageCommand);
             CopyImageToClipboardCommand = new ButtonCommand(ExecuteCopyImageToClipboardCommand);
             
             enableDithering = true;
-            instantChanges = true;
             SelectedLCD = LCDPresetType.LCDPanel;
             LCDWidth = 178;
             LCDHeight = 178;
@@ -134,11 +129,6 @@ namespace ImageConverterPlus.ViewModels
             {
                 view.TransformImage(type);
             }
-        }
-
-        private void ExecuteConvertImageCommand(object? param)
-        {
-            view.OnConvertClicked(param);
         }
 
         private void ExecuteCopyImageToClipboardCommand(object? param)

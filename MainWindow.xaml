@@ -44,8 +44,7 @@
     </Window.DataContext>
 
     <DockPanel>
-        <views:WindowTitleBar DockPanel.Dock="Top" Height="32"
-                              Foreground="White">
+        <views:WindowTitleBar DockPanel.Dock="Top" Height="32" Foreground="White">
             <views:WindowTitleBar.Style>
                 <Style TargetType="views:WindowTitleBar">
                     <Setter Property="Background" Value="#e6444444" />
@@ -165,12 +164,6 @@
                     <!-- column 1-->
                     <!--Cool buttons from Dopamine player-->
                     <StackPanel Grid.Column="0" Width="145" Margin="0,5" >
-                        <Button Style="{StaticResource TransparentRoundedButton}" Content="Browse Files" Margin="0,5,0,5" 
-                                x:Name="BrowseFilesBtn" Height="40" FontSize="15" Command="{Binding BrowseFilesCommand}">
-                            <Button.ToolTip>
-                                <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
-                            </Button.ToolTip>
-                        </Button>
                         <Grid Height="25" Margin="5,5">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -251,12 +244,6 @@
 
                     <!--Column 2-->
                     <StackPanel Grid.Column="2" Width="145" Margin="0,5">
-                        <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
-                                      Content="Instant Mode" Margin="5,20,5,0"
-                                      Height="25" IsChecked="{Binding InstantChanges}"
-                                      ToolTip="Apply Changes Instantly">
-                        </ToggleButton>
-
                         <!--LCD Size Controls-->
                         <views:LCDSizeSelector Margin="5,0,5,5" />
                         <!--Image Split Controls-->
@@ -317,12 +304,12 @@
                 </Grid>
             </ScrollViewer>
 
-            <Button Style="{StaticResource TransparentRoundedButton}" x:Name="ConvertBtn"
-                    Content="Convert" Grid.Row="4" Grid.Column="1" Margin="0,5,0,0"
+            <Button Style="{StaticResource TransparentRoundedButton}" x:Name="BrowseFilesBtn"
+                    Content="Browse Files" Grid.Row="4" Grid.Column="1" Margin="0,5,0,0" 
                     Width="145" Height="40" FontSize="15" VerticalAlignment="Top"
-                    Command="{Binding ConvertImageCommand}">
+                    Command="{Binding BrowseFilesCommand}">
                 <Button.ToolTip>
-                    <ToolTip Style="{StaticResource CustomToolTip}" Content="" x:Name="ConvertBtnToolTip" />
+                    <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
                 </Button.ToolTip>
             </Button>
 

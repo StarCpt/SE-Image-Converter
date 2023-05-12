@@ -314,7 +314,6 @@ namespace ImageConverterPlus
                     if (TryConvertFromFile(file))
                     {
                         UpdateBrowseImagesBtn(Path.GetFileName(file), file);
-                        UpdateCurrentConvertBtnToolTip(file, true);
                         Logging.Log("Image Drag & Dropped (FileDrop)");
                         return;
                     }
@@ -329,7 +328,6 @@ namespace ImageConverterPlus
                 if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap", false), true, convertCallback, previewConvertCallback))
                 {
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
-                    UpdateCurrentConvertBtnToolTip("Drag & Droped Image", true);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
                 }
             }
@@ -353,7 +351,6 @@ namespace ImageConverterPlus
                 if (image != null && TryConvertImageThreaded(new ImageInfo(image, url, false), true, convertCallback, previewConvertCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from URL", url);
-                    UpdateCurrentConvertBtnToolTip("Image loaded from image URL", true);
                     Logging.Log($"Image loaded from image URL ({url})");
                 }
             }
@@ -371,7 +368,6 @@ namespace ImageConverterPlus
                     if (image != null && TryConvertImageThreaded(new ImageInfo(image, src, false), true, convertCallback, previewConvertCallback))
                     {
                         UpdateBrowseImagesBtn("Loaded from HTML", src);
-                        UpdateCurrentConvertBtnToolTip("Image loaded from HTML", true);
                         Logging.Log($"Image loaded from HTML ({src})");
                     }
                 }

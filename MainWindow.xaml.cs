@@ -97,8 +97,6 @@ namespace ImageConverterPlus
             ToggleBtn_3BitColor.IsChecked = true;
             ToggleBtn_ScaleBicubic.IsChecked = true;
             //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
-            UpdateCurrentConvertBtnToolTip("No images loaded", true);
-            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
             //OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
 
@@ -141,8 +139,7 @@ namespace ImageConverterPlus
                 if (supportedFlag != IsFileSupportedEnum.NotSupported && TryGetImageInfo(dialog.FileName, supportedFlag, out ImageCache))
                 {
                     UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
-                    UpdateCurrentConvertBtnToolTip(dialog.FileName, true);
-                    if (viewModel.InstantChanges && ImageCache.Image != null)
+                    if (ImageCache.Image != null)
                     {
                         viewModel.ImageSplitSize = new Size(1, 1);
                         UpdatePreviewDelayed(true, 0);
@@ -223,18 +220,6 @@ namespace ImageConverterPlus
                 Logging.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
                 Logging.Log(e.ToString());
                 return IsFileSupportedEnum.NotSupported;
-            }
-        }
-
-        public void OnConvertClicked(object? param)
-        {
-            if (ImageCache.Image != null)
-            {
-                TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
-            }
-            else //should not happen
-            {
-                ShowAcrylDialog("Choose an image first!");
             }
         }
 
@@ -451,10 +436,7 @@ namespace ImageConverterPlus
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            if (viewModel.InstantChanges)
-            {
-                UpdatePreviewDelayed(false, 0);
-            }
+            UpdatePreviewDelayed(false, 0);
         }
 
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
@@ -467,25 +449,18 @@ namespace ImageConverterPlus
                 btn.Key.IsChecked = (btn.Key == thisBtn);
             }
 
-            if (viewModel.InstantChanges)
-            {
-                UpdatePreviewDelayed(false, 0);
-            }
+            UpdatePreviewDelayed(false, 0);
         }
 
         private void EnableDitheringChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (viewModel.InstantChanges)
-            {
-                UpdatePreviewDelayed(false, 0);
-            }
+            UpdatePreviewDelayed(false, 0);
         }
 
         private void ContextMenuItem_DeleteCache(object sender, RoutedEventArgs e)
         {
             ImageCache.Image = null;
             UpdateBrowseImagesBtn(string.Empty, null);
-            UpdateCurrentConvertBtnToolTip("No images loaded", true);
         }
 
         private void PasteFromClipboard(object sender, RoutedEventArgs e)
@@ -496,7 +471,6 @@ namespace ImageConverterPlus
                 if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, convertCallback, previewConvertCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from Clipboard", null);
-                    UpdateCurrentConvertBtnToolTip("Loaded from Clipboard", true);
                     Logging.Log("Image loaded from Clipboard (Bitmap)");
                 }
             }
@@ -508,7 +482,6 @@ namespace ImageConverterPlus
                     if (TryConvertFromFile(filedroplist[i]))
                     {
                         UpdateBrowseImagesBtn(System.IO.Path.GetFileName(filedroplist[i]), filedroplist[i]);
-                        UpdateCurrentConvertBtnToolTip(filedroplist[i], true);
                         Logging.Log("Loaded from Clipboard (FileDrop)");
                         break;
                     }
@@ -532,19 +505,6 @@ namespace ImageConverterPlus
 
         private void ShowAcrylDialog(string message) => new AcrylicDialog(MainWindowWindow, message).ShowDialog();
 
-        private void InstantChangesEnabledChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            Logging.Log($"Instant Changes {(viewModel.InstantChanges ? "en" : "dis")}abled");
-
-            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
-            if (!ConvertBtn.IsEnabled)
-            {
-                UpdateCurrentConvertBtnToolTip("No images loaded", true);
-            }
-
-            //UpdatePreviewDelayed(false, 0);
-            ApplyInstantChanges(false, 0);
-        }
         /// <summary>
         /// does not check if instant change is enabled!
         /// </summary>
@@ -590,7 +550,6 @@ namespace ImageConverterPlus
 
         private void UpdateBrowseImagesBtn(string text, string fullpath)
         {
-            ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             if (!string.IsNullOrEmpty(text))
             {
                 if (!string.IsNullOrEmpty(fullpath))
@@ -608,7 +567,6 @@ namespace ImageConverterPlus
                 BrowseFilesBtn.Content = text;
                 BrowseFilesBtn.FontSize = 12;
                 BrowseFilesBtn.Foreground = Brushes.DarkGray;
-                UpdateCurrentConvertBtnToolTip("No images loaded", true);
             }
             else
             {
@@ -617,15 +575,6 @@ namespace ImageConverterPlus
                 BrowseFilesBtn.FontSize = 15;
                 BrowseFilesBtn.Foreground = Brushes.White;
             }
-        }
-
-        private void UpdateCurrentConvertBtnToolTip(string tooltip, bool enable)
-        {
-            if (string.IsNullOrEmpty(tooltip))
-            {
-                ConvertBtnToolTip.Content = "No images loaded";
-            }
-            else ConvertBtnToolTip.Content = tooltip;
         }
 
         #region custom "Click" event for the app icon
@@ -661,16 +610,13 @@ namespace ImageConverterPlus
             {
                 ImageCache.Image.RotateFlip(type);
 
-                if (viewModel.InstantChanges)
+                if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
                 {
-                    if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
-                    {
-                        TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
-                    }
-                    else
-                    {
-                        UpdatePreviewDelayed(false, 0);
-                    }
+                    TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                }
+                else
+                {
+                    UpdatePreviewDelayed(false, 0);
                 }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");
@@ -681,9 +627,6 @@ namespace ImageConverterPlus
         {
             switch (e.PropertyName)
             {
-                case nameof(MainWindowViewModel.InstantChanges):
-                    InstantChangesEnabledChanged(sender, e);
-                    break;
                 case nameof(MainWindowViewModel.EnableDithering):
                     EnableDitheringChanged(sender, e);
                     break;
@@ -701,21 +644,15 @@ namespace ImageConverterPlus
         {
             viewModel.ImageSplitSize = new Size(1, 1);
 
-            if (viewModel?.InstantChanges ?? false)
-            {
-                UpdatePreviewDelayed(true, 50);
-            }
+            UpdatePreviewDelayed(true, 50);
         }
 
         private void ImageSplitSizeChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (viewModel.InstantChanges)
+            UpdatePreviewGrid();
+            if (ImageCache.Image != null)
             {
-                UpdatePreviewGrid();
-                if (ImageCache.Image != null)
-                {
-                    UpdatePreviewDelayed(true, 100);
-                }
+                UpdatePreviewDelayed(true, 100);
             }
         }
     }
