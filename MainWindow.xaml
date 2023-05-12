@@ -36,27 +36,7 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <Style x:Key="LCDSizeTextBox" TargetType="controls:ScrollablePositiveIntegerTextBox">
-            <Setter Property="Minimum" Value="1" />
-            <Setter Property="Maximum" Value="999" />
-            <Setter Property="ScrollChange" Value="1" />
-            <Setter Property="Width" Value="45" />
-            <Setter Property="Height" Value="20" />
-            <Setter Property="Foreground" Value="DarkGray" />
-            <Setter Property="Background" Value="#25303030" />
-            <Setter Property="BorderBrush" Value="#505050" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding SelectedLCD}" Value="Custom">
-                    <Setter Property="Foreground" Value="White" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style x:Key="LCDPresetButton" TargetType="Button" BasedOn="{StaticResource TransparentRoundedButtonSmall}">
-            <Setter Property="Height" Value="25" />
-            <Setter Property="Margin" Value="0,5,0,0" />
-        </Style>
+        
     </Window.Resources>
 
     <Window.DataContext>
@@ -278,109 +258,7 @@
                         </ToggleButton>
 
                         <!--LCD Size Controls-->
-                        <StackPanel Margin="5,9,5,5">
-                            <Border Background="#05ffffff" CornerRadius="4" Margin="0,0,0,5">
-                                <StackPanel>
-                                    <TextBlock Text="Custom LCD Size" Foreground="White" TextAlignment="Center" Margin="0,7,0,0"/>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
-                                                Margin="0,9.5,0,8.5">
-                                        <!--Width Input-->
-                                        <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDWidth}">
-                                            <i:Interaction.Triggers>
-                                                <i:EventTrigger EventName="ValueChanged">
-                                                    <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />
-                                                </i:EventTrigger>
-                                            </i:Interaction.Triggers>
-                                        </controls:ScrollablePositiveIntegerTextBox>
-                                        <TextBlock Text="x" Foreground="DarkGray" Padding="8.5,1.5,8.5,0" />
-                                        <!--Height Input-->
-                                        <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDHeight}">
-                                            <i:Interaction.Triggers>
-                                                <i:EventTrigger EventName="ValueChanged">
-                                                    <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />
-                                                </i:EventTrigger>
-                                            </i:Interaction.Triggers>
-                                        </controls:ScrollablePositiveIntegerTextBox>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                            <!--LCD Panel-->
-                            <Button Content="LCD Panel" ToolTip="178x178">
-                                <i:Interaction.Triggers>
-                                    <i:EventTrigger EventName="Click">
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDWidth" Value="178" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDHeight" Value="178" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="LCDPanel" />
-                                    </i:EventTrigger>
-                                </i:Interaction.Triggers>
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource LCDPresetButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedLCD}" Value="LCDPanel">
-                                                <Setter Property="Background" Value="#10F0F0F0" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                            <!--Text Panel-->
-                            <Button Content="Text Panel" ToolTip="178x107">
-                                <i:Interaction.Triggers>
-                                    <i:EventTrigger EventName="Click">
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDWidth" Value="178" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDHeight" Value="107" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="TextPanel" />
-                                    </i:EventTrigger>
-                                </i:Interaction.Triggers>
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource LCDPresetButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedLCD}" Value="TextPanel">
-                                                <Setter Property="Background" Value="#10F0F0F0" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                            <!--Wide LCD Panel (Wide)-->
-                            <Button Content="Wide LCD Panel (Wide)" ToolTip="356x178">
-                                <i:Interaction.Triggers>
-                                    <i:EventTrigger EventName="Click">
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDWidth" Value="356" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDHeight" Value="178" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="WideLCDPanel" />
-                                    </i:EventTrigger>
-                                </i:Interaction.Triggers>
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource LCDPresetButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedLCD}" Value="WideLCDPanel">
-                                                <Setter Property="Background" Value="#10F0F0F0" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                            <!--Wide LCD Panel (Tall)-->
-                            <Button Content="Wide LCD Panel (Tall)" ToolTip="178x356">
-                                <i:Interaction.Triggers>
-                                    <i:EventTrigger EventName="Click">
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDWidth" Value="178" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="LCDHeight" Value="356" />
-                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="WideLCDPanelTall" />
-                                    </i:EventTrigger>
-                                </i:Interaction.Triggers>
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource LCDPresetButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SelectedLCD}" Value="WideLCDPanelTall">
-                                                <Setter Property="Background" Value="#10F0F0F0" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </StackPanel>
+                        <views:LCDSizeSelector Margin="5,0,5,5" />
                         <!--Image Split Controls-->
                         <Grid Height="100" Margin="5,5,5,5">
                             <Grid.ColumnDefinitions>
@@ -398,10 +276,17 @@
                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
                                 Height="20" Width="35" HorizontalAlignment="Center"
                                 ContextMenu="{x:Null}"
-                                MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft"
                                 Value="{Binding ImageSplitWidth}"
                                 Minimum="1" Maximum="9" ScrollChange="1"
                                 ToolTip="Width">
+                                <i:Interaction.Triggers>
+                                    <i:EventTrigger EventName="MouseEnter">
+                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
+                                    </i:EventTrigger>
+                                    <i:EventTrigger EventName="MouseLeave">
+                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
+                                    </i:EventTrigger>
+                                </i:Interaction.Triggers>
                             </controls:ScrollablePositiveIntegerTextBox>
                             <Label Grid.ColumnSpan="2" Content="Split Image" Foreground="White" HorizontalContentAlignment="Center" VerticalAlignment="Center" />
                             <Label Content="by" Foreground="DarkGray" HorizontalAlignment="Center" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,7" VerticalAlignment="Bottom" Height="25"/>
@@ -410,10 +295,17 @@
                                 VerticalAlignment="Top" VerticalContentAlignment="Center" BorderBrush="#505050" Foreground="White"
                                 Height="20" Width="35" HorizontalAlignment="Center"
                                 ContextMenu="{x:Null}"
-                                MouseEnter="MenuTextBox_MouseEnteredOrLeft" MouseLeave="MenuTextBox_MouseEnteredOrLeft"
                                 Value="{Binding ImageSplitHeight}"
                                 Minimum="1" Maximum="9" ScrollChange="1"
                                 ToolTip="Height">
+                                <i:Interaction.Triggers>
+                                    <i:EventTrigger EventName="MouseEnter">
+                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
+                                    </i:EventTrigger>
+                                    <i:EventTrigger EventName="MouseLeave">
+                                        <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
+                                    </i:EventTrigger>
+                                </i:Interaction.Triggers>
                             </controls:ScrollablePositiveIntegerTextBox>
                             <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
                                           Content="Show Grid" Margin="0,0,0,5" Height="25" Width="125" Grid.Row="2" Grid.ColumnSpan="2"

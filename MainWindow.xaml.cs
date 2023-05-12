@@ -457,11 +457,7 @@ namespace ImageConverterPlus
             }
         }
 
-        public static bool isMouseOverSizeTextbox = false;
-        private void MenuTextBox_MouseEnteredOrLeft(object sender, MouseEventArgs e)
-        {
-            isMouseOverSizeTextbox = ((UIElement)sender).IsMouseOver;
-        }
+        public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
         private void ScaleOption_Clicked(object sender, RoutedEventArgs e)
         {
