@@ -43,7 +43,18 @@ namespace ImageConverterPlus.Controls
                     FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
                     ValuePropertyChanged));
 
-        public RoutedPropertyChangedEventHandler<int> ValueChanged = delegate { };
+        public static readonly RoutedEvent ValueChangedEvent =
+            EventManager.RegisterRoutedEvent(
+                nameof(ValueChanged),
+                RoutingStrategy.Bubble,
+                typeof(RoutedPropertyChangedEventHandler<int>),
+                typeof(PositiveIntegerTextBox));
+
+        public event RoutedPropertyChangedEventHandler<int> ValueChanged
+        {
+            add => AddHandler(ValueChangedEvent, value);
+            remove => RemoveHandler(ValueChangedEvent, value);
+        }
 
         public int Maximum
         {
@@ -163,7 +174,13 @@ namespace ImageConverterPlus.Controls
 
         protected virtual void OnValueChanged(int oldValue, int newValue)
         {
-            ValueChanged.Invoke(this, new RoutedPropertyChangedEventArgs<int>(oldValue, newValue));
+            RoutedPropertyChangedEventArgs<int> args = new RoutedPropertyChangedEventArgs<int>(oldValue, newValue)
+            {
+                RoutedEvent = ValueChangedEvent,
+                Source = this,
+            };
+
+            RaiseEvent(args);
         }
     }
 }

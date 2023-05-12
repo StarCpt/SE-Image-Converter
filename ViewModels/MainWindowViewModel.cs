@@ -12,7 +12,7 @@ namespace ImageConverterPlus.ViewModels
 {
     public class MainWindowViewModel : NotifyPropertyChangedBase
     {
-        public enum LCDSizeEnum
+        public enum LCDPresetType
         {
             Custom = 0,
             LCDPanel = 1,
@@ -25,43 +25,9 @@ namespace ImageConverterPlus.ViewModels
 
         public bool EnableDithering { get => enableDithering; set => SetValue(ref enableDithering, value); }
         public bool InstantChanges { get => instantChanges; set => SetValue(ref instantChanges, value); }
-        public LCDSizeEnum LCDPresetType { get => lcdPresetType; set => SetValue(ref lcdPresetType, value); }
-        public System.Drawing.Size LCDSize
-        {
-            get => lcdSize;
-            set
-            {
-                bool widthChanged = lcdSize.Width != value.Width;
-                bool heightChanged = lcdSize.Height != value.Height;
-
-                SetValue(ref lcdSize, value);
-
-                if (widthChanged)
-                    RaisePropertyChanged(nameof(LCDWidth));
-
-                if (heightChanged)
-                    RaisePropertyChanged(nameof(LCDHeight));
-            }
-        }
-        public int LCDWidth
-        {
-            get => LCDSize.Width;
-            set
-            {
-                LCDSize = new System.Drawing.Size(value, LCDHeight);
-                LCDPresetType = LCDSizeEnum.Custom;
-            }
-        }
-        public int LCDHeight
-        {
-            get => LCDSize.Height;
-            set
-            {
-                LCDSize = new System.Drawing.Size(LCDWidth, value);
-                LCDPresetType = LCDSizeEnum.Custom;
-            }
-        }
-        public bool LCDSizePresetPicked { get => lcdSizePresetPicked; set => SetValue(ref lcdSizePresetPicked, value); }
+        public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
+        public int LCDWidth { get => lcdWidth; set => SetValue(ref lcdWidth, value); }
+        public int LCDHeight { get => lcdHeight; set => SetValue(ref lcdHeight, value); }
         public System.Drawing.Size ImageSplitSize
         {
             get => imageSplitSize;
@@ -104,18 +70,17 @@ namespace ImageConverterPlus.ViewModels
         public ICommand ZoomToFillCommand { get; }
         public ICommand ResetZoomAndPanCommand { get; }
         public ICommand ImageTransformCommand { get; }
-        public ICommand SetLCDSizeCommand { get; }
         public ICommand ConvertImageCommand { get; }
         public ICommand CopyImageToClipboardCommand { get; }
 
-        private bool enableDithering = true;
-        private bool instantChanges = true;
-        private LCDSizeEnum lcdPresetType = LCDSizeEnum.LCDPanel;
-        private System.Drawing.Size lcdSize = new System.Drawing.Size(178, 178);
-        private bool lcdSizePresetPicked = true;
-        private bool showPreviewGrid = false;
-        private System.Drawing.Size imageSplitSize = new System.Drawing.Size(1, 1);
-        private bool isMouseOverScrollableTextBox = false;
+        private bool enableDithering;
+        private bool instantChanges;
+        private LCDPresetType selectedLCD;
+        private int lcdWidth;
+        private int lcdHeight;
+        private bool showPreviewGrid;
+        private System.Drawing.Size imageSplitSize;
+        private bool isMouseOverScrollableTextBox;
 
         public MainWindowViewModel()
         {
@@ -125,9 +90,17 @@ namespace ImageConverterPlus.ViewModels
             ZoomToFillCommand = new ButtonCommand(ExecuteZoomToFillCommand);
             ResetZoomAndPanCommand = new ButtonCommand(ExecuteResetZoomAndPanCommand);
             ImageTransformCommand = new ButtonCommand(ExecuteImageTransformCommand);
-            SetLCDSizeCommand = new ButtonCommand(ExecuteSetLCDSizeCommand);
             ConvertImageCommand = new ButtonCommand(ExecuteConvertImageCommand);
             CopyImageToClipboardCommand = new ButtonCommand(ExecuteCopyImageToClipboardCommand);
+            
+            enableDithering = true;
+            instantChanges = true;
+            SelectedLCD = LCDPresetType.LCDPanel;
+            LCDWidth = 178;
+            LCDHeight = 178;
+            showPreviewGrid = false;
+            imageSplitSize = new System.Drawing.Size(1, 1);
+            isMouseOverScrollableTextBox = false;
         }
 
         private void ExecuteOpenLogsCommand(object? param)
@@ -160,23 +133,6 @@ namespace ImageConverterPlus.ViewModels
             if (param is RotateFlipType type)
             {
                 view.TransformImage(type);
-            }
-        }
-
-        private void ExecuteSetLCDSizeCommand(object? param)
-        {
-            if (param is int[] size)
-            {
-                LCDSize = new System.Drawing.Size(size[0], size[1]);
-
-                if (LCDSize.Width == 178 && LCDSize.Height == 178)
-                    LCDPresetType = LCDSizeEnum.LCDPanel;
-                else if (LCDSize.Width == 178 && LCDSize.Height == 107)
-                    LCDPresetType = LCDSizeEnum.TextPanel;
-                else if (LCDSize.Width == 356 && LCDSize.Height == 178)
-                    LCDPresetType = LCDSizeEnum.WideLCDPanel;
-                else if (LCDSize.Width == 178 && LCDSize.Height == 356)
-                    LCDPresetType = LCDSizeEnum.WideLCDPanelTall;
             }
         }
 

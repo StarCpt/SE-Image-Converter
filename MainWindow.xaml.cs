@@ -31,6 +31,7 @@ using System.Threading;
 using System.Timers;
 using ImageConverterPlus.ViewModels;
 using System.ComponentModel;
+using ImageConverterPlus.Views;
 
 namespace ImageConverterPlus
 {
@@ -99,7 +100,7 @@ namespace ImageConverterPlus
             UpdateCurrentConvertBtnToolTip("No images loaded", true);
             ConvertBtn.IsEnabled = (!viewModel.InstantChanges && ImageCache.Image != null);
             CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
-            OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
+            //OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
 
             //add buttons to their respective dictionaries.
             scaleButtons = new()
@@ -119,7 +120,6 @@ namespace ImageConverterPlus
             previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
 
             MainWindowWindow.Title = $"SE Image Converter+ v{version}";
-            AppTitleText.Content = $"SE Image Converter+ v{version}";
             AppBigTitle.Content = "SE Image Converter+";
 
             InitImagePreview();
@@ -386,10 +386,9 @@ namespace ImageConverterPlus
                 return false;
             }
         }
-        [Obsolete]
         private Size GetLCDSize()
         {
-            return viewModel.LCDSize;
+            return new Size(viewModel.LCDWidth, viewModel.LCDHeight);
         }
         private DitherMode GetDitherMode()
         {
@@ -692,7 +691,7 @@ namespace ImageConverterPlus
                 case nameof(MainWindowViewModel.EnableDithering):
                     EnableDitheringChanged(sender, e);
                     break;
-                case nameof(MainWindowViewModel.LCDSize):
+                case nameof(MainWindowViewModel.LCDWidth) or nameof(MainWindowViewModel.LCDHeight):
                     LCDSizeChanged(sender, e);
                     break;
                 case nameof(MainWindowViewModel.ImageSplitSize):

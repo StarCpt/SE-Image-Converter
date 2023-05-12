@@ -31,7 +31,7 @@
         </Setter>
     </Style>
 
-    <!-- TransparentRoundedButton -->
+    <!-- TransparentRoundedButton (small) -->
     <Style x:Key="TransparentRoundedButtonSmall" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
@@ -172,6 +172,9 @@
             </Setter.Value>
         </Setter>
     </Style>
+    
+    <!--Scrollbar Color-->
+    <SolidColorBrush x:Key="Brush_Accent" Color="#25FFFFFF" />
 
     <!--Scrollbar style literally ripped from dopamine player
     https://github.com/digimezzo/dopamine-windows/blob/cac327d46172a38a33014c1b261cfbb354caa4ca/Dopamine/Resources/Styles/ScrollBar.xaml-->

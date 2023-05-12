@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows;
 using ImageConverterPlus.Controls;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Behaviors
 {
     public class ValueChangedBehavior
     {

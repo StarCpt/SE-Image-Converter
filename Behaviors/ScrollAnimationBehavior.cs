@@ -10,7 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Behaviors
 {
     public static class ScrollAnimationBehavior
     {

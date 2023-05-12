@@ -4,20 +4,28 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 
 namespace ImageConverterPlus
 {
-    public class BooleanInverterConverter : IValueConverter
+    public class BooleanToVisibilityInverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return !(bool)value;
+            if (value is bool b)
+            {
+                return b ? Visibility.Collapsed : Visibility.Visible;
+            }
+            else
+            {
+                return Visibility.Visible;
+            }
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return !(bool)value;
+            return (value is Visibility vis) && vis != Visibility.Visible;
         }
     }
 }
