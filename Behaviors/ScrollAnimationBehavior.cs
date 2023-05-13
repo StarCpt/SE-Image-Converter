@@ -124,15 +124,13 @@ namespace ImageConverterPlus.Behaviors
         {
             var target = sender;
 
-            if (target != null && target is ScrollViewer)
+            if (target != null && target is ScrollViewer scroller)
             {
-                ScrollViewer scroller = target as ScrollViewer;
                 scroller.Loaded += new RoutedEventHandler(scrollerLoaded);
             }
 
-            if (target != null && target is ListBox)
+            if (target != null && target is ListBox listbox)
             {
-                ListBox listbox = target as ListBox;
                 listbox.Loaded += new RoutedEventHandler(listboxLoaded);
             }
         }
@@ -179,17 +177,13 @@ namespace ImageConverterPlus.Behaviors
 
         private static void UpdateScrollPosition(object sender)
         {
-            ListBox listbox = sender as ListBox;
-
-            if (listbox != null)
+            if (sender is ListBox listbox)
             {
                 double scrollTo = 0;
 
                 for (int i = 0; i < (listbox.SelectedIndex); i++)
                 {
-                    ListBoxItem tempItem = listbox.ItemContainerGenerator.ContainerFromItem(listbox.Items[i]) as ListBoxItem;
-
-                    if (tempItem != null)
+                    if (listbox.ItemContainerGenerator.ContainerFromItem(listbox.Items[i]) is ListBoxItem tempItem)
                     {
                         scrollTo += tempItem.ActualHeight;
                     }
@@ -221,9 +215,10 @@ namespace ImageConverterPlus.Behaviors
 
         private static void scrollerLoaded(object sender, RoutedEventArgs e)
         {
-            ScrollViewer scroller = sender as ScrollViewer;
-
-            SetEventHandlersForScrollViewer(scroller);
+            if (sender is ScrollViewer scroller)
+            {
+                SetEventHandlersForScrollViewer(scroller);
+            }
         }
 
         #endregion
@@ -233,7 +228,7 @@ namespace ImageConverterPlus.Behaviors
         // and https://stackoverflow.com/questions/665719/wpf-animate-listbox-scrollviewer-horizontaloffset?rq=1
         public static class FindVisualChildHelper
         {
-            public static T GetFirstChildOfType<T>(DependencyObject dependencyObject) where T : DependencyObject
+            public static T? GetFirstChildOfType<T>(DependencyObject dependencyObject) where T : DependencyObject
             {
                 if (dependencyObject == null)
                 {
@@ -258,17 +253,18 @@ namespace ImageConverterPlus.Behaviors
 
         private static void listboxLoaded(object sender, RoutedEventArgs e)
         {
-            ListBox listbox = sender as ListBox;
+            if (sender is ListBox listbox)
+            {
+                _listBoxScroller = FindVisualChildHelper.GetFirstChildOfType<ScrollViewer>(listbox);
+                SetEventHandlersForScrollViewer(_listBoxScroller);
 
-            _listBoxScroller = FindVisualChildHelper.GetFirstChildOfType<ScrollViewer>(listbox);
-            SetEventHandlersForScrollViewer(_listBoxScroller);
+                SetTimeDuration(_listBoxScroller, new TimeSpan(0, 0, 0, 0, 200));
+                SetPointsToScroll(_listBoxScroller, 16.0);
 
-            SetTimeDuration(_listBoxScroller, new TimeSpan(0, 0, 0, 0, 200));
-            SetPointsToScroll(_listBoxScroller, 16.0);
-
-            listbox.SelectionChanged += new SelectionChangedEventHandler(ListBoxSelectionChanged);
-            listbox.Loaded += new RoutedEventHandler(ListBoxLoaded);
-            listbox.LayoutUpdated += new EventHandler(ListBoxLayoutUpdated);
+                listbox.SelectionChanged += new SelectionChangedEventHandler(ListBoxSelectionChanged);
+                listbox.Loaded += new RoutedEventHandler(ListBoxLoaded);
+                listbox.LayoutUpdated += new EventHandler(ListBoxLayoutUpdated);
+            }
         }
 
         #endregion
