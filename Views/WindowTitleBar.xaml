@@ -74,8 +74,7 @@
         <StackPanel Orientation="Horizontal">
             <!--App Icon-->
             <Image Margin="8" Source="/icon16.png" Stretch="Uniform"
-                   RenderOptions.BitmapScalingMode="NearestNeighbor"
-                   MouseDown="Image_MouseDown" MouseUp="Image_MouseUp" />
+                   RenderOptions.BitmapScalingMode="NearestNeighbor" />
             <!--App Title-->
             <TextBlock d:Text="SE Image Converter+" VerticalAlignment="Center"
                        WindowChrome.IsHitTestVisibleInChrome="False"

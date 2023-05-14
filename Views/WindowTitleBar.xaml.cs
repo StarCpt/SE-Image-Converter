@@ -24,23 +24,5 @@ namespace ImageConverterPlus.Views
         {
             InitializeComponent();
         }
-
-        private void Image_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            this.CaptureMouse();
-
-            throw new NotImplementedException();
-        }
-
-        private void Image_MouseUp(object sender, MouseButtonEventArgs e)
-        {
-            this.ReleaseMouseCapture();
-            if (this.IsMouseOver)
-            {
-                this.ContextMenu.IsOpen = true;
-            }
-
-            throw new NotImplementedException();
-        }
     }
 }
