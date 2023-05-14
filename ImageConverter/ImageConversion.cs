@@ -5,22 +5,21 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.IO;
-using BitmapImage = System.Windows.Media.Imaging.BitmapImage;
 using System.Drawing.Imaging;
 using System.Threading;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.ImageConverter
 {
     public static class ConvertUtils
     {
-        public static void ChangeBitDepth(byte[] colorArr, byte colorDepth)
+        public static void ChangeBitDepth(byte[] colorArr, int colorDepth)
         {
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);
+            int shiftRight = 8 - colorDepth;
 
             for (int i = 0; i < colorArr.Length; i++)
             {
-                colorArr[i] = (Math.Round(colorArr[i] / colorStepInterval) * colorStepInterval).ToByte();
+                colorArr[i] = Convert.ToByte((colorArr[i] >> shiftRight) * colorStepInterval);
             }
         }
 
@@ -37,129 +36,153 @@ namespace ImageConverterPlus
 
     public class ConvertThread
     {
-        public enum BitDepth
-        {
-            Invalid = -1,
-            Color3 = 3,
-            Color5 = 5,
-        }
-        public enum DitherMode
-        {
-            NoDither = 0,
-            FloydSteinberg = 1,
-        }
-
-        private Bitmap image;
-        private readonly DitherMode ditherMode;
-        private readonly BitDepth colorDepth;
-        private readonly Size lcdSize;
+        private Bitmap bitmap;
         private readonly Size imageSplitSize;
-        private readonly int[] splitPos;
-        private readonly InterpolationMode interpolationMode;
-        private MainWindow.ConvertCallback callback;
-        private readonly float xOffset;
-        private readonly float yOffset;
-        private readonly System.Diagnostics.Stopwatch sw;
-        private bool taskCancelled;
+        private readonly Point splitIndex;
+        private Action<string> callback;
+        private readonly double xOffset;
+        private readonly double yOffset;
+        private ConvertOptions options;
+        private CancellationToken cancelToken;
 
         public ConvertThread(
-            Bitmap image, 
-            DitherMode ditherMode, 
-            BitDepth colorDepth, 
+            Image image, 
+            bool dither, 
+            int colorDepth,
             Size lcdSize, 
             Size imageSplitSize,
-            int[] splitPos,
+            Point splitPos,
             InterpolationMode interpolationMode, 
-            MainWindow.ConvertCallback callback,
-            float xOffset,
-            float yOffset)
+            Action<string> callback,
+            double xOffset,
+            double yOffset,
+            CancellationToken token)
         {
-            this.image = new Bitmap(image);
-            this.ditherMode = ditherMode;
-            this.colorDepth = colorDepth;
-            this.lcdSize = lcdSize;
+            this.bitmap = new Bitmap(image);
             this.imageSplitSize = imageSplitSize;
-            this.splitPos = splitPos;
-            this.interpolationMode = interpolationMode;
+            this.splitIndex = splitPos;
             this.callback = callback;
             this.xOffset = xOffset;
             this.yOffset = yOffset;
 
-            sw = new System.Diagnostics.Stopwatch();
-            taskCancelled = false;
+            double widthScale = (double)bitmap.Width / lcdSize.Width / imageSplitSize.Width;
+            double heightScale = (double)bitmap.Height / lcdSize.Height / imageSplitSize.Height;
+            double biggerScale = Math.Max(widthScale, heightScale);
+
+            widthScale /= biggerScale;
+            heightScale /= biggerScale;
+
+            double bitmapWidthToWidthRatio = widthScale * imageSplitSize.Width;
+            double bitmapHeightToHeightRatio = heightScale * imageSplitSize.Height;
+
+            this.options = new ConvertOptions
+            {
+                Dithering = dither,
+                BitsPerChannel = colorDepth,
+                Interpolation = interpolationMode,
+                ConvertedSize = lcdSize,
+                //Scale = MainWindow.imagePreviewScale * Math.Max(imageSplitSize.Width, imageSplitSize.Height * lcdSize.Height),
+                Scale = Math.Max(bitmapWidthToWidthRatio, bitmapHeightToHeightRatio) * MainWindow.imagePreviewScale,
+                TopLeft = new Point(
+                    (int)xOffset * imageSplitSize.Width + (lcdSize.Width * splitIndex.X),
+                    (int)yOffset * imageSplitSize.Height - (lcdSize.Height * splitIndex.Y)),
+            };
+
+            this.cancelToken = token;
         }
 
-        public void CancelTask()
+        public void ConvertNew()
         {
-            taskCancelled = true;
+            var sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
+            MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {options.BitsPerChannel.ToString()} bit color, {options.Interpolation.ToString()} {bitmap.Size.ToShortString()} to {options.ConvertedSize.ToShortString()} dither: {options.Dithering.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
+
+            Converter converter = new Converter(options);
+            string result = converter.ConvertSafe(bitmap, cancelToken);
+
+            if (!cancelToken.IsCancellationRequested)
+            {
+                callback(result);
+                MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion complete, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
+            else
+            {
+                MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion cancelled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
+
+            bitmap.Dispose();
+            sw.Stop();
+            return;
         }
 
         public void ConvertThreadedFast()
         {
+            var sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
-            MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {colorDepth.ToString()} {interpolationMode.ToString()} {image.Size.ToShortString()} to {lcdSize.ToShortString()} {ditherMode.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
+            MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Started conversion {options.BitsPerChannel.ToString()} bit color, {options.Interpolation.ToString()} {bitmap.Size.ToShortString()} to {options.ConvertedSize.ToShortString()} dither: {options.Dithering.ToString()} {MainWindow.ImageCache.FileNameOrImageSource}");
 
-            double zoom = Math.Min((double)lcdSize.Width * imageSplitSize.Width / image.Width, (double)lcdSize.Height * imageSplitSize.Height / image.Height);
+            double zoom = Math.Min((double)options.ConvertedSize.Width * imageSplitSize.Width / bitmap.Width, (double)options.ConvertedSize.Height * imageSplitSize.Height / bitmap.Height);
             zoom *= MainWindow.imagePreviewScale;
             //zoom *= Math.Max(imageSplitSize.Width, imageSplitSize.Height);
-            image = Scaling.ScaleAndOffset(image, zoom, xOffset * imageSplitSize.Width - lcdSize.Width * splitPos[0], yOffset * imageSplitSize.Height - lcdSize.Height * splitPos[1], interpolationMode, lcdSize);
+            bitmap = Scaling.ScaleAndOffset(bitmap, zoom, xOffset * imageSplitSize.Width - options.ConvertedSize.Width * splitIndex.X, yOffset * imageSplitSize.Height - options.ConvertedSize.Height * splitIndex.Y, options.Interpolation, options.ConvertedSize);
 
-            if (!taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Bitmap scaled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {
-                image.Dispose();
+                bitmap.Dispose();
                 sw.Stop();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion cancelled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 return;
             }
 
-            Rectangle rectangle = new Rectangle(0, 0, image.Width, image.Height);
-            BitmapData bitmapData = image.LockBits(rectangle, ImageLockMode.ReadWrite, image.PixelFormat);
+            Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadWrite, bitmap.PixelFormat);
             IntPtr ptr = bitmapData.Scan0;
 
             //24bppRgb format means theres always 3 channels
             //NOTE: 24bppRgb has red and blue channels swapped!
             const int imgColorChannels = 3;//Image.GetPixelFormatSize(imageBitmap.PixelFormat) / 8;
-            int imgByteWidth = image.Width * imgColorChannels;
+            int imgByteWidth = bitmap.Width * imgColorChannels;
             int strideDiff = bitmapData.Stride - imgByteWidth;
-            int imgByteSize = Math.Abs(bitmapData.Stride) * image.Height;
+            int imgByteSize = Math.Abs(bitmapData.Stride) * bitmap.Height;
             byte[] rawImgBytes = new byte[imgByteSize];
 
             System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
 
-            if (!taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Bitmap locked, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {
-                image.Dispose();
+                bitmap.Dispose();
                 sw.Stop();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion cancelled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 return;
             }
 
-            switch (ditherMode)
+            switch (options.Dithering)
             {
-                case DitherMode.NoDither:
-                    ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
+                case false:
+                    ConvertUtils.ChangeBitDepth(rawImgBytes, options.BitsPerChannel);
                     break;
-                case DitherMode.FloydSteinberg:
-                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
+                case true:
+                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, bitmap.Width, options.BitsPerChannel, bitmapData.Stride);
                     break;
             }
 
-            if (!taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Image processing done, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {
-                image.Dispose();
+                bitmap.Dispose();
                 sw.Stop();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion cancelled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 return;
@@ -169,9 +192,9 @@ namespace ImageConverterPlus
             StringBuilder convertedStrB = new StringBuilder();
             byte[] buffer = new byte[3];
             int bytePos = 0;
-            for (int y = 0; y < image.Height; y++)
+            for (int y = 0; y < bitmap.Height; y++)
             {
-                for (int x = 0; x < image.Width; x++)
+                for (int x = 0; x < bitmap.Width; x++)
                 {
                     for (int c = 0; c < imgColorChannels; c++)
                     {
@@ -180,12 +203,12 @@ namespace ImageConverterPlus
                     }
 
                     //NOTE: 24bppRgb has R and B channels swapped!
-                    switch (colorDepth)
+                    switch (options.BitsPerChannel)
                     {
-                        case BitDepth.Color3:
+                        case 3:
                             convertedStrB.Append(ConvertUtils.ColorTo9BitChar(buffer[2], buffer[1], buffer[0]));
                             break;
-                        case BitDepth.Color5:
+                        case 5:
                             convertedStrB.Append(ConvertUtils.ColorTo15BitChar(buffer[2], buffer[1], buffer[0]));
                             break;
                     }
@@ -199,9 +222,9 @@ namespace ImageConverterPlus
             }
 
             //dispose things I don't need anymore before returning
-            image.Dispose();
+            bitmap.Dispose();
 
-            if (!taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
                 callback(convertedStrB.ToString());
                 MainWindow.Logging.Log($"[Thread:{threadId}] Convert: Conversion complete, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
@@ -217,51 +240,58 @@ namespace ImageConverterPlus
 
     public class PreviewConvertThread
     {
-        private Bitmap image;
-        private readonly ConvertThread.DitherMode ditherMode;
-        private readonly ConvertThread.BitDepth colorDepth;
-        private readonly InterpolationMode interpolationMode;
-        private MainWindow.PreviewConvertCallback callback;
-        private readonly double zoom;
-        private readonly System.Diagnostics.Stopwatch sw;
-        private bool taskCancelled;
+        private Bitmap bitmap;
+        private ConvertOptions options;
+        private Action<System.Windows.Media.Imaging.BitmapImage> callback;
+        private CancellationToken cancelToken;
 
         private const bool debug = true;
 
-        public PreviewConvertThread(
-            Bitmap image,
-            ConvertThread.DitherMode ditherMode,
-            ConvertThread.BitDepth colorDepth,
-            InterpolationMode interpolationMode,
-            MainWindow.PreviewConvertCallback callback,
-            double scale)
+        public PreviewConvertThread(Image image, ConvertOptions options, Action<System.Windows.Media.Imaging.BitmapImage> callback, CancellationToken token)
         {
-            this.image = new Bitmap(image);
-            this.ditherMode = ditherMode;
-            this.colorDepth = colorDepth;
-            this.interpolationMode = interpolationMode;
+            this.bitmap = new Bitmap(image);
+            this.options = options;
             this.callback = callback;
-            this.zoom = scale;
-
-            sw = new System.Diagnostics.Stopwatch();
-            taskCancelled = false;
+            this.cancelToken = token;
         }
 
-        public void CancelTask()
+        public void ConvertPreviewNew()
         {
-            taskCancelled = true;
-        }
-
-        public void ConvertPreviewThreadedFast()
-        {
+            var sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
 
-            image = Scaling.Scale(image, zoom, interpolationMode);
+            Converter converter = new Converter(options);
+            Bitmap result = converter.ConvertToBitmapSafe(bitmap, cancelToken);
 
-            if (taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
-                image.Dispose();
+                if (debug)
+                {
+                    MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished conversion, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+                }
+
+                callback(Helpers.BitmapToBitmapImage(result));
+                MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
+            }
+
+            bitmap.Dispose();
+            result.Dispose();
+            sw.Stop();
+        }
+
+        [Obsolete]
+        public void ConvertPreviewThreadedFast()
+        {
+            var sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            string threadId = Thread.CurrentThread.ManagedThreadId.ToString().PadLeft(3);
+
+            bitmap = Scaling.Scale(bitmap, (double)options.ConvertedSize.Width / (double)bitmap.Width, options.Interpolation);
+
+            if (cancelToken.IsCancellationRequested)
+            {
+                bitmap.Dispose();
                 sw.Stop();
                 return;
             }
@@ -270,14 +300,14 @@ namespace ImageConverterPlus
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap scaled, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
 
-            Rectangle rectangle = new Rectangle(0, 0, image.Width, image.Height);
-            BitmapData bitmapData = image.LockBits(rectangle, ImageLockMode.ReadWrite, image.PixelFormat);
+            Rectangle rectangle = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+            BitmapData bitmapData = bitmap.LockBits(rectangle, ImageLockMode.ReadWrite, bitmap.PixelFormat);
             IntPtr ptr = bitmapData.Scan0;
 
             const int imgColorChannels = 3;
-            int imgByteWidth = image.Width * imgColorChannels;
+            int imgByteWidth = bitmap.Width * imgColorChannels;
             int strideDiff = bitmapData.Stride - imgByteWidth;
-            int imgByteSize = Math.Abs(bitmapData.Stride) * image.Height;
+            int imgByteSize = Math.Abs(bitmapData.Stride) * bitmap.Height;
             byte[] rawImgBytes = new byte[imgByteSize];
             System.Runtime.InteropServices.Marshal.Copy(ptr, rawImgBytes, 0, imgByteSize);
 
@@ -286,19 +316,19 @@ namespace ImageConverterPlus
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Bitmap locked, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
 
-            switch (ditherMode)
+            switch (options.Dithering)
             {
-                case ConvertThread.DitherMode.NoDither:
-                    ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)colorDepth);
+                case false:
+                    ConvertUtils.ChangeBitDepth(rawImgBytes, (byte)options.BitsPerChannel);
                     break;
-                case ConvertThread.DitherMode.FloydSteinberg:
-                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, image.Width, (byte)colorDepth, bitmapData.Stride);
+                case true:
+                    Dithering.ChangeBitDepthAndDitherFastThreaded(rawImgBytes, imgColorChannels, bitmap.Width, (byte)options.BitsPerChannel, bitmapData.Stride);
                     break;
             }
 
-            if (taskCancelled)
+            if (cancelToken.IsCancellationRequested)
             {
-                image.Dispose();
+                bitmap.Dispose();
                 sw.Stop();
                 return;
             }
@@ -308,22 +338,22 @@ namespace ImageConverterPlus
             }
 
             System.Runtime.InteropServices.Marshal.Copy(rawImgBytes, 0, ptr, imgByteSize);
-            image.UnlockBits(bitmapData);
+            bitmap.UnlockBits(bitmapData);
 
-            if (!taskCancelled)
+            if (!cancelToken.IsCancellationRequested)
             {
                 if (debug)
                 {
                     MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished conversion, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
                 }
 
-                callback(Helpers.BitmapToBitmapImage(image));
-                image.Dispose();
+                callback(Helpers.BitmapToBitmapImage(bitmap));
+                bitmap.Dispose();
                 MainWindow.Logging.Log($"[Thread:{threadId}] Preview: Finished processing, {sw.Elapsed.TotalMilliseconds.ToString("0.000")} ms elapsed.");
             }
             else
             {
-                image.Dispose();
+                bitmap.Dispose();
                 sw.Stop();
                 return;
             }
@@ -335,16 +365,6 @@ namespace ImageConverterPlus
         public static byte ToByte(this double num)
         {
             return (byte)Math.Clamp(num, byte.MinValue, byte.MaxValue);
-        }
-
-        public static int ToRoundedInt(this float num)
-        {
-            return (int)Math.Round(num);
-        }
-
-        public static int ToRoundedInt(this double num)
-        {
-            return (int)Math.Round(num);
         }
     }
 }

@@ -10,7 +10,7 @@ using System.Windows.Media.Imaging;
 
 namespace ImageConverterPlus
 {
-    public class Helpers
+    public static class Helpers
     {
         public static bool IsNumeric(string str)
         {

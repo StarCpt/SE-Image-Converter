@@ -5,11 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.ImageConverter
 {
     public class Dithering
     {
-        public static void ChangeBitDepthAndDitherFastThreaded(byte[] colorArr, int colorChannels, int width, byte colorDepth, int imgStride)
+        public static void ChangeBitDepthAndDitherFastThreaded(byte[] colorArr, int colorChannels, int width, int colorDepth, int imgStride)
         {
             int[] bigColorArr = new int[colorArr.Length];
             double colorStepInterval = 255.0 / (Math.Pow(2, colorDepth) - 1);

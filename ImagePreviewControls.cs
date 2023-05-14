@@ -19,8 +19,11 @@ using System.Timers;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Animation;
 using System.ComponentModel;
-using DitherMode = ImageConverterPlus.ConvertThread.DitherMode;
-using BitDepth = ImageConverterPlus.ConvertThread.BitDepth;
+using BitDepth = ImageConverterPlus.ImageConverter.BitDepth;
+using ImageConverterPlus.ImageConverter;
+using System.Threading;
+using System.Drawing.Drawing2D;
+using System.Security.Cryptography;
 
 namespace ImageConverterPlus
 {
@@ -36,10 +39,10 @@ namespace ImageConverterPlus
 
         private Size ImageSplitSize => viewModel.ImageSplitSize;
 
-        private Timer PreviewConvertTimer;
+        private System.Timers.Timer PreviewConvertTimer;
 
-        private Dictionary<ToggleButton, int[]> splitCtrlBtns = new Dictionary<ToggleButton, int[]>();
-        private int[] checkedSplitBtnPos = new int[] { 0, 0 };
+        private Dictionary<ToggleButton, System.Drawing.Point> splitCtrlBtns = new Dictionary<ToggleButton, System.Drawing.Point>();
+        private System.Drawing.Point checkedSplitBtnPos = System.Drawing.Point.Empty;
 
         private ContextMenu PreviewGridMenu;
 
@@ -90,18 +93,33 @@ namespace ImageConverterPlus
 
         public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
 
-        public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, BitDepth colorDepth, DitherMode ditherMode, PreviewConvertCallback previewConvertCallback)
+        public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, int colorDepth, Action<BitmapImage> previewConvertCallback)
         {
-            double scale = Math.Min((double)lcdSize.Width * ImageSplitSize.Width / image.Image.Size.Width, (double)lcdSize.Height * ImageSplitSize.Height / image.Image.Size.Height);
-            scale *= imagePreviewScale;
-
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
-                PreviewConvertThread.CancelTask();
+                PreviewConvertCancellationTokenSource.Cancel();
             }
 
-            PreviewConvertThread = new PreviewConvertThread(image.Image, ditherMode, colorDepth, interpolationMode, previewConvertCallback, scale);
-            PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
+            double widthScale = (double)image.Image.Width / lcdSize.Width / ImageSplitSize.Width;
+            double heightScale = (double)image.Image.Height / lcdSize.Height / ImageSplitSize.Height;
+            double biggerScale = Math.Max(widthScale, heightScale);
+            
+            widthScale /= biggerScale;
+            heightScale /= biggerScale;
+
+            ConvertOptions options = new ConvertOptions
+            {
+                Dithering = viewModel.EnableDithering,
+                Interpolation = interpolationMode,
+                BitsPerChannel = colorDepth,
+                ConvertedSize = new Size(
+                    Convert.ToInt32(lcdSize.Width * widthScale * imagePreviewScale * ImageSplitSize.Width), 
+                    Convert.ToInt32(lcdSize.Height * heightScale * imagePreviewScale * ImageSplitSize.Height)),
+                Scale = 1,
+            };
+            PreviewConvertCancellationTokenSource = new CancellationTokenSource();
+            var previewConverter = new PreviewConvertThread(image.Image, options, previewConvertCallback, PreviewConvertCancellationTokenSource.Token);
+            PreviewConvertTask = Task.Run(previewConverter.ConvertPreviewNew);
         }
 
         public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
@@ -113,20 +131,16 @@ namespace ImageConverterPlus
 
             if (ImageCache.Image == null ||
                 !TryGetInterpolationMode(out InterpolationMode interpolation) ||
-                !TryGetColorBitDepth(out ConvertThread.BitDepth depth))
+                !TryGetColorBitDepth(out BitDepth depth))
             {
                 return;
             }
 
             Size size = GetLCDSize();
-            DitherMode dither = GetDitherMode();
-
-            double scale = Math.Min((double)size.Width * ImageSplitSize.Width / ImageCache.Image.Size.Width, (double)size.Height * ImageSplitSize.Height / ImageCache.Image.Size.Height);
-            scale *= imagePreviewScale;
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
-                PreviewConvertThread.CancelTask();
+                PreviewConvertCancellationTokenSource.Cancel();
             }
 
             if (PreviewConvertTimer != null)
@@ -142,7 +156,7 @@ namespace ImageConverterPlus
                 return;
             }
 
-            PreviewConvertTimer = new Timer(delay)
+            PreviewConvertTimer = new System.Timers.Timer(delay)
             {
                 Enabled = true,
                 AutoReset = false,
@@ -152,8 +166,26 @@ namespace ImageConverterPlus
 
             void UpdatePreviewInternal()
             {
-                PreviewConvertThread = new PreviewConvertThread(ImageCache.Image, dither, depth, interpolation, new PreviewConvertCallback(PreviewConvertResultCallback), scale);
-                PreviewConvertTask = Task.Run(PreviewConvertThread.ConvertPreviewThreadedFast);
+                double widthScale = (double)ImageCache.Image.Width / size.Width / ImageSplitSize.Width;
+                double heightScale = (double)ImageCache.Image.Height / size.Height / ImageSplitSize.Height;
+                double biggerScale = Math.Max(widthScale, heightScale);
+
+                widthScale /= biggerScale;
+                heightScale /= biggerScale;
+
+                ConvertOptions options = new ConvertOptions
+                {
+                    Dithering = viewModel.EnableDithering,
+                    Interpolation = interpolation,
+                    BitsPerChannel = (int)depth,
+                    ConvertedSize = new Size(
+                        Convert.ToInt32(size.Width * widthScale * imagePreviewScale * ImageSplitSize.Width),
+                        Convert.ToInt32(size.Height * heightScale * imagePreviewScale * ImageSplitSize.Height)),
+                    Scale = 1,
+                };
+                PreviewConvertCancellationTokenSource = new CancellationTokenSource();
+                var previewConverter = new PreviewConvertThread(ImageCache.Image, options, PreviewConvertResultCallback, PreviewConvertCancellationTokenSource.Token);
+                PreviewConvertTask = Task.Run(previewConverter.ConvertPreviewNew);
             }
         }
 
@@ -325,7 +357,7 @@ namespace ImageConverterPlus
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
                 Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap", false), true, convertCallback, previewConvertCallback))
+                if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap", false), true, ConvertResultCallback, PreviewConvertResultCallback))
                 {
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
@@ -333,7 +365,7 @@ namespace ImageConverterPlus
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
             {
-                HandleHtmlDropThreadAsync(e.Data);
+                WebHelpers.HandleHtmlDropThreadAsync(e.Data);
             }
             else
             {
@@ -341,112 +373,7 @@ namespace ImageConverterPlus
             }
         }
 
-        private async Task HandleHtmlDropThreadAsync(IDataObject Data)
-        {
-            if (await UrlContainsImageAsync(WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text))))
-            {
-                string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
-
-                Bitmap image = await DownloadImageFromUrlAsync(url);
-                if (image != null && TryConvertImageThreaded(new ImageInfo(image, url, false), true, convertCallback, previewConvertCallback))
-                {
-                    UpdateBrowseImagesBtn("Loaded from URL", url);
-                    Logging.Log($"Image loaded from image URL ({url})");
-                }
-            }
-            else
-            {
-                HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml((string)Data.GetData(DataFormats.Html));
-                HtmlNodeCollection imgNodes = doc.DocumentNode.SelectNodes("//img");
-
-                if (imgNodes != null && imgNodes.Count > 0)
-                {
-                    string src = imgNodes[0].GetAttributeValue("src", null);
-                    src = WebUtility.HtmlDecode(src);
-                    Bitmap image = await DownloadImageFromUrlAsync(src);
-                    if (image != null && TryConvertImageThreaded(new ImageInfo(image, src, false), true, convertCallback, previewConvertCallback))
-                    {
-                        UpdateBrowseImagesBtn("Loaded from HTML", src);
-                        Logging.Log($"Image loaded from HTML ({src})");
-                    }
-                }
-                else
-                {
-                    ShowAcrylDialog("Dropped html does not contain any image links!");
-                }
-            }
-        }
-
-        private async Task<bool> UrlContainsImageAsync(string url)
-        {
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
-            request.Method = "HEAD";
-            using (var response = await request.GetResponseAsync())
-            {
-                return response.ContentType
-                    .ToLowerInvariant()
-                    .StartsWith("image/");
-            }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="url">Returns null if anything fails for whatever reason</param>
-        /// <returns></returns>
-        private async Task<Bitmap> DownloadImageFromUrlAsync(string url)
-        {
-            try
-            {
-                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
-                request.Method = "GET";
-                using (var response = await request.GetResponseAsync())
-                {
-                    string imageType = response.ContentType
-                        .ToLowerInvariant()
-                        .Replace("image/", "");
-                    if (SupportedFileTypes.Any(t => t.Equals(imageType)))
-                    {
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            await response.GetResponseStream().CopyToAsync(ms);
-                            ms.Position = 0;
-
-                            if (imageType == "webp")
-                            {
-                                SixLabors.ImageSharp.Formats.Webp.WebpDecoder webpDecoder = new SixLabors.ImageSharp.Formats.Webp.WebpDecoder();
-                                SixLabors.ImageSharp.Image webpImg = webpDecoder.Decode(SixLabors.ImageSharp.Configuration.Default, ms, System.Threading.CancellationToken.None);
-
-                                SixLabors.ImageSharp.Formats.Bmp.BmpEncoder enc = new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder();
-
-                                using (MemoryStream stream = new MemoryStream())
-                                {
-                                    await webpImg.SaveAsync(stream, enc);
-                                    return new Bitmap(stream);
-                                }
-                            }
-                            else
-                            {
-                                return new Bitmap(ms);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
-                return null;
-            }
-        }
-
-        public delegate void PreviewConvertCallback(BitmapImage resultPreviewImg);
-        private void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
+        public void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
 
         public void ZoomToFit()
         {
@@ -500,7 +427,7 @@ namespace ImageConverterPlus
             PreviewGrid.Children.Clear();
             splitCtrlBtns.Clear();
 
-            checkedSplitBtnPos = new int[] { 0, 0 };
+            checkedSplitBtnPos = System.Drawing.Point.Empty;
             bool firstBtn = true;
 
             if (PreviewGridMenu == null)
@@ -555,7 +482,7 @@ namespace ImageConverterPlus
                     btn.Click += SplitCtrlBtn_Click;
                     btn.ContextMenu = PreviewGridMenu;
                     column.Children.Add(btn);
-                    splitCtrlBtns.Add(btn, new int[]{ x, y });
+                    splitCtrlBtns.Add(btn, new System.Drawing.Point(x, y));
                 }
                 PreviewGrid.Children.Add(column);
             }
@@ -595,7 +522,7 @@ namespace ImageConverterPlus
                     }
                 }
 
-                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, false, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
                 {
                     ShowAcrylDialog($"Convert an image first!");
                 }

@@ -1,12 +1,11 @@
 ﻿using ImageConverterPlus.Base;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using RotateFlipType = System.Drawing.RotateFlipType;
-using Size = System.Windows.Size;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -27,7 +26,7 @@ namespace ImageConverterPlus.ViewModels
         public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
         public int LCDWidth { get => lcdWidth; set => SetValue(ref lcdWidth, value); }
         public int LCDHeight { get => lcdHeight; set => SetValue(ref lcdHeight, value); }
-        public System.Drawing.Size ImageSplitSize
+        public Size ImageSplitSize
         {
             get => imageSplitSize;
             set
@@ -49,7 +48,7 @@ namespace ImageConverterPlus.ViewModels
             get => ImageSplitSize.Width;
             set
             {
-                ImageSplitSize = new System.Drawing.Size(value, ImageSplitHeight);
+                ImageSplitSize = new Size(value, ImageSplitHeight);
             }
         }
         public int ImageSplitHeight
@@ -57,7 +56,7 @@ namespace ImageConverterPlus.ViewModels
             get => ImageSplitSize.Height;
             set
             {
-                ImageSplitSize = new System.Drawing.Size(ImageSplitWidth, value);
+                ImageSplitSize = new Size(ImageSplitWidth, value);
             }
         }
         public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
@@ -76,7 +75,7 @@ namespace ImageConverterPlus.ViewModels
         private int lcdWidth;
         private int lcdHeight;
         private bool showPreviewGrid;
-        private System.Drawing.Size imageSplitSize;
+        private Size imageSplitSize;
         private bool isMouseOverScrollableTextBox;
 
         public MainWindowViewModel()
@@ -94,7 +93,7 @@ namespace ImageConverterPlus.ViewModels
             LCDWidth = 178;
             LCDHeight = 178;
             showPreviewGrid = false;
-            imageSplitSize = new System.Drawing.Size(1, 1);
+            imageSplitSize = new Size(1, 1);
             isMouseOverScrollableTextBox = false;
         }
 

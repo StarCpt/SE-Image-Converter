@@ -7,13 +7,13 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.ImageConverter
 {
     public class Scaling
     {
         public static Bitmap Scale(Bitmap image, double zoom, InterpolationMode mode)
         {
-            Bitmap newImage = new Bitmap((image.Width * zoom).ToRoundedInt(), (image.Height * zoom).ToRoundedInt(), PixelFormat.Format24bppRgb);
+            Bitmap newImage = new Bitmap(Convert.ToInt32(image.Width * zoom), Convert.ToInt32(image.Height * zoom), PixelFormat.Format24bppRgb);
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
@@ -28,9 +28,10 @@ namespace ImageConverterPlus
             return newImage;
         }
 
-        public static Bitmap ScaleAndOffset(Bitmap image, double zoom, float xOff, float yOff, InterpolationMode mode, Size size)
+        public static Bitmap ScaleAndOffset(Bitmap image, double zoom, Point topLeft, InterpolationMode mode, Size size)
         {
             Bitmap newImage = new Bitmap(size.Width, size.Height, PixelFormat.Format24bppRgb);
+            Rectangle destRect = new Rectangle(topLeft, new Size(Convert.ToInt32(image.Width * zoom), Convert.ToInt32(image.Height * zoom)));
 
             using (Graphics g = Graphics.FromImage(newImage))
             {
@@ -39,7 +40,7 @@ namespace ImageConverterPlus
                 g.CompositingMode = CompositingMode.SourceCopy;
                 g.CompositingQuality = CompositingQuality.HighQuality;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(image, xOff.ToRoundedInt(), yOff.ToRoundedInt(), (image.Width * zoom).ToRoundedInt(), (image.Height * zoom).ToRoundedInt());
+                g.DrawImage(image, destRect);
             }
 
             return newImage;

@@ -20,8 +20,8 @@ using System.IO;
 using Brushes = System.Windows.Media.Brushes;
 using System.Windows.Controls.Primitives;
 using System.Diagnostics;
-using BitDepth = ImageConverterPlus.ConvertThread.BitDepth;
-using DitherMode = ImageConverterPlus.ConvertThread.DitherMode;
+using BitDepth = ImageConverterPlus.ImageConverter.BitDepth;
+using DitherMode = ImageConverterPlus.ImageConverter.DitherMode;
 using Size = System.Drawing.Size;
 using Timer = System.Timers.Timer;
 using SixLabors.ImageSharp;
@@ -31,7 +31,7 @@ using System.Threading;
 using System.Timers;
 using ImageConverterPlus.ViewModels;
 using System.ComponentModel;
-using ImageConverterPlus.Views;
+using ImageConverterPlus.ImageConverter;
 
 namespace ImageConverterPlus
 {
@@ -40,7 +40,7 @@ namespace ImageConverterPlus
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "0.9";
+        public const string version = "1.0 Alpha";
 
         private string? ConvertedImageStr;
         public static ImageInfo ImageCache;//load image here first then convert so it can be used again
@@ -55,12 +55,10 @@ namespace ImageConverterPlus
 
         public static Logging Logging { get; private set; }
 
-        private ConvertThread ConvertThread;
-        private PreviewConvertThread PreviewConvertThread;
+        private CancellationTokenSource ConvertCancellationTokenSource;
+        private CancellationTokenSource PreviewConvertCancellationTokenSource;
         private Task ConvertTask;
         private Task PreviewConvertTask;
-        private ConvertCallback convertCallback;
-        private PreviewConvertCallback previewConvertCallback;
 
         public enum ImageInfoType
         {
@@ -74,11 +72,11 @@ namespace ImageConverterPlus
 
         public struct ImageInfo
         {
-            public Bitmap Image;
+            public Bitmap? Image;
             public string FileNameOrImageSource;
             public bool IsFile;
 
-            public ImageInfo(Bitmap image, string fileNameOrOther, bool isFile)
+            public ImageInfo(Bitmap? image, string fileNameOrOther, bool isFile)
             {
                 Image = image;
                 FileNameOrImageSource = fileNameOrOther;
@@ -96,7 +94,6 @@ namespace ImageConverterPlus
             viewModel.PropertyChanged += ViewModel_PropertyChanged;
             ToggleBtn_3BitColor.IsChecked = true;
             ToggleBtn_ScaleBicubic.IsChecked = true;
-            //RemoveImagePreviewBtnSplitGrid.IsEnabled = !InstantChanges;
             CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
             //OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
 
@@ -114,10 +111,7 @@ namespace ImageConverterPlus
                 { ToggleBtn_5BitColor, BitDepth.Color5 },
             };
 
-            convertCallback = new ConvertCallback(ConvertResultCallback);
-            previewConvertCallback = new PreviewConvertCallback(PreviewConvertResultCallback);
-
-            MainWindowWindow.Title = $"SE Image Converter+ v{version}";
+            this.Title = $"SE Image Converter+ v{version}";
             AppBigTitle.Content = "SE Image Converter+";
 
             InitImagePreview();
@@ -190,7 +184,7 @@ namespace ImageConverterPlus
             Webp = 2,
         }
 
-        private static readonly string[] SupportedFileTypes = 
+        public static readonly string[] SupportedFileTypes = 
             { "png", "jpg", "jpeg", "jfif", "tiff", "bmp", "gif", "ico", "webp" };
 
         private IsFileSupportedEnum IsFileTypeSupported(string file)
@@ -252,7 +246,7 @@ namespace ImageConverterPlus
                     if (TryGetImageInfo(imagePath, supportedFlag, out ImageInfo bitImageInfo))
                     {
                         viewModel.ImageSplitSize = new Size(1, 1);
-                        return TryConvertImageThreaded(bitImageInfo, true, convertCallback, previewConvertCallback);
+                        return TryConvertImageThreaded(bitImageInfo, true, ConvertResultCallback, PreviewConvertResultCallback);
                     }
                     else
                     {
@@ -280,7 +274,7 @@ namespace ImageConverterPlus
         /// </summary>
         /// <param name="image"></param>
         /// <returns>whether or not the operation succeeded</returns>
-        private bool TryConvertImageThreaded(ImageInfo image, bool resetZoom, ConvertCallback convertCallback, PreviewConvertCallback previewConvertCallback)
+        public bool TryConvertImageThreaded(ImageInfo image, bool resetZoom, Action<string> convertCallback, Action<BitmapImage> previewConvertCallback)
         {
             try
             {
@@ -297,7 +291,6 @@ namespace ImageConverterPlus
                 }
 
                 Size lcdSize = GetLCDSize();
-                DitherMode ditherMode = GetDitherMode();
 
                 if (image.Image != null)
                 {
@@ -308,15 +301,54 @@ namespace ImageConverterPlus
 
                     if (ConvertTask != null && !ConvertTask.IsCompleted)
                     {
-                        ConvertThread.CancelTask();
+                        ConvertCancellationTokenSource.Cancel();
                     }
 
                     var tt = GetTranslateTransform(ImagePreview);
 
-                    ConvertThread = new ConvertThread(image.Image, ditherMode, colorDepth, lcdSize, ImageSplitSize, checkedSplitBtnPos, interpolationMode, convertCallback, (float)((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / lcdSize.Width)), (float)((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / lcdSize.Height)));
-                    ConvertTask = Task.Run(ConvertThread.ConvertThreadedFast);
+                    double widthScale = (double)image.Image.Width / lcdSize.Width / ImageSplitSize.Width;
+                    double heightScale = (double)image.Image.Height / lcdSize.Height / ImageSplitSize.Height;
+                    double biggerScale = Math.Max(widthScale, heightScale);
 
-                    UpdatePreview(image, lcdSize, interpolationMode, colorDepth, ditherMode, previewConvertCallback);
+                    widthScale /= biggerScale;
+                    heightScale /= biggerScale;
+
+                    double bitmapWidthToWidthRatio = widthScale * ImageSplitSize.Width;
+                    double bitmapHeightToHeightRatio = heightScale * ImageSplitSize.Height;
+
+                    double xOff = (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / lcdSize.Width;
+                    double yOff = (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / lcdSize.Height;
+
+                    double xOffReal = (xOff * ImageSplitSize.Width) + (lcdSize.Width * checkedSplitBtnPos.X);
+                    double yOffReal = (yOff * ImageSplitSize.Height) + (lcdSize.Height * checkedSplitBtnPos.Y);
+
+                    var options = new ConvertOptions
+                    {
+                        Dithering = viewModel.EnableDithering,
+                        BitsPerChannel = (int)colorDepth,
+                        ConvertedSize = lcdSize,
+                        Interpolation = interpolationMode,
+                        Scale = Math.Max(bitmapWidthToWidthRatio, bitmapHeightToHeightRatio) * imagePreviewScale,
+                        TopLeft = new System.Drawing.Point(Convert.ToInt32(xOffReal), Convert.ToInt32(yOffReal)),
+                    };
+                    ConvertCancellationTokenSource = new CancellationTokenSource();
+
+                    var convertThread = new ConvertThread(
+                        image.Image,               // image
+                        viewModel.EnableDithering, // dither
+                        (int)colorDepth,           // colorDepth
+                        lcdSize,                   // lcdSize
+                        ImageSplitSize,            // imageSplitSize
+                        checkedSplitBtnPos,        // splitPos
+                        interpolationMode,         // interpolationMode
+                        convertCallback,           // callback
+                        (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / lcdSize.Width,   // xOffset
+                        (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / lcdSize.Height, // yOffset
+                        ConvertCancellationTokenSource.Token); //token
+
+                    ConvertTask = Task.Run(convertThread.ConvertNew);
+
+                    UpdatePreview(image, lcdSize, interpolationMode, (int)colorDepth, previewConvertCallback);
 
                     ImageCache = image;
 
@@ -337,9 +369,8 @@ namespace ImageConverterPlus
                 return false;
             }
         }
-
-        public delegate void ConvertCallback(string resultStr);
-        private void ConvertResultCallback(string resultStr)
+        
+        public void ConvertResultCallback(string resultStr)
         {
             ConvertedImageStr = resultStr;
             CopyToClipBtn.Dispatcher.Invoke(() => CopyToClipBtn.IsEnabled = true);
@@ -375,6 +406,7 @@ namespace ImageConverterPlus
         {
             return new Size(viewModel.LCDWidth, viewModel.LCDHeight);
         }
+        [Obsolete]
         private DitherMode GetDitherMode()
         {
             if (viewModel.EnableDithering)
@@ -389,7 +421,7 @@ namespace ImageConverterPlus
 
         public void CopyToClipClicked(object? param)
         {
-            if (!TryConvertImageThreaded(ImageCache, false, new ConvertCallback(ConvertCallbackCopyToClip), previewConvertCallback))
+            if (!TryConvertImageThreaded(ImageCache, false, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -468,7 +500,7 @@ namespace ImageConverterPlus
             if (Clipboard.ContainsImage())
             {
                 var image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
-                if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, convertCallback, previewConvertCallback))
+                if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, ConvertResultCallback, PreviewConvertResultCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from Clipboard", null);
                     Logging.Log("Image loaded from Clipboard (Bitmap)");
@@ -503,7 +535,7 @@ namespace ImageConverterPlus
             }
         }
 
-        private void ShowAcrylDialog(string message) => new AcrylicDialog(MainWindowWindow, message).ShowDialog();
+        public static void ShowAcrylDialog(string message) => new AcrylicDialog(Static, message).ShowDialog();
 
         /// <summary>
         /// does not check if instant change is enabled!
@@ -521,9 +553,9 @@ namespace ImageConverterPlus
 
             if (delay == 0)
             {
-                if (/*InstantChanges && */ImageCache.Image != null)
+                if (ImageCache.Image != null)
                 {
-                    TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+                    TryConvertImageThreaded(ImageCache, resetZoom, ConvertResultCallback, PreviewConvertResultCallback);
                 }
                 return;
             }
@@ -536,11 +568,11 @@ namespace ImageConverterPlus
 
             ConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
             {
-                if (/*InstantChanges && */ImageCache.Image != null)
+                if (ImageCache.Image != null)
                 {
-                    Task.Run(() => MainWindowWindow.Dispatcher.Invoke(() =>
+                    Task.Run(() => this.Dispatcher.Invoke(() =>
                     {
-                        TryConvertImageThreaded(ImageCache, resetZoom, convertCallback, previewConvertCallback);
+                        TryConvertImageThreaded(ImageCache, resetZoom, ConvertResultCallback, PreviewConvertResultCallback);
                         ConvertTimer = null;
                     }));
                 }
@@ -548,7 +580,7 @@ namespace ImageConverterPlus
             ConvertTimer.Start();
         }
 
-        private void UpdateBrowseImagesBtn(string text, string fullpath)
+        public void UpdateBrowseImagesBtn(string text, string fullpath)
         {
             if (!string.IsNullOrEmpty(text))
             {
@@ -577,32 +609,7 @@ namespace ImageConverterPlus
             }
         }
 
-        #region custom "Click" event for the app icon
-
-        bool LeftMouseDownOnIcon = false;
-        private void AppTitleIcon_MouseLeftButtonChanged(object sender, MouseButtonEventArgs e)
-        {
-            switch (e.ButtonState)
-            {
-                case MouseButtonState.Pressed:
-                    LeftMouseDownOnIcon = true;
-                    break;
-                case MouseButtonState.Released:
-                    if (LeftMouseDownOnIcon)
-                    {
-                        (sender as System.Windows.Controls.Image).ContextMenu.IsOpen = true;
-                    }
-                    break;  
-            }
-        }
-        private void AppTitleIcon_LostMouseCapture(object sender, MouseEventArgs e)
-        {
-            LeftMouseDownOnIcon = false;
-        }
-
         private void OpenAppDirBtn_Click(object sender, RoutedEventArgs e) => Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
-
-        #endregion custom "Click" event for the app icon
 
         public void TransformImage(RotateFlipType type)
         {
@@ -612,7 +619,7 @@ namespace ImageConverterPlus
 
                 if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
                 {
-                    TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                    TryConvertImageThreaded(ImageCache, true, ConvertResultCallback, PreviewConvertResultCallback);
                 }
                 else
                 {
