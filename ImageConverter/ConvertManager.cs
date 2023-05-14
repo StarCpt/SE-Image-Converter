@@ -37,10 +37,18 @@ namespace ImageConverterPlus.ImageConverter
             TopLeft = new Point(0, 0);
         }
 
-        public string Convert(Bitmap bitmap)
+        public string ConvertToString(Bitmap bitmap, ConvertOptions? options = null)
         {
 
-            return "";
+
+            throw new NotImplementedException();
+        }
+
+        public Bitmap ConvertToBitmap(Bitmap bitmap, ConvertOptions? options = null)
+        {
+
+
+            throw new NotImplementedException();
         }
 
         private ConvertOptions GetOptions() =>

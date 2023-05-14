@@ -24,6 +24,7 @@ using ImageConverterPlus.ImageConverter;
 using System.Threading;
 using System.Drawing.Drawing2D;
 using System.Security.Cryptography;
+using System.Windows.Threading;
 
 namespace ImageConverterPlus
 {
@@ -93,32 +94,46 @@ namespace ImageConverterPlus
 
         public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
 
-        public void UpdatePreview(ImageInfo image, Size lcdSize, InterpolationMode interpolationMode, int colorDepth, Action<BitmapImage> previewConvertCallback)
+        private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, int bitsPerColor, InterpolationMode interpolationMode, Action<BitmapImage> callback)
         {
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
-                PreviewConvertCancellationTokenSource.Cancel();
+                PreviewConvertCancellationTokenSource?.Cancel();
             }
 
-            double widthScale = (double)image.Image.Width / lcdSize.Width / ImageSplitSize.Width;
-            double heightScale = (double)image.Image.Height / lcdSize.Height / ImageSplitSize.Height;
-            double biggerScale = Math.Max(widthScale, heightScale);
-            
-            widthScale /= biggerScale;
-            heightScale /= biggerScale;
+            //scale the bitmap size to the lcd size
+
+            double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
+            double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
+
+            //get the bigger ratio taking into account the image split
+            double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
+
+            double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
+            double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
+
+            //apply preview scale (zoom)
+            scaledImageWidth *= imagePreviewScale;
+            scaledImageHeight *= imagePreviewScale;
+
+            //turn the size from above into lcd width/height % ratio
+            double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
+            double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
+
+            double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
 
             ConvertOptions options = new ConvertOptions
             {
                 Dithering = viewModel.EnableDithering,
                 Interpolation = interpolationMode,
-                BitsPerChannel = colorDepth,
+                BitsPerChannel = bitsPerColor,
                 ConvertedSize = new Size(
-                    Convert.ToInt32(lcdSize.Width * widthScale * imagePreviewScale * ImageSplitSize.Width), 
-                    Convert.ToInt32(lcdSize.Height * heightScale * imagePreviewScale * ImageSplitSize.Height)),
+                    Convert.ToInt32(scaledImageWidth),
+                    Convert.ToInt32(scaledImageHeight)),
                 Scale = 1,
             };
             PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-            var previewConverter = new PreviewConvertThread(image.Image, options, previewConvertCallback, PreviewConvertCancellationTokenSource.Token);
+            var previewConverter = new PreviewConvertThread(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token);
             PreviewConvertTask = Task.Run(previewConverter.ConvertPreviewNew);
         }
 
@@ -136,8 +151,6 @@ namespace ImageConverterPlus
                 return;
             }
 
-            Size size = GetLCDSize();
-
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
                 PreviewConvertCancellationTokenSource.Cancel();
@@ -152,7 +165,7 @@ namespace ImageConverterPlus
 
             if (delay == 0)
             {
-                UpdatePreviewInternal();
+                UpdatePreview(ImageCache.Image, GetLCDSize(), (int)depth, interpolation, PreviewConvertResultCallback);
                 return;
             }
 
@@ -161,32 +174,11 @@ namespace ImageConverterPlus
                 Enabled = true,
                 AutoReset = false,
             };
-            PreviewConvertTimer.Elapsed += (object sender, ElapsedEventArgs e) => ImagePreview.Dispatcher.Invoke(UpdatePreviewInternal);
+            PreviewConvertTimer.Elapsed +=
+                (object sender, ElapsedEventArgs e) =>
+                ImagePreview.Dispatcher.Invoke(
+                    () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)depth, interpolation, PreviewConvertResultCallback));
             PreviewConvertTimer.Start();
-
-            void UpdatePreviewInternal()
-            {
-                double widthScale = (double)ImageCache.Image.Width / size.Width / ImageSplitSize.Width;
-                double heightScale = (double)ImageCache.Image.Height / size.Height / ImageSplitSize.Height;
-                double biggerScale = Math.Max(widthScale, heightScale);
-
-                widthScale /= biggerScale;
-                heightScale /= biggerScale;
-
-                ConvertOptions options = new ConvertOptions
-                {
-                    Dithering = viewModel.EnableDithering,
-                    Interpolation = interpolation,
-                    BitsPerChannel = (int)depth,
-                    ConvertedSize = new Size(
-                        Convert.ToInt32(size.Width * widthScale * imagePreviewScale * ImageSplitSize.Width),
-                        Convert.ToInt32(size.Height * heightScale * imagePreviewScale * ImageSplitSize.Height)),
-                    Scale = 1,
-                };
-                PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-                var previewConverter = new PreviewConvertThread(ImageCache.Image, options, PreviewConvertResultCallback, PreviewConvertCancellationTokenSource.Token);
-                PreviewConvertTask = Task.Run(previewConverter.ConvertPreviewNew);
-            }
         }
 
         public void UpdatePreviewTopLeft(object sender, SizeChangedEventArgs e)

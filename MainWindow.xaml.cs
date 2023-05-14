@@ -278,10 +278,15 @@ namespace ImageConverterPlus
         {
             try
             {
+                int bitsPerColor;
                 if (!TryGetColorBitDepth(out BitDepth colorDepth))
                 {
-                    colorDepth = BitDepth.Color3;
+                    bitsPerColor = 3;
                     ShowAcrylDialog("Color depth error! Defaulting to 3 bits.");
+                }
+                else
+                {
+                    bitsPerColor = (int)colorDepth;
                 }
 
                 if (!TryGetInterpolationMode(out InterpolationMode interpolationMode))
@@ -290,7 +295,7 @@ namespace ImageConverterPlus
                     ShowAcrylDialog("Scaling mode error! Defaulting to Nearest.");
                 }
 
-                Size lcdSize = GetLCDSize();
+                Size convertedSize = GetLCDSize();
 
                 if (image.Image != null)
                 {
@@ -306,49 +311,76 @@ namespace ImageConverterPlus
 
                     var tt = GetTranslateTransform(ImagePreview);
 
-                    double widthScale = (double)image.Image.Width / lcdSize.Width / ImageSplitSize.Width;
-                    double heightScale = (double)image.Image.Height / lcdSize.Height / ImageSplitSize.Height;
-                    double biggerScale = Math.Max(widthScale, heightScale);
+                    //scale the bitmap size to the lcd size
 
-                    widthScale /= biggerScale;
-                    heightScale /= biggerScale;
+                    double imageToLcdWidthRatio = (double)image.Image.Width / convertedSize.Width;
+                    double imageToLcdHeightRatio = (double)image.Image.Height / convertedSize.Height;
 
-                    double bitmapWidthToWidthRatio = widthScale * ImageSplitSize.Width;
-                    double bitmapHeightToHeightRatio = heightScale * ImageSplitSize.Height;
+                    //get the bigger ratio taking into account the image split
+                    double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
 
-                    double xOff = (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / lcdSize.Width;
-                    double yOff = (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / lcdSize.Height;
+                    double scaledImageWidth = image.Image.Width / biggerImageToLcdRatio;
+                    double scaledImageHeight = image.Image.Height / biggerImageToLcdRatio;
 
-                    double xOffReal = (xOff * ImageSplitSize.Width) + (lcdSize.Width * checkedSplitBtnPos.X);
-                    double yOffReal = (yOff * ImageSplitSize.Height) + (lcdSize.Height * checkedSplitBtnPos.Y);
+                    //apply preview scale (zoom)
+                    scaledImageWidth *= imagePreviewScale;
+                    scaledImageHeight *= imagePreviewScale;
+
+                    //turn the size from above into lcd width/height % ratio
+                    double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
+                    double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
+
+                    double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
+
+                    ///
+
+                    //double widthScale = imageToLcdWidthRatio / ImageSplitSize.Width;
+                    //double heightScale = imageToLcdHeightRatio / ImageSplitSize.Height;
+                    //double biggerScale = Math.Max(widthScale, heightScale);
+                    //
+                    //double scaledImageWidthToLcdWidthRatio = imageToLcdWidthRatio / biggerScale;
+                    //double scaledImageHeightToLcdHeightRatio = imageToLcdHeightRatio / biggerScale;
+                    //
+                    //double scale = Math.Max(scaledImageWidthToLcdWidthRatio, scaledImageHeightToLcdHeightRatio) * imagePreviewScale;
+                    //
+                    //widthScale /= biggerScale;
+                    //heightScale /= biggerScale;
+                    //
+                    //double bitmapWidthToWidthRatio = widthScale * ImageSplitSize.Width;
+                    //double bitmapHeightToHeightRatio = heightScale * ImageSplitSize.Height;
+
+                    int xOffset = Convert.ToInt32((tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / convertedSize.Width * ImageSplitSize.Width + (convertedSize.Width * checkedSplitBtnPos.X));
+                    int yOffset = Convert.ToInt32((tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / convertedSize.Height * ImageSplitSize.Height - (convertedSize.Height * checkedSplitBtnPos.Y));
 
                     var options = new ConvertOptions
                     {
                         Dithering = viewModel.EnableDithering,
-                        BitsPerChannel = (int)colorDepth,
-                        ConvertedSize = lcdSize,
+                        BitsPerChannel = bitsPerColor,
+                        ConvertedSize = convertedSize,
                         Interpolation = interpolationMode,
-                        Scale = Math.Max(bitmapWidthToWidthRatio, bitmapHeightToHeightRatio) * imagePreviewScale,
-                        TopLeft = new System.Drawing.Point(Convert.ToInt32(xOffReal), Convert.ToInt32(yOffReal)),
+                        Scale = biggerScaledImageToLcdRatio,
+                        TopLeft = new System.Drawing.Point(xOffset, yOffset),
                     };
                     ConvertCancellationTokenSource = new CancellationTokenSource();
 
-                    var convertThread = new ConvertThread(
-                        image.Image,               // image
-                        viewModel.EnableDithering, // dither
-                        (int)colorDepth,           // colorDepth
-                        lcdSize,                   // lcdSize
-                        ImageSplitSize,            // imageSplitSize
-                        checkedSplitBtnPos,        // splitPos
-                        interpolationMode,         // interpolationMode
-                        convertCallback,           // callback
-                        (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / lcdSize.Width,   // xOffset
-                        (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / lcdSize.Height, // yOffset
-                        ConvertCancellationTokenSource.Token); //token
+                    //var convertThread = new ConvertThread(
+                    //    image.Image,               // image
+                    //    viewModel.EnableDithering, // dither
+                    //    bitsPerColor,              // colorDepth
+                    //    convertedSize,             // lcdSize
+                    //    ImageSplitSize,            // imageSplitSize
+                    //    checkedSplitBtnPos,        // splitPos
+                    //    interpolationMode,         // interpolationMode
+                    //    convertCallback,           // callback
+                    //    (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / convertedSize.Width,   // xOffset
+                    //    (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / convertedSize.Height, // yOffset
+                    //    ConvertCancellationTokenSource.Token); //token
+
+                    var convertThread = new ConvertThread(image.Image, options, convertCallback, ConvertCancellationTokenSource.Token);
 
                     ConvertTask = Task.Run(convertThread.ConvertNew);
 
-                    UpdatePreview(image, lcdSize, interpolationMode, (int)colorDepth, previewConvertCallback);
+                    UpdatePreview(image.Image, convertedSize, (int)bitsPerColor, interpolationMode, previewConvertCallback);
 
                     ImageCache = image;
 
