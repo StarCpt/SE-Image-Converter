@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ImageConverterPlus.ImageConverter
@@ -37,14 +38,13 @@ namespace ImageConverterPlus.ImageConverter
             TopLeft = new Point(0, 0);
         }
 
-        public string ConvertToString(Bitmap bitmap, ConvertOptions? options = null)
+        public string ConvertToString(Image image, ConvertOptions options, CancellationToken token)
         {
-
-
-            throw new NotImplementedException();
+            Converter converter = new Converter(options);
+            return converter.ConvertSafe(image, token);
         }
 
-        public Bitmap ConvertToBitmap(Bitmap bitmap, ConvertOptions? options = null)
+        public Bitmap ConvertToBitmap(Image image, ConvertOptions options)
         {
 
 

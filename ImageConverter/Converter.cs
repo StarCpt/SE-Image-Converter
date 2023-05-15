@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -245,7 +246,13 @@ namespace ImageConverterPlus.ImageConverter
 
             try
             {
+                Stopwatch sw = new Stopwatch();
+                sw.Restart();
+
                 ApplyScaleOffset(ref bitmap);
+
+                long c1 = sw.ElapsedMilliseconds;
+                sw.Restart();
 
                 token.ThrowIfCancellationRequested();
 
@@ -262,9 +269,15 @@ namespace ImageConverterPlus.ImageConverter
 
                 ChangeBitDepth(bitmapBytes, data);
 
+                long c2 = sw.ElapsedMilliseconds;
+                sw.Restart();
+
                 token.ThrowIfCancellationRequested();
 
                 string convertedString = GetConvertedString(bitmapBytes, data);
+
+                long c3 = sw.ElapsedMilliseconds;
+                sw.Restart();
 
                 System.Runtime.InteropServices.Marshal.Copy(bitmapBytes, 0, ptr, sizeInBytes);
 
@@ -286,7 +299,13 @@ namespace ImageConverterPlus.ImageConverter
 
             try
             {
+                Stopwatch sw = new Stopwatch();
+                sw.Restart();
+
                 ApplyScaleOffset(ref bitmap);
+
+                long c1 = sw.ElapsedMilliseconds;
+                sw.Restart();
 
                 token.ThrowIfCancellationRequested();
 
@@ -302,6 +321,9 @@ namespace ImageConverterPlus.ImageConverter
                 System.Runtime.InteropServices.Marshal.Copy(ptr, bitmapBytes, 0, sizeInBytes);
 
                 ChangeBitDepth(bitmapBytes, data);
+
+                long c2 = sw.ElapsedMilliseconds;
+                sw.Restart();
 
                 token.ThrowIfCancellationRequested();
 
@@ -336,16 +358,336 @@ namespace ImageConverterPlus.ImageConverter
                 int channels = Bitmap.GetPixelFormatSize(data.PixelFormat) / 8;
                 int padding = data.Stride - (data.Width * channels);
                 int bitmapWidth = data.Width;
+                int bitmapByteWidth = bitmapWidth * channels;
                 int ditherIterations = DitherOffsets.GetLength(0);
+                bool newoption = true; //false = 3 thread, true = multithread
 
-                //Precalculate dither offsets for pixel format
+                //Precalculate offsets for each dithering iteration for pixel format
                 int[] ditherOffsets = new int[ditherIterations];
                 for (int i = 0; i < ditherIterations; i++)
                 {
                     ditherOffsets[i] = (DitherOffsets[i, 0] * channels) + (DitherOffsets[i, 1] * data.Stride);
                 }
 
-                for (int c = 0; c < channels; c++)
+                #region one thread per color channel
+
+                if (!newoption)
+                {
+                    Parallel.For(0, channels, c => DitherChannel(c));
+                }
+
+                #endregion one thread per color channel
+
+                #region one thread per row
+
+                if (newoption)
+                {
+                    int threadCount = Math.Min(Environment.ProcessorCount * 3, data.Height);
+                    //chunksize = minimum separation between threads
+                    int chunkSize = channels * 20; // temp value
+                    int totalPhases = bitmapByteWidth / chunkSize; //for debugging, not actually used
+                    int totalBlocks = (data.Height - 1) / threadCount + 1;
+
+                    //debug stuff
+                    Stopwatch sw = new Stopwatch();
+                    List<double> swlist = new List<double>();
+                    double totalTime = 0;
+                    //debug stuff end
+
+                    int separation = channels;
+
+                    SemaphoreSlim maxThreadLock = new SemaphoreSlim(threadCount, threadCount);
+                    int[,] rowProgress = new int[data.Height,channels];
+                    //SemaphoreSlim[,] rowLocks = new SemaphoreSlim[data.Height,channels];
+                    object[,] rowLocksObj = new object[data.Height, channels];
+                    Task[,] tasks = new Task[data.Height,channels];
+                    sw.Start();
+                    for (int r = 0; r < data.Height; r++)
+                    {
+                        for (int c = 0; c < channels; c++)
+                        {
+                            maxThreadLock.Wait();
+                            //rowLocks[r,c] = new SemaphoreSlim(1);
+                            rowLocksObj[r, c] = new object();
+                            int row = r;
+                            int channel = c;
+                            tasks[r,c] = Task.Run(() => WorkRowChannel(row, channel));
+                        }
+                    }
+
+                    //for (int r = 0; r < data.Height; r++)
+                    //{
+                    //    maxThreadLock.Wait();
+                    //    rowLocks[r] = new SemaphoreSlim(1);
+                    //    int row = r;
+                    //    tasks[r] = Task.Run(() => WorkRow(row));
+                    //    //if (r >= threadCount)
+                    //    //{
+                    //    //    rowLocks[r - threadCount].Dispose();
+                    //    //    rowLocks[r - threadCount] = null;
+                    //    //}
+                    //}
+
+                    foreach (var task in tasks)
+                    {
+                        task.Wait();
+                    }
+                    double ms = sw.Elapsed.TotalMilliseconds;
+                    //foreach (var l in rowLocks)
+                    //{
+                    //    l.Dispose();
+                    //}
+
+                    return;
+
+                    void WorkRowChannel(int row, int channel)
+                    {
+                        int rowStartIndex = row * data.Stride;
+                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
+
+                        int rowPositionIndex = 0;
+                        for (int i = rowStartIndex; i < rowEndIndex; i += channels)
+                        {
+                            //check the progress of the row above
+                            if (row > 0)
+                            {
+                                lock (rowLocksObj[row - 1, channel])
+                                {
+                                    while (rowProgress[row - 1, channel] - separation <= rowPositionIndex)
+                                    {
+                                        Monitor.Wait(rowLocksObj[row - 1, channel]);
+                                        //rowLocks[row - 1, channel]?.Wait();
+                                    }
+                                }
+                            }
+
+                            byte oldColor = bytes[i];
+                            bytes[i] = Precalc[bytes[i]];
+                            int error = oldColor - bytes[i];
+
+                            if (error != 0)
+                            {
+                                for (int d = 0; d < ditherIterations; d++)
+                                {
+                                    int targetIndex = i + ditherOffsets[d];
+                                    int targetRowIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
+
+                                    bool outOfBounds =
+                                        (targetIndex >= sizeInBytes) ||
+                                        (targetRowIndex < 0) ||
+                                        (targetRowIndex >= bitmapByteWidth);
+
+                                    if (!outOfBounds)
+                                    {
+                                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
+                                    }
+                                }
+                            }
+
+                            rowPositionIndex++;
+                            //rowLocks[row, channel].Release();
+                            lock (rowLocksObj[row, channel])
+                            {
+                                rowProgress[row, channel] = rowPositionIndex;
+                                Monitor.Pulse(rowLocksObj[row, channel]);
+                            }
+                        }
+
+                        //rowLocks[row, channel].Release();
+                        lock (rowLocksObj[row, channel])
+                        {
+                            Interlocked.Add(ref rowProgress[row, channel], separation);
+                            Monitor.Pulse(rowLocksObj[row, channel]);
+                        }
+                        maxThreadLock.Release();
+                    }
+
+                    //void WorkRow(int row)
+                    //{
+                    //    int rowStartIndex = row * data.Stride;
+                    //    int rowEndIndex = rowStartIndex + bitmapByteWidth;
+                    //
+                    //    int rowPositionIndex = 0;
+                    //    for (int i = rowStartIndex; i < rowEndIndex; i++)
+                    //    {
+                    //        //check the progress of the row above
+                    //        if (row > 0)
+                    //        {
+                    //            while (rowProgress[row - 1, 0] - separation <= rowPositionIndex)
+                    //            {
+                    //                rowLocks[row - 1, 0]?.Wait();
+                    //            }
+                    //        }
+                    //
+                    //        byte oldColor = bytes[i];
+                    //        bytes[i] = Precalc[bytes[i]];
+                    //        int error = oldColor - bytes[i];
+                    //
+                    //        if (error != 0)
+                    //        {
+                    //            for (int d = 0; d < ditherIterations; d++)
+                    //            {
+                    //                int targetIndex = i + ditherOffsets[d];
+                    //                int targetRowIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
+                    //
+                    //                bool outOfBounds =
+                    //                    (targetIndex >= sizeInBytes) ||
+                    //                    (targetRowIndex < 0) ||
+                    //                    (targetRowIndex >= bitmapByteWidth);
+                    //
+                    //                if (!outOfBounds)
+                    //                {
+                    //                    bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
+                    //                }
+                    //            }
+                    //        }
+                    //
+                    //        rowPositionIndex++;
+                    //        rowProgress[row, 0] = rowPositionIndex;
+                    //        rowLocks[row, 0].Release();
+                    //    }
+                    //    Interlocked.Add(ref rowProgress[row, 0], separation);
+                    //    rowLocks[row, 0].Release();
+                    //    maxThreadLock.Release();
+                    //}
+
+                    //process the image in chunks
+                    for (int blockIndex = 0; blockIndex < totalBlocks; blockIndex++)
+                    {
+                        sw.Restart();
+                        int fromRow = threadCount * blockIndex;
+                        int toRow = Math.Min(threadCount * (blockIndex + 1), data.Height - 1);
+                        int workerCount = toRow - fromRow;
+
+                        int[] workerPositions = new int[workerCount];
+                        SemaphoreSlim[] workerLocks = new SemaphoreSlim[workerCount];
+
+                        for (int r = 0; r < workerCount; r++)
+                        {
+                            workerLocks[r] = new SemaphoreSlim(1);
+                        }
+
+                        Parallel.For(fromRow, toRow, row =>
+                        {
+                            int rowStartIndex = row * data.Stride;
+                            int rowEndIndex = rowStartIndex + bitmapByteWidth;
+
+                            int workerIndex = row % workerCount; //workerIndex is sequential from top to bottom
+
+                            int rowPositionIndex = 0;
+                            for (int i = rowStartIndex; i < rowEndIndex; i++)
+                            {
+                                //check the progress of the row above
+                                if (workerIndex != 0)
+                                {
+                                    while (workerPositions[workerIndex - 1] - separation <= rowPositionIndex)
+                                    {
+                                        workerLocks[workerIndex - 1].Wait();
+                                    }
+                                }
+
+                                byte oldColor = bytes[i];
+                                bytes[i] = Precalc[bytes[i]];
+                                int error = oldColor - bytes[i];
+
+                                if (error != 0)
+                                {
+                                    for (int d = 0; d < ditherIterations; d++)
+                                    {
+                                        int targetIndex = i + ditherOffsets[d];
+                                        int targetRowIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
+
+                                        bool outOfBounds =
+                                            (targetIndex >= sizeInBytes) ||
+                                            (targetRowIndex < 0) ||
+                                            (targetRowIndex >= bitmapByteWidth);
+
+                                        if (!outOfBounds)
+                                        {
+                                            bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
+                                        }
+                                    }
+                                }
+
+                                rowPositionIndex++;
+                                workerPositions[workerIndex] = rowPositionIndex;
+                                workerLocks[workerIndex].Release();
+                            }
+                            Interlocked.Add(ref workerPositions[workerIndex], separation);
+                        });
+                        sw.Stop();
+                        double time = sw.Elapsed.TotalMilliseconds;
+                        swlist.Add(time);
+                        totalTime += time;
+                    }
+                    #region collapser
+                    ////process the image in chunks
+                    //for (int blockIndex = 0; blockIndex < totalBlocks; blockIndex++)
+                    //{
+                    //    sw.Restart();
+                    //    int fromRow = threadCount * blockIndex;
+                    //    int toRow = Math.Min(threadCount * (blockIndex + 1), data.Height - 1);
+                    //
+                    //    Barrier barrier = new Barrier(toRow - fromRow);
+                    //
+                    //    Parallel.For(fromRow, toRow, row =>
+                    //    {
+                    //        int rowStartIndex = row * data.Stride;
+                    //        int rowEndIndex = rowStartIndex + bitmapByteWidth;
+                    //
+                    //        int startPhase = row % threadCount;
+                    //
+                    //        while (barrier.CurrentPhaseNumber < startPhase)
+                    //        {
+                    //            barrier.SignalAndWait();
+                    //        }
+                    //
+                    //        int rowPositionIndex = 0;
+                    //        for (int i = rowStartIndex; i < rowEndIndex; i++)
+                    //        {
+                    //            byte oldColor = bytes[i];
+                    //            bytes[i] = Precalc[bytes[i]];
+                    //            int error = oldColor - bytes[i];
+                    //
+                    //            if (error != 0)
+                    //            {
+                    //                for (int d = 0; d < ditherIterations; d++)
+                    //                {
+                    //                    int targetIndex = i + ditherOffsets[d];
+                    //                    int targetRowIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
+                    //
+                    //                    bool outOfBounds =
+                    //                        (targetIndex >= sizeInBytes) ||
+                    //                        (targetRowIndex < 0) ||
+                    //                        (targetRowIndex >= bitmapByteWidth);
+                    //
+                    //                    if (!outOfBounds)
+                    //                    {
+                    //                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
+                    //                    }
+                    //                }
+                    //            }
+                    //
+                    //            rowPositionIndex++;
+                    //            if (rowPositionIndex % chunkSize == 0)
+                    //            {
+                    //                barrier.SignalAndWait();
+                    //            }
+                    //        }
+                    //
+                    //        barrier.RemoveParticipant();
+                    //    });
+                    //    sw.Stop();
+                    //    double time = sw.Elapsed.TotalMilliseconds;
+                    //    swlist.Add(time);
+                    //    totalTime += time;
+                    //}
+                    #endregion collapser
+                }
+
+                #endregion one thread per row
+
+                void DitherChannel(int c)
                 {
                     int rowPixelIndex = 0;
 
@@ -383,6 +725,31 @@ namespace ImageConverterPlus.ImageConverter
                     }
                 }
             }
+        }
+
+        public static byte ToByte(double value)
+        {
+            if (value >= 0)
+            {
+                if (value < 255.5)
+                {
+                    byte result = (byte)value;
+                    double dif = value - result;
+                    if (dif > 0.5 || dif == 0.5 && (result & 1) != 0) result++;
+                    return result;
+                }
+            }
+            else
+            {
+                if (value >= -0.5)
+                {
+                    byte result = (byte)value;
+                    double dif = value - result;
+                    if (dif < -0.5 || dif == -0.5 && (result & 1) != 0) result--;
+                    return result;
+                }
+            }
+            throw new OverflowException();
         }
 
         private string GetConvertedString(byte[] bytes, BitmapData data)
