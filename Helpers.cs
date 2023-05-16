@@ -56,6 +56,8 @@ namespace ImageConverterPlus
                 bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
                 bitmapimage.EndInit();
 
+                bitmap.Dispose();
+
                 return bitmapimage;
             }
         }

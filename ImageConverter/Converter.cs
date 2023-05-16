@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -53,10 +54,10 @@ namespace ImageConverterPlus.ImageConverter
         private static readonly double[] DitherWeights =
             new double[4]
             {
-                7.0 / 16.0,
-                3.0 / 16.0,
-                5.0 / 16.0,
-                1.0 / 16.0,
+                7.0 / 16.0, // 0.4375
+                3.0 / 16.0, // 0.1875
+                5.0 / 16.0, // 0.3125
+                1.0 / 16.0, // 0.0625
             };
 
         internal Converter(ConvertOptions options)
@@ -362,8 +363,10 @@ namespace ImageConverterPlus.ImageConverter
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
 
+                int stride = data.Stride;
+                int height = data.Height;
                 int channels = Bitmap.GetPixelFormatSize(data.PixelFormat) / 8;
-                int padding = data.Stride - (data.Width * channels);
+                int padding = stride - (data.Width * channels);
                 int bitmapWidth = data.Width;
                 int bitmapByteWidth = bitmapWidth * channels;
                 int ditherIterations = DitherOffsets.GetLength(0);
@@ -375,7 +378,127 @@ namespace ImageConverterPlus.ImageConverter
                     ditherOffsets[i] = (DitherOffsets[i, 0] * channels) + (DitherOffsets[i, 1] * data.Stride);
                 }
 
-                ParallelUsingManualResetEventPerChannel();
+                ParallelUsingManualResetEvent();
+
+                void ParallelUsingBlock()
+                {
+
+                }
+
+                void ParallelUsingManualResetEvent() // thread per row
+                {
+                    double init = sw.Elapsed.TotalMilliseconds;
+                    sw.Restart();
+
+                    //unchanging
+                    int separation = channels * 2;
+                    int workerCount = Math.Min(Environment.ProcessorCount, height);
+
+                    //Task[] workers = new Task[workerCount];
+                    Queue<Task> workerQueue = new Queue<Task>();
+                    int[] rowProgress = new int[height];
+                    ManualResetEventSlim[] rowLocks = new ManualResetEventSlim[height];
+
+                    SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
+
+                    int r = 0;
+
+                    //for (int w = 0; w < workerCount; w++)
+                    //{
+                    //    int row = r;
+                    //    rowLocks[row] = new ManualResetEventSlim(false);
+                    //    workers[w] = Task.Run(() => DitherRowChannel(row));
+                    //}
+
+                    for (; r < height; r++)
+                    {
+                        maxWorkerLock.Wait();
+                        //int w = Task.WaitAny(workers);
+
+                        int row = r;
+                        rowLocks[row] = new ManualResetEventSlim(false);
+                        workerQueue.Enqueue(Task.Run(() => DitherRowChannel(row)));
+                        //workers[w] = Task.Run(() => DitherRowChannel(row));
+                    }
+
+                    //Task.WaitAll(workers);
+
+                    while (workerQueue.TryDequeue(out Task? result))
+                    {
+                        result.Wait();
+                    }
+
+                    foreach (ManualResetEventSlim resetEvent in rowLocks)
+                    {
+                        resetEvent.Dispose();
+                    }
+
+                    double time = sw.Elapsed.TotalMilliseconds;
+                    sw.Stop();
+
+                    void DitherRowChannel(int row)
+                    {
+                        int rowStartIndex = row * stride;
+                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
+
+                        ManualResetEventSlim rowLock = rowLocks[row];
+                        ManualResetEventSlim? prevRowLock = null;
+                        if (row > 0)
+                        {
+                            prevRowLock = rowLocks[row - 1];
+                        }
+
+                        int rowPositionIndex = 0; //bytes not pixels
+                        for (int i = rowStartIndex; i < rowEndIndex; i += channels)
+                        {
+                            //check the progress of the row above
+                            if (row > 0)
+                            {
+                                while (rowProgress[row - 1] - separation <= rowPositionIndex)
+                                {
+                                    prevRowLock.Wait(Timeout.Infinite, CancellationToken.None);
+                                    prevRowLock.Reset();
+                                }
+                            }
+
+                            byte oldColor = bytes[i];
+                            bytes[i] = Precalc[bytes[i]];
+                            int error = oldColor - bytes[i];
+
+                            if (error != 0)
+                            {
+                                ApplyErrorIntFast(error, i, rowPositionIndex, row);
+                            }
+
+                            oldColor = bytes[i + 1];
+                            bytes[i + 1] = Precalc[bytes[i + 1]];
+                            error = oldColor - bytes[i + 1];
+
+                            if (error != 0)
+                            {
+                                ApplyErrorIntFast(error, i + 1, rowPositionIndex, row);
+                            }
+
+                            oldColor = bytes[i + 2];
+                            bytes[i + 2] = Precalc[bytes[i + 2]];
+                            error = oldColor - bytes[i + 2];
+
+                            if (error != 0)
+                            {
+                                ApplyErrorIntFast(error, i + 2, rowPositionIndex, row);
+                            }
+
+                            rowPositionIndex += channels;
+                            rowProgress[row] = rowPositionIndex;
+                            rowLock.Set();
+                        }
+
+                        rowProgress[row] += separation;
+                        rowLock.Set();
+
+                        maxWorkerLock.Release();
+                    }
+                }
 
                 void ParallelUsingManualResetEventPerChannel() // per row and per channel
                 {
@@ -452,21 +575,7 @@ namespace ImageConverterPlus.ImageConverter
 
                             if (error != 0)
                             {
-                                for (int d = 0; d < ditherIterations; d++)
-                                {
-                                    int targetIndex = i + ditherOffsets[d];
-                                    int targetColumnIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
-
-                                    bool outOfBounds =
-                                        (targetIndex >= sizeInBytes) ||
-                                        (targetColumnIndex < 0) ||
-                                        (targetColumnIndex >= bitmapByteWidth);
-
-                                    if (!outOfBounds)
-                                    {
-                                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
-                                    }
-                                }
+                                ApplyErrorIntFast(error, i, rowPositionIndex, row);
                             }
 
                             rowPositionIndex += channels;
@@ -480,7 +589,6 @@ namespace ImageConverterPlus.ImageConverter
                         maxWorkerLock.Release();
                     }
                 }
-                return;
 
                 void ParallelUsingSpinWaitPerChannel() // per row and per channel
                 {
@@ -544,21 +652,7 @@ namespace ImageConverterPlus.ImageConverter
 
                             if (error != 0)
                             {
-                                for (int d = 0; d < ditherIterations; d++)
-                                {
-                                    int targetIndex = i + ditherOffsets[d];
-                                    int targetColumnIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
-
-                                    bool outOfBounds =
-                                        (targetIndex >= sizeInBytes) ||
-                                        (targetColumnIndex < 0) ||
-                                        (targetColumnIndex >= bitmapByteWidth);
-
-                                    if (!outOfBounds)
-                                    {
-                                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
-                                    }
-                                }
+                                ApplyErrorDoubleFloat(error, i, rowPositionIndex, row);
                             }
 
                             rowPositionIndex += channels;
@@ -636,21 +730,7 @@ namespace ImageConverterPlus.ImageConverter
 
                             if (error != 0)
                             {
-                                for (int d = 0; d < ditherIterations; d++)
-                                {
-                                    int targetIndex = i + ditherOffsets[d];
-                                    int targetColumnIndex = rowPositionIndex + (DitherOffsets[d, 0] * channels);
-
-                                    bool outOfBounds =
-                                        (targetIndex >= sizeInBytes) ||
-                                        (targetColumnIndex < 0) ||
-                                        (targetColumnIndex >= bitmapByteWidth);
-
-                                    if (!outOfBounds)
-                                    {
-                                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
-                                    }
-                                }
+                                ApplyErrorDoubleFloat(error, i, rowPositionIndex, row);
                             }
 
                             rowPositionIndex++;
@@ -728,21 +808,7 @@ namespace ImageConverterPlus.ImageConverter
 
                             if (error != 0)
                             {
-                                for (int d = 0; d < ditherIterations; d++)
-                                {
-                                    int targetIndex = i + ditherOffsets[d];
-                                    int targetRowIndex = rowBytePositionIndex + (DitherOffsets[d, 0] * channels);
-
-                                    bool outOfBounds =
-                                        (targetIndex >= sizeInBytes) ||
-                                        (targetRowIndex < 0) ||
-                                        (targetRowIndex >= bitmapByteWidth);
-
-                                    if (!outOfBounds)
-                                    {
-                                        bytes[targetIndex] = Convert.ToByte(Math.Clamp(bytes[targetIndex] + error * DitherWeights[d], 0.0, 255.0));
-                                    }
-                                }
+                                ApplyErrorDoubleFloat(error, i, rowBytePositionIndex, row);
                             }
 
                             rowBytePositionIndex += channels;
@@ -759,6 +825,62 @@ namespace ImageConverterPlus.ImageConverter
                         }
 
                         maxThreadLock.Release();
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                void ApplyErrorDoubleFloat(int error, int byteIndex, int columnByteIndex, int row)
+                {
+                    if (columnByteIndex + channels < bitmapByteWidth)
+                    {
+                        // 1, 0
+                        bytes[byteIndex + channels] = Convert.ToByte(Math.Clamp(bytes[byteIndex + channels] + error * 0.4375, 0.0, 255.0));
+                    }
+
+                    if (row + 1 < data.Height)
+                    {
+                        if (columnByteIndex - channels >= 0)
+                        {
+                            // -1, 1
+                            bytes[byteIndex - channels + data.Stride] = Convert.ToByte(Math.Clamp(bytes[byteIndex - channels + data.Stride] + error * 0.1875, 0.0, 255.0));
+                        }
+
+                        // 0, 1
+                        bytes[byteIndex + data.Stride] = Convert.ToByte(Math.Clamp(bytes[byteIndex + data.Stride] + error * 0.3125, 0.0, 255.0));
+
+                        if (columnByteIndex + channels < bitmapByteWidth)
+                        {
+                            //1, 1
+                            bytes[byteIndex + channels + data.Stride] = Convert.ToByte(Math.Clamp(bytes[byteIndex + channels + data.Stride] + error * 0.0625, 0.0, 255.0));
+                        }
+                    }
+                }
+
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+                void ApplyErrorIntFast(int error, int byteIndex, int columnByteIndex, int row)
+                {
+                    if (columnByteIndex + channels < bitmapByteWidth)
+                    {
+                        // 1, 0
+                        bytes[byteIndex + channels] = (byte)Math.Clamp(bytes[byteIndex + channels] + ((error * 7) >> 4), 0, 255);
+                    }
+
+                    if (row + 1 < height)
+                    {
+                        if (columnByteIndex - channels >= 0)
+                        {
+                            // -1, 1
+                            bytes[byteIndex - channels + stride] = (byte)Math.Clamp(bytes[byteIndex - channels + stride] + ((error * 3) >> 4), 0, 255);
+                        }
+
+                        // 0, 1
+                        bytes[byteIndex + stride] = (byte)Math.Clamp(bytes[byteIndex + data.Stride] + ((error * 5) >> 4), 0, 255);
+
+                        if (columnByteIndex + channels < bitmapByteWidth)
+                        {
+                            //1, 1
+                            bytes[byteIndex + channels + stride] = (byte)Math.Clamp(bytes[byteIndex + channels + stride] + ((error) >> 4), 0, 255);
+                        }
                     }
                 }
             }
