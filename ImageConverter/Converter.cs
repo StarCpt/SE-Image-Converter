@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 
 namespace ImageConverterPlus.ImageConverter
 {
@@ -35,6 +36,24 @@ namespace ImageConverterPlus.ImageConverter
         public Size ConvertedSize { readonly get; set; }
         public double Scale { readonly get; set; }
         public Point TopLeft { readonly get; set; }
+    }
+
+    internal class ConvertBlock
+    {
+        internal Point StartPosition { get; }
+        internal Size BlockSize { get; }
+        internal Point BlockPosition { get; }
+        internal volatile bool Started;
+        internal volatile bool Completed;
+        internal ManualResetEventSlim ResumeCheckEvent { get; }
+
+        internal ConvertBlock(Point startPosition, Size blockSize, Point blockPosition, ManualResetEventSlim resumeCheckEvent)
+        {
+            StartPosition = startPosition;
+            BlockSize = blockSize;
+            BlockPosition = blockPosition;
+            ResumeCheckEvent = resumeCheckEvent;
+        }
     }
 
     internal class Converter
@@ -378,11 +397,209 @@ namespace ImageConverterPlus.ImageConverter
                     ditherOffsets[i] = (DitherOffsets[i, 0] * channels) + (DitherOffsets[i, 1] * data.Stride);
                 }
 
-                ParallelUsingManualResetEvent();
+                ParallelUsingBlockWithManualResetEvent();
+                //ParallelUsingManualResetEvent();
 
-                void ParallelUsingBlock()
+                void ParallelUsingBlockWithManualResetEvent()
                 {
+                    sw.Start();
+                    int workers = Environment.ProcessorCount;
 
+                    int blockHeight = (int)Math.Ceiling(Math.Sqrt(2 * height));
+                    int blockWidth = (int)Math.Ceiling(bitmapWidth / (blockHeight * (workers - 0.5) + (workers + 0.5)));
+
+                    blockHeight = height;
+                    blockWidth = bitmapWidth / 2;
+
+                    int yBlocks = (height - 1) / blockHeight + 1;
+                    int xBlocks = (bitmapWidth - 1) / blockWidth + 1;
+
+                    ConvertBlock[,] blocks = new ConvertBlock[xBlocks, yBlocks];
+                    BlockingCollection<ConvertBlock> blockQueue = new BlockingCollection<ConvertBlock>(new ConcurrentQueue<ConvertBlock>());
+                    object queueLock = new object();
+
+                    for (int y = 0; y < yBlocks; y++)
+                    {
+                        for (int x = 0; x < xBlocks; x++)
+                        {
+                            Point startPos = new Point(x * blockWidth, y * blockHeight);
+
+                            Size blockSize = new Size(
+                                x == xBlocks - 1 ? (bitmapWidth - 1) % blockWidth + 1 : blockWidth,
+                                y == yBlocks - 1 ? (height - 1) % blockHeight + 1 : blockHeight);
+
+                            Point blockPosition = new Point(x, y);
+
+                            blocks[x, y] = new ConvertBlock(startPos, blockSize, blockPosition, new ManualResetEventSlim(false));
+                        }
+                    }
+
+                    CancellationTokenSource tokenSource = new CancellationTokenSource();
+                    ManualResetEvent completedEvent = new ManualResetEvent(false);
+
+                    for (int t = 0; t < workers; t++)
+                    {
+                        //Task.Run(() => BlockQueueChecker(tokenSource.Token));
+                    }
+
+                    lock (queueLock)
+                    {
+                        //ProcessBlock(blocks[0, 0]);
+                    }
+
+                    for (int y = 0; y < yBlocks; y++)
+                    {
+                        for (int x = 0; x < xBlocks; x++)
+                        {
+                            ProcessPixelBlock(blocks[x, y]);
+                        }
+                    }
+
+                    //completedEvent.WaitOne();
+                    sw.Stop();
+                    double ms = sw.Elapsed.TotalMilliseconds;
+                    return;
+
+                    void BlockQueueChecker(CancellationToken token)
+                    {
+                        try
+                        {
+                            while (true)
+                            {
+                                ProcessPixelBlock(blockQueue.Take(token));
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            return;
+                        }
+                    }
+
+                    void ProcessPixelBlock(ConvertBlock block)
+                    {
+                        block.Started = true;
+
+                        int startWidth = block.StartPosition.X;
+                        int startHeight = block.StartPosition.Y;
+
+                        int endWidth = block.StartPosition.X + block.BlockSize.Width;
+                        int endHeight = block.StartPosition.Y + block.BlockSize.Height;
+
+                        for (int y = startHeight; y < endHeight; y++)
+                        {
+                            for (int x = startWidth; x < endWidth; x++)
+                            {
+                                int bytePos = y * stride + x;
+
+                                byte oldColor = bytes[bytePos];
+                                bytes[bytePos] = Precalc[bytes[bytePos]];
+                                int error = oldColor - (bytes[bytePos]);
+
+                                if (error != 0)
+                                {
+                                    ApplyErrorIntFast(error, bytePos, x, y);
+                                }
+
+                                bytePos++;
+
+                                oldColor = bytes[bytePos];
+                                bytes[bytePos] = Precalc[bytes[bytePos]];
+                                error = oldColor - (bytes[bytePos]);
+
+                                if (error != 0)
+                                {
+                                    ApplyErrorIntFast(error, bytePos, x, y);
+                                }
+
+                                bytePos++;
+
+                                oldColor = bytes[bytePos];
+                                bytes[bytePos] = Precalc[bytes[bytePos]];
+                                error = oldColor - (bytes[bytePos]);
+
+                                if (error != 0)
+                                {
+                                    ApplyErrorIntFast(error, bytePos, x, y);
+                                }
+                            }
+                        }
+
+                        block.Completed = true;
+
+                        lock (queueLock)
+                        {
+                            bool canRightBlockStart = 
+                                (block.BlockPosition.Y == 0 || blocks[block.BlockPosition.X, block.BlockPosition.Y - 1].Completed)
+                                && block.BlockPosition.X != xBlocks - 1
+                                && !blocks[block.BlockPosition.X + 1, block.BlockPosition.Y].Started;
+                            bool canBottomBlockStart =
+                                (block.BlockPosition.X == 0 || blocks[block.BlockPosition.X - 1, block.BlockPosition.Y].Completed)
+                                && block.BlockPosition.Y != yBlocks - 1
+                                && !blocks[block.BlockPosition.X, block.BlockPosition.Y + 1].Started;
+
+                            if (canRightBlockStart)
+                            {
+                                blockQueue.Add(blocks[block.BlockPosition.X + 1, block.BlockPosition.Y]);
+                            }
+
+                            if (canBottomBlockStart)
+                            {
+                                blockQueue.Add(blocks[block.BlockPosition.X, block.BlockPosition.Y + 1]);
+                            }
+                        }
+
+                        if (block.BlockPosition.Y == yBlocks - 1 && block.BlockPosition.X == xBlocks - 1)
+                        {
+                            completedEvent.Set();
+                        }
+                    }
+                }
+
+                void DitherPixelBlock(int startWidth, int startHeight, int endWidth, int endHeight)
+                {
+                    for (int y = startHeight; y < endHeight; y++)
+                    {
+                        for (int x = startWidth; x < endWidth; x++)
+                        {
+                            DitherPixel(x, y);
+                        }
+                    }
+                }
+
+                void DitherPixel(int x, int y)
+                {
+                    int bytePos = (y * stride) + (x * channels);
+
+                    byte oldColor = bytes[bytePos];
+                    bytes[bytePos] = Precalc[bytes[bytePos]];
+                    int error = oldColor - (bytes[bytePos]);
+
+                    if (error != 0)
+                    {
+                        ApplyErrorIntFast(error, bytePos, x, y);
+                    }
+
+                    bytePos++;
+
+                    oldColor = bytes[bytePos];
+                    bytes[bytePos] = Precalc[bytes[bytePos]];
+                    error = oldColor - (bytes[bytePos]);
+
+                    if (error != 0)
+                    {
+                        ApplyErrorIntFast(error, bytePos, x, y);
+                    }
+
+                    bytePos++;
+
+                    oldColor = bytes[bytePos];
+                    bytes[bytePos] = Precalc[bytes[bytePos]];
+                    error = oldColor - (bytes[bytePos]);
+
+                    if (error != 0)
+                    {
+                        ApplyErrorIntFast(error, bytePos, x, y);
+                    }
                 }
 
                 void ParallelUsingManualResetEvent() // thread per row

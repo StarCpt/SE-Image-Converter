@@ -10,6 +10,7 @@ using System.Threading;
 
 namespace ImageConverterPlus.ImageConverter
 {
+    [Obsolete]
     public class ConvertThread
     {
         private Bitmap bitmap;
@@ -55,6 +56,7 @@ namespace ImageConverterPlus.ImageConverter
         }
     }
 
+    [Obsolete]
     public class PreviewConvertThread
     {
         private Bitmap bitmap;

@@ -9,7 +9,7 @@
     <PackageIconUrl />
     <ApplicationIcon>icon16.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>False</SignAssembly>
     <AssemblyOriginatorKeyFile>starcptdigitalsignature.pfx</AssemblyOriginatorKeyFile>
     <DelaySign>false</DelaySign>
     <AssemblyVersion>0.9</AssemblyVersion>
