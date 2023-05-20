@@ -21,7 +21,8 @@ namespace ImageConverterPlus
                 string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, url, false), true, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                MainWindow.Static.ResetPreviewZoomAndPan(true);
+                if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, url), Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                 {
                     Static.UpdateBrowseImagesBtn("Loaded from URL", url);
                     MainWindow.Logging.Log($"Image loaded from image URL ({url})");
@@ -38,7 +39,8 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, src, false), true, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                    MainWindow.Static.ResetPreviewZoomAndPan(true);
+                    if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, src), Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                     {
                         Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
                         MainWindow.Logging.Log($"Image loaded from HTML ({src})");
@@ -113,6 +115,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
+                MainWindow.Logging.Log(e.ToString());
                 ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
                 return null;
             }

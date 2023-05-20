@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net5.0-windows</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <RootNamespace>ImageConverterPlus</RootNamespace>
     <UseWPF>true</UseWPF>
     <PackageIcon>15icon_16x16.png</PackageIcon>
@@ -56,10 +56,10 @@
 
   <ItemGroup>
     <PackageReference Include="FluentWPF" Version="0.10.2" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.43" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
     <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.2" />
-    <PackageReference Include="System.Drawing.Common" Version="6.0.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.4" />
+    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

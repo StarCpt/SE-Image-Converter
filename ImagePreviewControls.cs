@@ -94,7 +94,7 @@ namespace ImageConverterPlus
 
         public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
 
-        private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, int bitsPerColor, InterpolationMode interpolationMode, Action<BitmapImage> callback)
+        private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, int bitsPerColor, InterpolationMode interpolationMode, Action<Bitmap> callback)
         {
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
@@ -102,6 +102,8 @@ namespace ImageConverterPlus
             }
 
             //scale the bitmap size to the lcd size
+
+            Monitor.Enter(imageToConvert);
 
             double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
             double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
@@ -111,6 +113,8 @@ namespace ImageConverterPlus
 
             double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
             double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
+
+            Monitor.Exit(imageToConvert);
 
             //apply preview scale (zoom)
             scaledImageWidth *= imagePreviewScale;
@@ -133,8 +137,7 @@ namespace ImageConverterPlus
                 Scale = 1,
             };
             PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-            var previewConverter = new PreviewConvertThread(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token);
-            PreviewConvertTask = Task.Run(previewConverter.ConvertPreviewNew);
+            PreviewConvertTask = Task.Run(() => ConvertManager.Instance.ConvertToBitmap(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
         }
 
         public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
@@ -349,7 +352,8 @@ namespace ImageConverterPlus
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
                 Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap", false), true, ConvertResultCallback, PreviewConvertResultCallback))
+                ResetPreviewZoomAndPan(true);
+                if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap"), ConvertResultCallback, PreviewConvertResultCallback))
                 {
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
@@ -365,7 +369,7 @@ namespace ImageConverterPlus
             }
         }
 
-        public void PreviewConvertResultCallback(BitmapImage resultPreviewImg) => ChangePreviewThreadSafe(resultPreviewImg);
+        public void PreviewConvertResultCallback(Bitmap resultPreviewImg) => ChangePreviewThreadSafe(Helpers.BitmapToBitmapImage(resultPreviewImg));
 
         public void ZoomToFit()
         {
@@ -514,7 +518,7 @@ namespace ImageConverterPlus
                     }
                 }
 
-                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, false, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
+                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
                 {
                     ShowAcrylDialog($"Convert an image first!");
                 }

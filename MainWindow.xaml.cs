@@ -57,7 +57,6 @@ namespace ImageConverterPlus
 
         private CancellationTokenSource ConvertCancellationTokenSource;
         private CancellationTokenSource PreviewConvertCancellationTokenSource;
-        private Task ConvertTask;
         private Task PreviewConvertTask;
 
         public enum ImageInfoType
@@ -74,13 +73,11 @@ namespace ImageConverterPlus
         {
             public Bitmap? Image;
             public string FileNameOrImageSource;
-            public bool IsFile;
 
-            public ImageInfo(Bitmap? image, string fileNameOrOther, bool isFile)
+            public ImageInfo(Bitmap? image, string fileNameOrOther)
             {
                 Image = image;
                 FileNameOrImageSource = fileNameOrOther;
-                IsFile = isFile;
             }
         }
 
@@ -154,25 +151,25 @@ namespace ImageConverterPlus
                 if (supEnum == IsFileSupportedEnum.Supported)
                 {
                     Bitmap bitmap = new(filePath);
-                    result = new ImageInfo(bitmap, filePath, true);
+                    result = new ImageInfo(bitmap, filePath);
                     return true;
                 }
                 else if (supEnum == IsFileSupportedEnum.Webp)
                 {
                     Bitmap bitmap = DecodeWebpImage(filePath);
-                    result = new ImageInfo(bitmap, filePath, true);
+                    result = new ImageInfo(bitmap, filePath);
                     return true;
                 }
                 else
                 {
-                    result = new ImageInfo(null, filePath, true);
+                    result = new ImageInfo(null, filePath);
                     return false;
                 }
             }
             catch (Exception e)
             {
                 Logging.Log(e.ToString());
-                result = new ImageInfo(null, filePath, true);
+                result = new ImageInfo(null, filePath);
                 return false;
             }
         }
@@ -246,7 +243,8 @@ namespace ImageConverterPlus
                     if (TryGetImageInfo(imagePath, supportedFlag, out ImageInfo bitImageInfo))
                     {
                         viewModel.ImageSplitSize = new Size(1, 1);
-                        return TryConvertImageThreaded(bitImageInfo, true, ConvertResultCallback, PreviewConvertResultCallback);
+                        ResetPreviewZoomAndPan(true);
+                        return TryConvertImageThreaded(bitImageInfo, ConvertResultCallback, PreviewConvertResultCallback);
                     }
                     else
                     {
@@ -274,19 +272,14 @@ namespace ImageConverterPlus
         /// </summary>
         /// <param name="image"></param>
         /// <returns>whether or not the operation succeeded</returns>
-        public bool TryConvertImageThreaded(ImageInfo image, bool resetZoom, Action<string> convertCallback, Action<BitmapImage> previewConvertCallback)
+        public bool TryConvertImageThreaded(ImageInfo image, Action<string> convertCallback, Action<Bitmap> previewConvertCallback)
         {
             try
             {
-                int bitsPerColor;
                 if (!TryGetColorBitDepth(out BitDepth colorDepth))
                 {
-                    bitsPerColor = 3;
+                    colorDepth = BitDepth.Color3;
                     ShowAcrylDialog("Color depth error! Defaulting to 3 bits.");
-                }
-                else
-                {
-                    bitsPerColor = (int)colorDepth;
                 }
 
                 if (!TryGetInterpolationMode(out InterpolationMode interpolationMode))
@@ -299,15 +292,10 @@ namespace ImageConverterPlus
 
                 if (image.Image != null)
                 {
-                    if (resetZoom)
-                    {
-                        ResetPreviewZoomAndPan(false);
-                    }
-
-                    if (ConvertTask != null && !ConvertTask.IsCompleted)
-                    {
-                        ConvertCancellationTokenSource.Cancel();
-                    }
+                    //if (ConvertTask != null && !ConvertTask.IsCompleted)
+                    //{
+                    //    ConvertCancellationTokenSource.Cancel();
+                    //}
 
                     var tt = GetTranslateTransform(ImagePreview);
 
@@ -332,55 +320,22 @@ namespace ImageConverterPlus
 
                     double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
 
-                    ///
+                    int xOffset = Convert.ToInt32((tt.X - PreviewTopLeft.X) / (ImagePreviewBorder.ActualWidth / convertedSize.Width) * ImageSplitSize.Width - (convertedSize.Width * checkedSplitBtnPos.X));
+                    int yOffset = Convert.ToInt32((tt.Y - PreviewTopLeft.Y) / (ImagePreviewBorder.ActualHeight / convertedSize.Height) * ImageSplitSize.Height - (convertedSize.Height * checkedSplitBtnPos.Y));
 
-                    //double widthScale = imageToLcdWidthRatio / ImageSplitSize.Width;
-                    //double heightScale = imageToLcdHeightRatio / ImageSplitSize.Height;
-                    //double biggerScale = Math.Max(widthScale, heightScale);
-                    //
-                    //double scaledImageWidthToLcdWidthRatio = imageToLcdWidthRatio / biggerScale;
-                    //double scaledImageHeightToLcdHeightRatio = imageToLcdHeightRatio / biggerScale;
-                    //
-                    //double scale = Math.Max(scaledImageWidthToLcdWidthRatio, scaledImageHeightToLcdHeightRatio) * imagePreviewScale;
-                    //
-                    //widthScale /= biggerScale;
-                    //heightScale /= biggerScale;
-                    //
-                    //double bitmapWidthToWidthRatio = widthScale * ImageSplitSize.Width;
-                    //double bitmapHeightToHeightRatio = heightScale * ImageSplitSize.Height;
-
-                    int xOffset = Convert.ToInt32((tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / convertedSize.Width * ImageSplitSize.Width + (convertedSize.Width * checkedSplitBtnPos.X));
-                    int yOffset = Convert.ToInt32((tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / convertedSize.Height * ImageSplitSize.Height - (convertedSize.Height * checkedSplitBtnPos.Y));
+                    UpdatePreview(image.Image, convertedSize, (int)colorDepth, interpolationMode, previewConvertCallback);
 
                     var options = new ConvertOptions
                     {
                         Dithering = viewModel.EnableDithering,
-                        BitsPerChannel = bitsPerColor,
+                        BitsPerChannel = (int)colorDepth,
                         ConvertedSize = convertedSize,
                         Interpolation = interpolationMode,
                         Scale = biggerScaledImageToLcdRatio,
                         TopLeft = new System.Drawing.Point(xOffset, yOffset),
                     };
                     ConvertCancellationTokenSource = new CancellationTokenSource();
-
-                    //var convertThread = new ConvertThread(
-                    //    image.Image,               // image
-                    //    viewModel.EnableDithering, // dither
-                    //    bitsPerColor,              // colorDepth
-                    //    convertedSize,             // lcdSize
-                    //    ImageSplitSize,            // imageSplitSize
-                    //    checkedSplitBtnPos,        // splitPos
-                    //    interpolationMode,         // interpolationMode
-                    //    convertCallback,           // callback
-                    //    (tt.X - PreviewTopLeft.X) / ImagePreviewBorder.ActualWidth / convertedSize.Width,   // xOffset
-                    //    (tt.Y - PreviewTopLeft.Y) / ImagePreviewBorder.ActualHeight / convertedSize.Height, // yOffset
-                    //    ConvertCancellationTokenSource.Token); //token
-
-                    var convertThread = new ConvertThread(image.Image, options, convertCallback, ConvertCancellationTokenSource.Token);
-
-                    ConvertTask = Task.Run(convertThread.ConvertNew);
-
-                    UpdatePreview(image.Image, convertedSize, (int)bitsPerColor, interpolationMode, previewConvertCallback);
+                    ConvertManager.Instance.ConvertToString(image.Image, options, convertCallback, ConvertCancellationTokenSource.Token);
 
                     ImageCache = image;
 
@@ -388,14 +343,14 @@ namespace ImageConverterPlus
                 }
                 else
                 {
-                    Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({(image.FileNameOrImageSource == null ? "FileNameOrImageSource is Null" : image.FileNameOrImageSource.ToString())}), Image is null");
+                    Logging.Log($"Caught exception at {nameof(TryConvertImageThreaded)}, ({(image.FileNameOrImageSource == null ? "FileNameOrImageSource is Null" : image.FileNameOrImageSource)}), Image is null");
                     ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
                     return false;
                 }
             }
             catch (Exception e)
             {
-                Logging.Log($"Caught exception at TryConvertImage(Bitmap, bool, bool), ({image.FileNameOrImageSource.ToString()})");
+                Logging.Log($"Caught exception at {nameof(TryConvertImageThreaded)}, ({image.FileNameOrImageSource})");
                 Logging.Log(e.ToString());
                 ShowAcrylDialog("Error occurred during image conversion! (Exception)");
                 return false;
@@ -453,7 +408,7 @@ namespace ImageConverterPlus
 
         public void CopyToClipClicked(object? param)
         {
-            if (!TryConvertImageThreaded(ImageCache, false, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
+            if (!TryConvertImageThreaded(ImageCache, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
             {
                 ShowAcrylDialog($"Convert {(ImageCache.Image != null ? "the" : "an")} image first!");
             }
@@ -532,7 +487,7 @@ namespace ImageConverterPlus
             if (Clipboard.ContainsImage())
             {
                 var image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
-                if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard", false), true, ConvertResultCallback, PreviewConvertResultCallback))
+                if (TryConvertImageThreaded(new ImageInfo(image, "Image loaded from Clipboard"), ConvertResultCallback, PreviewConvertResultCallback))
                 {
                     UpdateBrowseImagesBtn("Loaded from Clipboard", null);
                     Logging.Log("Image loaded from Clipboard (Bitmap)");
@@ -587,7 +542,9 @@ namespace ImageConverterPlus
             {
                 if (ImageCache.Image != null)
                 {
-                    TryConvertImageThreaded(ImageCache, resetZoom, ConvertResultCallback, PreviewConvertResultCallback);
+                    if (resetZoom)
+                        ResetPreviewZoomAndPan(true);
+                    TryConvertImageThreaded(ImageCache, ConvertResultCallback, PreviewConvertResultCallback);
                 }
                 return;
             }
@@ -604,7 +561,9 @@ namespace ImageConverterPlus
                 {
                     Task.Run(() => this.Dispatcher.Invoke(() =>
                     {
-                        TryConvertImageThreaded(ImageCache, resetZoom, ConvertResultCallback, PreviewConvertResultCallback);
+                        if (resetZoom)
+                            ResetPreviewZoomAndPan(true);
+                        TryConvertImageThreaded(ImageCache, ConvertResultCallback, PreviewConvertResultCallback);
                         ConvertTimer = null;
                     }));
                 }
@@ -651,7 +610,8 @@ namespace ImageConverterPlus
 
                 if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
                 {
-                    TryConvertImageThreaded(ImageCache, true, ConvertResultCallback, PreviewConvertResultCallback);
+                    ResetPreviewZoomAndPan(true);
+                    TryConvertImageThreaded(ImageCache, ConvertResultCallback, PreviewConvertResultCallback);
                 }
                 else
                 {

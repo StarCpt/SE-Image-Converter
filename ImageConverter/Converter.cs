@@ -99,7 +99,9 @@ namespace ImageConverterPlus.ImageConverter
 
         internal unsafe string ConvertUnsafe(Image image, CancellationToken token)
         {
+            Monitor.Enter(image);
             Bitmap bitmap = new Bitmap(image);
+            Monitor.Exit(image);
 
             try
             {
@@ -134,7 +136,9 @@ namespace ImageConverterPlus.ImageConverter
 
         internal unsafe Bitmap ConvertToBitmapUnsafe(Image image, CancellationToken token)
         {
+            Monitor.Enter(image);
             Bitmap bitmap = new Bitmap(image);
+            Monitor.Exit(image);
 
             try
             {
@@ -264,7 +268,9 @@ namespace ImageConverterPlus.ImageConverter
 
         internal string ConvertSafe(Image image, CancellationToken token)
         {
+            Monitor.Enter(image);
             Bitmap bitmap = new Bitmap(image);
+            Monitor.Exit(image);
 
             try
             {
@@ -317,7 +323,9 @@ namespace ImageConverterPlus.ImageConverter
 
         internal Bitmap ConvertToBitmapSafe(Image image, CancellationToken token)
         {
+            Monitor.Enter(image);
             Bitmap bitmap = new Bitmap(image);
+            Monitor.Exit(image);
 
             try
             {
@@ -379,670 +387,105 @@ namespace ImageConverterPlus.ImageConverter
             }
             else
             {
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-
                 int stride = data.Stride;
                 int height = data.Height;
-                int channels = Bitmap.GetPixelFormatSize(data.PixelFormat) / 8;
+                int channels = 3; // Bitmap.GetPixelFormatSize(data.PixelFormat) / 8;
                 int padding = stride - (data.Width * channels);
                 int bitmapWidth = data.Width;
                 int bitmapByteWidth = bitmapWidth * channels;
-                int ditherIterations = DitherOffsets.GetLength(0);
 
-                //Precalculate offsets for each dithering iteration for pixel format
-                int[] ditherOffsets = new int[ditherIterations];
-                for (int i = 0; i < ditherIterations; i++)
+                int separation = channels * 2;
+                int workerCount = Math.Min(Environment.ProcessorCount, height);
+
+                Queue<Task> workerQueue = new Queue<Task>();
+                int[] rowProgress = new int[height];
+                ManualResetEventSlim[] rowLocks = new ManualResetEventSlim[height];
+
+                SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
+
+                for (int r = 0; r < height; r++)
                 {
-                    ditherOffsets[i] = (DitherOffsets[i, 0] * channels) + (DitherOffsets[i, 1] * data.Stride);
+                    maxWorkerLock.Wait();
+
+                    int row = r;
+                    rowLocks[row] = new ManualResetEventSlim(false);
+                    workerQueue.Enqueue(Task.Run(() => ProcessRow(row)));
                 }
 
-                ParallelUsingBlockWithManualResetEvent();
-                //ParallelUsingManualResetEvent();
-
-                void ParallelUsingBlockWithManualResetEvent()
+                while (workerQueue.TryDequeue(out Task? result))
                 {
-                    sw.Start();
-                    int workers = Environment.ProcessorCount;
-
-                    int blockHeight = (int)Math.Ceiling(Math.Sqrt(2 * height));
-                    int blockWidth = (int)Math.Ceiling(bitmapWidth / (blockHeight * (workers - 0.5) + (workers + 0.5)));
-
-                    blockHeight = height;
-                    blockWidth = bitmapWidth / 2;
-
-                    int yBlocks = (height - 1) / blockHeight + 1;
-                    int xBlocks = (bitmapWidth - 1) / blockWidth + 1;
-
-                    ConvertBlock[,] blocks = new ConvertBlock[xBlocks, yBlocks];
-                    BlockingCollection<ConvertBlock> blockQueue = new BlockingCollection<ConvertBlock>(new ConcurrentQueue<ConvertBlock>());
-                    object queueLock = new object();
-
-                    for (int y = 0; y < yBlocks; y++)
-                    {
-                        for (int x = 0; x < xBlocks; x++)
-                        {
-                            Point startPos = new Point(x * blockWidth, y * blockHeight);
-
-                            Size blockSize = new Size(
-                                x == xBlocks - 1 ? (bitmapWidth - 1) % blockWidth + 1 : blockWidth,
-                                y == yBlocks - 1 ? (height - 1) % blockHeight + 1 : blockHeight);
-
-                            Point blockPosition = new Point(x, y);
-
-                            blocks[x, y] = new ConvertBlock(startPos, blockSize, blockPosition, new ManualResetEventSlim(false));
-                        }
-                    }
-
-                    CancellationTokenSource tokenSource = new CancellationTokenSource();
-                    ManualResetEvent completedEvent = new ManualResetEvent(false);
-
-                    for (int t = 0; t < workers; t++)
-                    {
-                        //Task.Run(() => BlockQueueChecker(tokenSource.Token));
-                    }
-
-                    lock (queueLock)
-                    {
-                        //ProcessBlock(blocks[0, 0]);
-                    }
-
-                    for (int y = 0; y < yBlocks; y++)
-                    {
-                        for (int x = 0; x < xBlocks; x++)
-                        {
-                            ProcessPixelBlock(blocks[x, y]);
-                        }
-                    }
-
-                    //completedEvent.WaitOne();
-                    sw.Stop();
-                    double ms = sw.Elapsed.TotalMilliseconds;
-                    return;
-
-                    void BlockQueueChecker(CancellationToken token)
-                    {
-                        try
-                        {
-                            while (true)
-                            {
-                                ProcessPixelBlock(blockQueue.Take(token));
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            return;
-                        }
-                    }
-
-                    void ProcessPixelBlock(ConvertBlock block)
-                    {
-                        block.Started = true;
-
-                        int startWidth = block.StartPosition.X;
-                        int startHeight = block.StartPosition.Y;
-
-                        int endWidth = block.StartPosition.X + block.BlockSize.Width;
-                        int endHeight = block.StartPosition.Y + block.BlockSize.Height;
-
-                        for (int y = startHeight; y < endHeight; y++)
-                        {
-                            for (int x = startWidth; x < endWidth; x++)
-                            {
-                                int bytePos = y * stride + x;
-
-                                byte oldColor = bytes[bytePos];
-                                bytes[bytePos] = Precalc[bytes[bytePos]];
-                                int error = oldColor - (bytes[bytePos]);
-
-                                if (error != 0)
-                                {
-                                    ApplyErrorIntFast(error, bytePos, x, y);
-                                }
-
-                                bytePos++;
-
-                                oldColor = bytes[bytePos];
-                                bytes[bytePos] = Precalc[bytes[bytePos]];
-                                error = oldColor - (bytes[bytePos]);
-
-                                if (error != 0)
-                                {
-                                    ApplyErrorIntFast(error, bytePos, x, y);
-                                }
-
-                                bytePos++;
-
-                                oldColor = bytes[bytePos];
-                                bytes[bytePos] = Precalc[bytes[bytePos]];
-                                error = oldColor - (bytes[bytePos]);
-
-                                if (error != 0)
-                                {
-                                    ApplyErrorIntFast(error, bytePos, x, y);
-                                }
-                            }
-                        }
-
-                        block.Completed = true;
-
-                        lock (queueLock)
-                        {
-                            bool canRightBlockStart = 
-                                (block.BlockPosition.Y == 0 || blocks[block.BlockPosition.X, block.BlockPosition.Y - 1].Completed)
-                                && block.BlockPosition.X != xBlocks - 1
-                                && !blocks[block.BlockPosition.X + 1, block.BlockPosition.Y].Started;
-                            bool canBottomBlockStart =
-                                (block.BlockPosition.X == 0 || blocks[block.BlockPosition.X - 1, block.BlockPosition.Y].Completed)
-                                && block.BlockPosition.Y != yBlocks - 1
-                                && !blocks[block.BlockPosition.X, block.BlockPosition.Y + 1].Started;
-
-                            if (canRightBlockStart)
-                            {
-                                blockQueue.Add(blocks[block.BlockPosition.X + 1, block.BlockPosition.Y]);
-                            }
-
-                            if (canBottomBlockStart)
-                            {
-                                blockQueue.Add(blocks[block.BlockPosition.X, block.BlockPosition.Y + 1]);
-                            }
-                        }
-
-                        if (block.BlockPosition.Y == yBlocks - 1 && block.BlockPosition.X == xBlocks - 1)
-                        {
-                            completedEvent.Set();
-                        }
-                    }
+                    result.Wait();
                 }
 
-                void DitherPixelBlock(int startWidth, int startHeight, int endWidth, int endHeight)
+                foreach (ManualResetEventSlim resetEvent in rowLocks)
                 {
-                    for (int y = startHeight; y < endHeight; y++)
-                    {
-                        for (int x = startWidth; x < endWidth; x++)
-                        {
-                            DitherPixel(x, y);
-                        }
-                    }
+                    resetEvent.Dispose();
                 }
 
-                void DitherPixel(int x, int y)
+                maxWorkerLock.Dispose();
+
+                void ProcessRow(int row)
                 {
-                    int bytePos = (y * stride) + (x * channels);
+                    int rowStartIndex = row * stride;
+                    int rowEndIndex = rowStartIndex + bitmapByteWidth;
 
-                    byte oldColor = bytes[bytePos];
-                    bytes[bytePos] = Precalc[bytes[bytePos]];
-                    int error = oldColor - (bytes[bytePos]);
-
-                    if (error != 0)
+                    ManualResetEventSlim rowLock = rowLocks[row];
+                    ManualResetEventSlim? prevRowLock = null;
+                    if (row > 0)
                     {
-                        ApplyErrorIntFast(error, bytePos, x, y);
+                        prevRowLock = rowLocks[row - 1];
                     }
 
-                    bytePos++;
-
-                    oldColor = bytes[bytePos];
-                    bytes[bytePos] = Precalc[bytes[bytePos]];
-                    error = oldColor - (bytes[bytePos]);
-
-                    if (error != 0)
+                    int rowPositionIndex = 0; //bytes not pixels
+                    for (int i = rowStartIndex; i < rowEndIndex; i++)
                     {
-                        ApplyErrorIntFast(error, bytePos, x, y);
-                    }
-
-                    bytePos++;
-
-                    oldColor = bytes[bytePos];
-                    bytes[bytePos] = Precalc[bytes[bytePos]];
-                    error = oldColor - (bytes[bytePos]);
-
-                    if (error != 0)
-                    {
-                        ApplyErrorIntFast(error, bytePos, x, y);
-                    }
-                }
-
-                void ParallelUsingManualResetEvent() // thread per row
-                {
-                    double init = sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-
-                    //unchanging
-                    int separation = channels * 2;
-                    int workerCount = Math.Min(Environment.ProcessorCount, height);
-
-                    //Task[] workers = new Task[workerCount];
-                    Queue<Task> workerQueue = new Queue<Task>();
-                    int[] rowProgress = new int[height];
-                    ManualResetEventSlim[] rowLocks = new ManualResetEventSlim[height];
-
-                    SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
-
-                    int r = 0;
-
-                    //for (int w = 0; w < workerCount; w++)
-                    //{
-                    //    int row = r;
-                    //    rowLocks[row] = new ManualResetEventSlim(false);
-                    //    workers[w] = Task.Run(() => DitherRowChannel(row));
-                    //}
-
-                    for (; r < height; r++)
-                    {
-                        maxWorkerLock.Wait();
-                        //int w = Task.WaitAny(workers);
-
-                        int row = r;
-                        rowLocks[row] = new ManualResetEventSlim(false);
-                        workerQueue.Enqueue(Task.Run(() => DitherRowChannel(row)));
-                        //workers[w] = Task.Run(() => DitherRowChannel(row));
-                    }
-
-                    //Task.WaitAll(workers);
-
-                    while (workerQueue.TryDequeue(out Task? result))
-                    {
-                        result.Wait();
-                    }
-
-                    foreach (ManualResetEventSlim resetEvent in rowLocks)
-                    {
-                        resetEvent.Dispose();
-                    }
-
-                    double time = sw.Elapsed.TotalMilliseconds;
-                    sw.Stop();
-
-                    void DitherRowChannel(int row)
-                    {
-                        int rowStartIndex = row * stride;
-                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
-
-                        ManualResetEventSlim rowLock = rowLocks[row];
-                        ManualResetEventSlim? prevRowLock = null;
+                        //check the progress of the row above
                         if (row > 0)
                         {
-                            prevRowLock = rowLocks[row - 1];
+                            while (rowProgress[row - 1] - separation <= rowPositionIndex)
+                            {
+                                prevRowLock.Wait(Timeout.Infinite, CancellationToken.None);
+                                prevRowLock.Reset();
+                            }
                         }
 
-                        int rowPositionIndex = 0; //bytes not pixels
-                        for (int i = rowStartIndex; i < rowEndIndex; i += channels)
+                        byte oldColor = bytes[i];
+                        int error = oldColor - (bytes[i] = Precalc[oldColor]);
+
+                        if (error != 0)
                         {
-                            //check the progress of the row above
-                            if (row > 0)
-                            {
-                                while (rowProgress[row - 1] - separation <= rowPositionIndex)
-                                {
-                                    prevRowLock.Wait(Timeout.Infinite, CancellationToken.None);
-                                    prevRowLock.Reset();
-                                }
-                            }
-
-                            byte oldColor = bytes[i];
-                            bytes[i] = Precalc[bytes[i]];
-                            int error = oldColor - bytes[i];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorIntFast(error, i, rowPositionIndex, row);
-                            }
-
-                            oldColor = bytes[i + 1];
-                            bytes[i + 1] = Precalc[bytes[i + 1]];
-                            error = oldColor - bytes[i + 1];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorIntFast(error, i + 1, rowPositionIndex, row);
-                            }
-
-                            oldColor = bytes[i + 2];
-                            bytes[i + 2] = Precalc[bytes[i + 2]];
-                            error = oldColor - bytes[i + 2];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorIntFast(error, i + 2, rowPositionIndex, row);
-                            }
-
-                            rowPositionIndex += channels;
-                            rowProgress[row] = rowPositionIndex;
-                            rowLock.Set();
+                            ApplyErrorIntFast(error, i, rowPositionIndex, row);
                         }
 
-                        rowProgress[row] += separation;
+                        i++;
+
+                        oldColor = bytes[i];
+                        error = oldColor - (bytes[i] = Precalc[oldColor]);
+
+                        if (error != 0)
+                        {
+                            ApplyErrorIntFast(error, i, rowPositionIndex, row);
+                        }
+
+                        i++;
+
+                        oldColor = bytes[i];
+                        error = oldColor - (bytes[i] = Precalc[oldColor]);
+
+                        if (error != 0)
+                        {
+                            ApplyErrorIntFast(error, i, rowPositionIndex, row);
+                        }
+
+                        rowPositionIndex += channels;
+                        rowProgress[row] = rowPositionIndex;
                         rowLock.Set();
-
-                        maxWorkerLock.Release();
-                    }
-                }
-
-                void ParallelUsingManualResetEventPerChannel() // per row and per channel
-                {
-                    double init = sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-
-                    //unchanging
-                    int separation = channels * 2;
-                    int workerCount = Math.Min(Environment.ProcessorCount, data.Height);
-
-                    //Task[] workers = new Task[workerCount];
-                    Queue<Task> workerQueue = new Queue<Task>();
-                    int[,] rowProgress = new int[data.Height, channels];
-                    ManualResetEventSlim[,] rowLocks = new ManualResetEventSlim[data.Height, channels];
-                    //ConcurrentDictionary<int, ManualResetEventSlim> rowLocks = new ConcurrentDictionary<int, ManualResetEventSlim>();
-
-                    SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
-
-                    for (int r = 0; r < data.Height; r++)
-                    {
-                        for (int c = 0; c < channels; c++)
-                        {
-                            maxWorkerLock.Wait();
-
-                            int row = r;
-                            int channel = c;
-                            rowLocks[r, c] = new ManualResetEventSlim(false);
-                            workerQueue.Enqueue(Task.Run(() => DitherRowChannel(row, channel)));
-                        }
                     }
 
-                    //Task.WaitAll(workers);
-                    while (workerQueue.TryDequeue(out Task? result))
-                    {
-                        result.Wait();
-                    }
+                    rowProgress[row] += separation;
+                    rowLock.Set();
 
-                    foreach (ManualResetEventSlim resetEvent in rowLocks)
-                    {
-                        resetEvent.Dispose();
-                    }
-
-                    double time = sw.Elapsed.TotalMilliseconds;
-                    sw.Stop();
-
-                    void DitherRowChannel(int row, int channel)
-                    {
-                        int rowStartIndex = row * data.Stride;
-                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
-
-                        ManualResetEventSlim rowLock = rowLocks[row, channel];
-                        ManualResetEventSlim? prevRowLock = null;
-                        if (row > 0)
-                        {
-                            prevRowLock = rowLocks[row - 1, channel];
-                        }
-
-                        int rowPositionIndex = channel; //bytes not pixels
-                        for (int i = rowStartIndex + channel; i < rowEndIndex; i += channels)
-                        {
-                            //check the progress of the row above
-                            if (row > 0)
-                            {
-                                while (rowProgress[row - 1, channel] - separation <= rowPositionIndex)
-                                {
-                                    prevRowLock.Wait();
-                                    prevRowLock.Reset();
-                                }
-                            }
-
-                            byte oldColor = bytes[i];
-                            bytes[i] = Precalc[bytes[i]];
-                            int error = oldColor - bytes[i];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorIntFast(error, i, rowPositionIndex, row);
-                            }
-
-                            rowPositionIndex += channels;
-                            rowProgress[row, channel] = rowPositionIndex;
-                            rowLock.Set();
-                        }
-
-                        rowProgress[row, channel] += separation;
-                        rowLock.Set();
-
-                        maxWorkerLock.Release();
-                    }
-                }
-
-                void ParallelUsingSpinWaitPerChannel() // per row and per channel
-                {
-                    double init = sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-
-                    //unchanging
-                    int separation = channels;
-                    int workerCount = Math.Min(Environment.ProcessorCount, data.Height);
-
-                    //Task[] workers = new Task[workerCount];
-                    Queue<Task> workerQueue = new Queue<Task>();
-                    int[,] rowProgress = new int[data.Height, channels];
-                    SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
-
-                    for (int r = 0; r < data.Height; r++)
-                    {
-                        for (int c = 0; c < channels; c++)
-                        {
-                            maxWorkerLock.Wait();
-                            //int workerIndex = Task.WaitAny(workers);
-
-                            int row = r;
-                            int channel = c;
-                            //workers[workerIndex] = Task.Run(() => DitherRow(row));
-                            workerQueue.Enqueue(Task.Run(() => DitherRowChannel(row, channel)));
-                        }
-                    }
-
-                    //Task.WaitAll(workers);
-                    while (workerQueue.TryDequeue(out Task? result))
-                    {
-                        result.Wait();
-                    }
-
-                    double time = sw.Elapsed.TotalMilliseconds;
-                    sw.Stop();
-
-                    void DitherRowChannel(int row, int channel)
-                    {
-                        SpinWait spinWait = new SpinWait();
-                        int rowStartIndex = row * data.Stride;
-                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
-
-                        int rowPositionIndex = channel; //bytes not pixels
-                        for (int i = rowStartIndex + channel; i < rowEndIndex; i += channels)
-                        {
-                            //check the progress of the row above
-                            if (row > 0)
-                            {
-                                while (rowProgress[row - 1, channel] - separation <= rowPositionIndex)
-                                {
-                                    spinWait.SpinOnce();
-                                }
-                                spinWait.Reset();
-                            }
-
-                            byte oldColor = bytes[i];
-                            bytes[i] = Precalc[bytes[i]];
-                            int error = oldColor - bytes[i];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorDoubleFloat(error, i, rowPositionIndex, row);
-                            }
-
-                            rowPositionIndex += channels;
-                            rowProgress[row, channel] = rowPositionIndex;
-                        }
-
-                        rowProgress[row, channel] += separation;
-                        maxWorkerLock.Release();
-                    }
-                }
-
-                void ParallelUsingSpinWait() // per row and not per channel
-                {
-                    double init = sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-
-                    //unchanging
-                    int separation = channels;
-                    int workerCount = Math.Min(Environment.ProcessorCount, data.Height);
-
-                    //Task[] workers = new Task[workerCount];
-                    Queue<Task> workerQueue = new Queue<Task>();
-                    int[] rowProgress = new int[data.Height];
-                    SemaphoreSlim maxWorkerLock = new SemaphoreSlim(workerCount);
-
-                    int r = 0;
-                    for (; r < workerCount; r++)
-                    {
-                        int row = r;
-                        //workers[r] = Task.Run(() => DitherRow(row));
-                        workerQueue.Enqueue(Task.Run(() => DitherRow(row)));
-                    }
-
-                    for (; r < data.Height; r++)
-                    {
-                        maxWorkerLock.Wait();
-                        //int workerIndex = Task.WaitAny(workers);
-
-                        int row = r;
-                        //workers[workerIndex] = Task.Run(() => DitherRow(row));
-                        workerQueue.Enqueue(Task.Run(() => DitherRow(row)));
-                    }
-
-                    //Task.WaitAll(workers);
-                    while (workerQueue.TryDequeue(out Task? result))
-                    {
-                        result.Wait();
-                    }
-
-                    double time = sw.Elapsed.TotalMilliseconds;
-                    sw.Stop();
-
-                    void DitherRow(int row)
-                    {
-                        SpinWait spinWait = new SpinWait();
-                        int rowStartIndex = row * data.Stride;
-                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
-
-                        int rowPositionIndex = 0; //bytes not pixels
-                        for (int i = rowStartIndex; i < rowEndIndex; i++)
-                        {
-                            //check the progress of the row above
-                            if (row > 0)
-                            {
-                                while (rowProgress[row - 1] - separation <= rowPositionIndex)
-                                {
-                                    spinWait.SpinOnce();
-                                }
-                                spinWait.Reset();
-                            }
-
-                            byte oldColor = bytes[i];
-                            bytes[i] = Precalc[bytes[i]];
-                            int error = oldColor - bytes[i];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorDoubleFloat(error, i, rowPositionIndex, row);
-                            }
-
-                            rowPositionIndex++;
-                            rowProgress[row] = rowPositionIndex;
-                        }
-
-                        rowProgress[row] += separation;
-                        maxWorkerLock.Release();
-                    }
-                }
-
-                void ParallelUsingSemaphoreSlim()
-                {
-                    int separation = channels * 2;
-
-                    int workerCount = Environment.ProcessorCount * 2;
-
-                    SemaphoreSlim maxThreadLock = new SemaphoreSlim(workerCount);
-                    int[,] rowProgress = new int[data.Height, channels];
-                    //SemaphoreSlim[,] rowLocks = new SemaphoreSlim[data.Height,channels];
-                    Task[,] tasks = new Task[data.Height, channels];
-
-                    ConcurrentDictionary<(int, int), SemaphoreSlim> rowLockDict = new ConcurrentDictionary<(int, int), SemaphoreSlim>();
-
-                    double init = sw.Elapsed.TotalMilliseconds;
-                    sw.Restart();
-
-                    for (int r = 0; r < data.Height; r++)
-                    {
-                        for (int c = 0; c < channels; c++)
-                        {
-                            maxThreadLock.Wait();
-                            (int row, int channel) rc = (r, c);
-                            SemaphoreSlim rowLock = new SemaphoreSlim(1);
-                            rowLockDict[rc] = rowLock;
-                            rowLockDict.TryGetValue((r - 1, c), out SemaphoreSlim? prevRowLock);
-                            tasks[r, c] = Task.Run(() => DitherRowChannel(rc.row, rc.channel, rowLock, prevRowLock));
-                        }
-                    }
-
-                    foreach (var task in tasks)
-                    {
-                        task.Wait();
-                    }
-
-                    double ms = sw.Elapsed.TotalMilliseconds;
-
-                    for (int c = 0; c < channels; c++)
-                    {
-                        rowLockDict[(data.Height - 1, c)].Dispose();
-                    }
-
-                    maxThreadLock.Dispose();
-
-                    void DitherRowChannel(int row, int channel, SemaphoreSlim rowLock, SemaphoreSlim? prevRowLock)
-                    {
-                        int rowStartIndex = row * data.Stride;
-                        int rowEndIndex = rowStartIndex + bitmapByteWidth;
-
-                        int rowBytePositionIndex = channel; // how far along it is in bytes not pixels
-                        for (int i = rowStartIndex + channel; i < rowEndIndex; i += channels)
-                        {
-                            //check the progress of the row above
-                            if (prevRowLock != null)
-                            {
-                                while (rowProgress[row - 1, channel] - separation <= rowBytePositionIndex)
-                                {
-                                    prevRowLock.Wait();
-                                }
-                            }
-
-                            byte oldColor = bytes[i];
-                            bytes[i] = Precalc[bytes[i]];
-                            int error = oldColor - bytes[i];
-
-                            if (error != 0)
-                            {
-                                ApplyErrorDoubleFloat(error, i, rowBytePositionIndex, row);
-                            }
-
-                            rowBytePositionIndex += channels;
-                            rowProgress[row, channel] = rowBytePositionIndex;
-                            rowLock.Release();
-                        }
-
-                        rowProgress[row, channel] += separation;
-                        rowLock.Release();
-
-                        if (rowLockDict.TryRemove((row - 1, channel), out SemaphoreSlim? ss))
-                        {
-                            ss.Dispose();
-                        }
-
-                        maxThreadLock.Release();
-                    }
+                    maxWorkerLock.Release();
                 }
 
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]

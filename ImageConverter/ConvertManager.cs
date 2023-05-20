@@ -38,17 +38,14 @@ namespace ImageConverterPlus.ImageConverter
             TopLeft = new Point(0, 0);
         }
 
-        public string ConvertToString(Image image, ConvertOptions options, CancellationToken token)
+        public void ConvertToString(Image image, ConvertOptions options, Action<string> callback, CancellationToken token)
         {
-            Converter converter = new Converter(options);
-            return converter.ConvertSafe(image, token);
+            callback?.Invoke(new Converter(options).ConvertSafe(image, token));
         }
 
-        public Bitmap ConvertToBitmap(Image image, ConvertOptions options)
+        public void ConvertToBitmap(Image image, ConvertOptions options, Action<Bitmap> callback, CancellationToken token)
         {
-
-
-            throw new NotImplementedException();
+            callback?.Invoke(new Converter(options).ConvertToBitmapSafe(image, token));
         }
 
         private ConvertOptions GetOptions() =>
