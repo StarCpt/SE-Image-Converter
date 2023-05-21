@@ -22,7 +22,8 @@ namespace ImageConverterPlus
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
                 MainWindow.Static.ResetPreviewZoomAndPan(true);
-                if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, url), Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                ImageCache = new ImageInfo(image, url);
+                if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                 {
                     Static.UpdateBrowseImagesBtn("Loaded from URL", url);
                     MainWindow.Logging.Log($"Image loaded from image URL ({url})");
@@ -40,7 +41,8 @@ namespace ImageConverterPlus
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
                     MainWindow.Static.ResetPreviewZoomAndPan(true);
-                    if (image != null && Static.TryConvertImageThreaded(new ImageInfo(image, src), Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                    ImageCache = new ImageInfo(image, src);
+                    if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                     {
                         Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
                         MainWindow.Logging.Log($"Image loaded from HTML ({src})");

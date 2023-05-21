@@ -38,24 +38,6 @@ namespace ImageConverterPlus.ImageConverter
         public Point TopLeft { readonly get; set; }
     }
 
-    internal class ConvertBlock
-    {
-        internal Point StartPosition { get; }
-        internal Size BlockSize { get; }
-        internal Point BlockPosition { get; }
-        internal volatile bool Started;
-        internal volatile bool Completed;
-        internal ManualResetEventSlim ResumeCheckEvent { get; }
-
-        internal ConvertBlock(Point startPosition, Size blockSize, Point blockPosition, ManualResetEventSlim resumeCheckEvent)
-        {
-            StartPosition = startPosition;
-            BlockSize = blockSize;
-            BlockPosition = blockPosition;
-            ResumeCheckEvent = resumeCheckEvent;
-        }
-    }
-
     internal class Converter
     {
         private readonly ConvertOptions Options;
@@ -444,7 +426,9 @@ namespace ImageConverterPlus.ImageConverter
                         {
                             while (rowProgress[row - 1] - separation <= rowPositionIndex)
                             {
+#pragma warning disable CS8602
                                 prevRowLock.Wait(Timeout.Infinite, CancellationToken.None);
+#pragma warning restore CS8602
                                 prevRowLock.Reset();
                             }
                         }

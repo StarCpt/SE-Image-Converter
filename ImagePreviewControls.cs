@@ -33,8 +33,11 @@ namespace ImageConverterPlus
         private Point origin;
         private Point start;
 
-        private const int PreviewBorderWidth = 350;
-        private const int PreviewBorderHeight = 350;
+        private const int PreviewContainerWidth = 350;
+        private const int PreviewContainerHeight = 350;
+        //private double PreviewContainerWidth => ImagePreviewBorder.ActualWidth;
+        //private double PreviewContainerHeight => ImagePreviewBorder.ActualHeight;
+
         private Point PreviewTopLeft;
         public static double imagePreviewScale { get; private set; } = 1f;
 
@@ -137,7 +140,7 @@ namespace ImageConverterPlus
                 Scale = 1,
             };
             PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-            PreviewConvertTask = Task.Run(() => ConvertManager.Instance.ConvertToBitmap(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
+            PreviewConvertTask = Task.Run(() => ConvertManager.ConvertToBitmap(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
         }
 
         public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
@@ -145,13 +148,6 @@ namespace ImageConverterPlus
             if (resetZoom)
             {
                 ResetPreviewZoomAndPan(false);
-            }
-
-            if (ImageCache.Image == null ||
-                !TryGetInterpolationMode(out InterpolationMode interpolation) ||
-                !TryGetColorBitDepth(out BitDepth depth))
-            {
-                return;
             }
 
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
@@ -168,7 +164,7 @@ namespace ImageConverterPlus
 
             if (delay == 0)
             {
-                UpdatePreview(ImageCache.Image, GetLCDSize(), (int)depth, interpolation, PreviewConvertResultCallback);
+                UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback);
                 return;
             }
 
@@ -180,7 +176,7 @@ namespace ImageConverterPlus
             PreviewConvertTimer.Elapsed +=
                 (object sender, ElapsedEventArgs e) =>
                 ImagePreview.Dispatcher.Invoke(
-                    () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)depth, interpolation, PreviewConvertResultCallback));
+                    () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback));
             PreviewConvertTimer.Start();
         }
 
@@ -304,13 +300,13 @@ namespace ImageConverterPlus
                 Size lcdSize = GetLCDSize();
                 if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
                 {
-                    ImagePreviewBorder.Width = PreviewBorderWidth;
-                    ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
+                    ImagePreviewBorder.Width = PreviewContainerWidth;
+                    ImagePreviewBorder.Height = PreviewContainerHeight * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
                 }
                 else
                 {
-                    ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
-                    ImagePreviewBorder.Height = PreviewBorderHeight;
+                    ImagePreviewBorder.Width = PreviewContainerWidth * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
+                    ImagePreviewBorder.Height = PreviewContainerHeight;
                 }
 
                 ImagePreviewBorder.Visibility = Visibility.Visible;
@@ -353,7 +349,8 @@ namespace ImageConverterPlus
             {
                 Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
                 ResetPreviewZoomAndPan(true);
-                if (TryConvertImageThreaded(new ImageInfo(bitImage, "Drag & Droped Image Bitmap"), ConvertResultCallback, PreviewConvertResultCallback))
+                ImageCache = new ImageInfo(bitImage, "Drag & Droped Image Bitmap");
+                if (TryConvertImageThreaded(ImageCache.Image, ConvertResultCallback, PreviewConvertResultCallback))
                 {
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
@@ -394,12 +391,6 @@ namespace ImageConverterPlus
             }
         }
 
-        [Obsolete]
-        private Size GetImageSplitSize()
-        {
-            return viewModel.ImageSplitSize;
-        }
-
         private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e) => UpdatePreviewGrid();
 
         private void UpdatePreviewGrid()
@@ -411,13 +402,13 @@ namespace ImageConverterPlus
 
             if (lcdSize.Width * splitX > lcdSize.Height * splitY)
             {
-                ImagePreviewBorder.Width = PreviewBorderWidth;
-                ImagePreviewBorder.Height = PreviewBorderHeight * (((double)lcdSize.Height * splitY) / ((double)lcdSize.Width * splitX));
+                ImagePreviewBorder.Width = PreviewContainerWidth;
+                ImagePreviewBorder.Height = PreviewContainerHeight * (((double)lcdSize.Height * splitY) / ((double)lcdSize.Width * splitX));
             }
             else
             {
-                ImagePreviewBorder.Width = PreviewBorderWidth * (((double)lcdSize.Width * splitX) / ((double)lcdSize.Height * splitY));
-                ImagePreviewBorder.Height = PreviewBorderHeight;
+                ImagePreviewBorder.Width = PreviewContainerWidth * (((double)lcdSize.Width * splitX) / ((double)lcdSize.Height * splitY));
+                ImagePreviewBorder.Height = PreviewContainerHeight;
             }
 
             PreviewGrid.Children.Clear();
@@ -466,8 +457,8 @@ namespace ImageConverterPlus
                     {
                         Name = $"x{x.ToString()}y{y.ToString()}",
                         Style = (Style)FindResource("PreviewSplitBtn"),
-                        Width = ImagePreviewBorder.Width / ImageSplitSize.Width,
-                        Height = ImagePreviewBorder.Height / ImageSplitSize.Height,
+                        Width = ImagePreviewBorder.ActualWidth / ImageSplitSize.Width,
+                        Height = ImagePreviewBorder.ActualHeight / ImageSplitSize.Height,
                     };
 
                     if (firstBtn)
@@ -518,7 +509,7 @@ namespace ImageConverterPlus
                     }
                 }
 
-                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
+                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache.Image, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
                 {
                     ShowAcrylDialog($"Convert an image first!");
                 }

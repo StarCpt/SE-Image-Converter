@@ -12,7 +12,6 @@ namespace ImageConverterPlus.ImageConverter
 {
     public class ConvertManager : NotifyPropertyChangedBase
     {
-        public static ConvertManager Instance { get; } = new ConvertManager();
         public BitDepth BitDepth { get => bitDepth; set => SetValue(ref bitDepth, value); }
         public bool EnableDithering { get => enableDithering; set => SetValue(ref enableDithering, value); }
         public InterpolationMode Interpolation { get => interpolation; set => SetValue(ref interpolation, value); }
@@ -25,10 +24,10 @@ namespace ImageConverterPlus.ImageConverter
         private bool enableDithering;
         private InterpolationMode interpolation;
         private Size convertedSize;
-        private double scale;
+        private double scale = 1.0;
         private Point topLeft;
 
-        private ConvertManager()
+        public ConvertManager()
         {
             BitDepth = BitDepth.Color3;
             EnableDithering = true;
@@ -38,14 +37,24 @@ namespace ImageConverterPlus.ImageConverter
             TopLeft = new Point(0, 0);
         }
 
-        public void ConvertToString(Image image, ConvertOptions options, Action<string> callback, CancellationToken token)
+        public static void ConvertToString(Image image, ConvertOptions options, Action<string> callback, CancellationToken token)
         {
             callback?.Invoke(new Converter(options).ConvertSafe(image, token));
         }
 
-        public void ConvertToBitmap(Image image, ConvertOptions options, Action<Bitmap> callback, CancellationToken token)
+        public void ConvertToString(Image image, Action<string> callback, CancellationToken token)
+        {
+            callback?.Invoke(new Converter(GetOptions()).ConvertSafe(image, token));
+        }
+
+        public static void ConvertToBitmap(Image image, ConvertOptions options, Action<Bitmap> callback, CancellationToken token)
         {
             callback?.Invoke(new Converter(options).ConvertToBitmapSafe(image, token));
+        }
+
+        public void ConvertToBitmap(Image image, Action<Bitmap> callback, CancellationToken token)
+        {
+            callback?.Invoke(new Converter(GetOptions()).ConvertToBitmapSafe(image, token));
         }
 
         private ConvertOptions GetOptions() =>

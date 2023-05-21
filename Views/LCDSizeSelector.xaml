@@ -7,7 +7,7 @@
              xmlns:local="clr-namespace:ImageConverterPlus.Views"
              xmlns:controls="clr-namespace:ImageConverterPlus.Controls"
              mc:Ignorable="d" 
-             d:DesignHeight="250" d:DesignWidth="145">
+             d:DesignHeight="200" d:DesignWidth="145">
     
     <UserControl.Resources>
         <Style x:Key="LCDSizeTextBox" TargetType="controls:ScrollablePositiveIntegerTextBox">
@@ -39,7 +39,7 @@
                 <TextBlock Text="Custom LCD Size" Foreground="White" TextAlignment="Center" Margin="0,7,0,0"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,9.5,0,8.5">
                     <!--Width Input-->
-                    <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDWidth}">
+                    <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDWidth}" ContextMenu="{x:Null}">
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="ValueChanged">
                                 <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />
@@ -54,7 +54,7 @@
                     </controls:ScrollablePositiveIntegerTextBox>
                     <TextBlock Text="x" Foreground="DarkGray" Padding="8.5,1.5,8.5,0" />
                     <!--Height Input-->
-                    <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDHeight}">
+                    <controls:ScrollablePositiveIntegerTextBox Style="{DynamicResource LCDSizeTextBox}" Value="{Binding LCDHeight}" ContextMenu="{x:Null}">
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="ValueChanged">
                                 <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />

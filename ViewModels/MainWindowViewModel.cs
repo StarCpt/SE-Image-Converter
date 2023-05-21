@@ -1,11 +1,14 @@
 ﻿using ImageConverterPlus.Base;
+using ImageConverterPlus.ImageConverter;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -23,6 +26,8 @@ namespace ImageConverterPlus.ViewModels
         private static MainWindow view => MainWindow.Static; //temp
 
         public bool EnableDithering { get => enableDithering; set => SetValue(ref enableDithering, value); }
+        public BitDepth ColorDepth { get => colorDepth; set => SetValue(ref colorDepth, value); }
+        public InterpolationMode InterpolationMode { get => interpolationMode; set => SetValue(ref interpolationMode, value); }
         public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
         public int LCDWidth { get => lcdWidth; set => SetValue(ref lcdWidth, value); }
         public int LCDHeight { get => lcdHeight; set => SetValue(ref lcdHeight, value); }
@@ -71,6 +76,8 @@ namespace ImageConverterPlus.ViewModels
         public ICommand CopyImageToClipboardCommand { get; }
 
         private bool enableDithering;
+        private BitDepth colorDepth;
+        private InterpolationMode interpolationMode;
         private LCDPresetType selectedLCD;
         private int lcdWidth;
         private int lcdHeight;
@@ -87,11 +94,13 @@ namespace ImageConverterPlus.ViewModels
             ResetZoomAndPanCommand = new ButtonCommand(ExecuteResetZoomAndPanCommand);
             ImageTransformCommand = new ButtonCommand(ExecuteImageTransformCommand);
             CopyImageToClipboardCommand = new ButtonCommand(ExecuteCopyImageToClipboardCommand);
-            
+
+            colorDepth = BitDepth.Color3;
             enableDithering = true;
-            SelectedLCD = LCDPresetType.LCDPanel;
-            LCDWidth = 178;
-            LCDHeight = 178;
+            interpolationMode = InterpolationMode.HighQualityBicubic;
+            selectedLCD = LCDPresetType.LCDPanel;
+            lcdWidth = 178;
+            lcdHeight = 178;
             showPreviewGrid = false;
             imageSplitSize = new Size(1, 1);
             isMouseOverScrollableTextBox = false;
