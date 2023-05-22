@@ -54,13 +54,13 @@ namespace ImageConverterPlus
         {
             ImagePreview.PreviewMouseWheel += Preview_OnMouseWheelChanged;
             ImagePreview.MouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-            ImagePreview.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
+            //ImagePreview.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
             ImagePreview.MouseMove += Preview_OnMouseMove;
             ImagePreview.SizeChanged += UpdatePreviewTopLeft;
 
             ImagePreviewBorder.PreviewMouseWheel += Preview_OnMouseWheelChanged;
             ImagePreviewBorder.MouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-            ImagePreviewBorder.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
+            //ImagePreviewBorder.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
             ImagePreviewBorder.MouseMove += Preview_OnMouseMove;
             ImagePreviewBorder.SizeChanged += UpdatePreviewTopLeft;
 
@@ -150,6 +150,11 @@ namespace ImageConverterPlus
                 ResetPreviewZoomAndPan(false);
             }
 
+            if (ImageCache?.Image == null)
+            {
+                return;
+            }
+
             if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
             {
                 PreviewConvertCancellationTokenSource.Cancel();
@@ -174,7 +179,7 @@ namespace ImageConverterPlus
                 AutoReset = false,
             };
             PreviewConvertTimer.Elapsed +=
-                (object sender, ElapsedEventArgs e) =>
+                (object? sender, ElapsedEventArgs e) =>
                 ImagePreview.Dispatcher.Invoke(
                     () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback));
             PreviewConvertTimer.Start();

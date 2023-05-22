@@ -71,12 +71,10 @@
             </Grid.Style>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="165" />
-                <ColumnDefinition Width="165" />
+                <ColumnDefinition Width="330" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="0" />
                 <RowDefinition Height="54" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="64" />
@@ -106,31 +104,32 @@
 
             <!--big title-->
             <Label x:Name="AppBigTitle" Content="SE Image Converter+" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="23" 
-                   Grid.Column="1" Grid.Row="1" Grid.ColumnSpan="2" Foreground="White" />
+                   Grid.Column="1" Grid.Row="0" Foreground="White" />
 
             <!--Background Color Rectangle-->
-            <Grid Grid.Row="1" Grid.Column="3" Grid.RowSpan="4">
-                <Rectangle Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="ImagePreviewBackground" Fill="#101010" 
-                       HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.25"
-                       Width="350" Height="350"
-                       AllowDrop="True" PreviewDrop="Preview_PreviewDrop" Margin="29.5,33.5" Stretch="Uniform"
-                       ToolTip="Converted Image Preview">
+            <Grid Grid.Row="0" Grid.Column="2" Grid.RowSpan="3">
+                <Rectangle x:Name="ImagePreviewBackground" Fill="#101010" 
+                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.25"
+                           Width="350" Height="350"
+                           AllowDrop="True" PreviewDrop="Preview_PreviewDrop" Margin="29.5,33.5" Stretch="Uniform"
+                           ToolTip="Converted Image Preview">
                     <Rectangle.ContextMenu>
                         <ContextMenu Style="{StaticResource CustomMenu}">
                             <MenuItem Style="{StaticResource CustomMenuItem}"
-                                  Header="Convert From Clipboard" Click="PasteFromClipboard"
-                                  ToolTip="If the clipboard contains an image,&#x0a;converts it with currently selected settings">
+                                      Header="Convert From Clipboard" Click="PasteFromClipboard"
+                                      ToolTip="If the clipboard contains an image,&#x0a;converts it with currently selected settings">
                             </MenuItem>
                         </ContextMenu>
                     </Rectangle.ContextMenu>
                 </Rectangle>
                 <!--"Image Preview" text-->
-                <TextBlock x:Name="ImagePreviewTextBlock" Text="Preview" Grid.Row="2" Grid.RowSpan="2" Grid.Column="3" Foreground="White"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
+                <TextBlock x:Name="ImagePreviewTextBlock" Text="Preview" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
             </Grid>
             <!--The actual image previw control-->
-            <Border Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" x:Name="ImagePreviewBorder" Background="#000000" Visibility="Hidden"
-                    Height="{Binding ActualHeight,ElementName=ImagePreviewBackground}" Width="{Binding ActualWidth,ElementName=ImagePreviewBackground}" HorizontalAlignment="Center" VerticalAlignment="Center"
+            <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="3" x:Name="ImagePreviewBorder" Background="#000000" Visibility="Hidden"
+                    Height="{Binding ActualHeight,ElementName=ImagePreviewBackground}" Width="{Binding ActualWidth,ElementName=ImagePreviewBackground}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
                     PreviewDrop="Preview_PreviewDrop" ClipToBounds="True" AllowDrop="True">
                 <Border.ContextMenu>
                     <ContextMenu Style="{StaticResource CustomMenu}">
@@ -144,15 +143,23 @@
                 </Border.ContextMenu>
                 <Grid>
                     <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview" />
-                    <StackPanel Grid.Row="1" Grid.Column="3" Grid.RowSpan="4" Orientation="Horizontal"
+                    <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="PreviewGrid"
                                 PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
                                 Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </Grid>
             </Border>
+            <!--<views:ImageMoveScaleControl Grid.Row="0" Grid.Column="2" Grid.RowSpan="3"
+                                         Width="350" Height="350" Background="Green" Panel.ZIndex="-1" />-->
+            <TextBlock Foreground="Red" Text="captured" Grid.Row="2" Grid.Column="2" x:Name="debug1"
+                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="-200,0,0,0" />
+            <TextBlock Foreground="Red" Text="moveOrig" Grid.Row="2" Grid.Column="2" x:Name="debug2"
+                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,0" />
+            <TextBlock Foreground="Red" Text="currPos" Grid.Row="2" Grid.Column="2" x:Name="debug3"
+                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="200,0,0,0" />
 
             <!--Menu-->
-            <ScrollViewer Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+            <ScrollViewer Grid.Row="1" Grid.Column="1"
                           behaviors:ScrollAnimationBehavior.IsEnabled="True"
                           behaviors:ScrollAnimationBehavior.TimeDuration="00:00:00.10"
                           behaviors:ScrollAnimationBehavior.PointsToScroll="40" 
@@ -175,20 +182,23 @@
                 </UniformGrid>
             </ScrollViewer>
 
-            <Button Style="{StaticResource TransparentRoundedButton}" x:Name="BrowseFilesBtn"
-                    Content="Browse Files" Grid.Row="4" Grid.Column="1" Margin="0,5,0,0" 
-                    Width="145" Height="40" FontSize="15" VerticalAlignment="Top"
-                    Command="{Binding BrowseFilesCommand}">
-                <Button.ToolTip>
-                    <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
-                </Button.ToolTip>
-            </Button>
+            <UniformGrid Grid.Row="2" Grid.Column="1"
+                         Margin="0,5,0,0" VerticalAlignment="Top">
+                <Button Style="{StaticResource TransparentRoundedButton}" x:Name="BrowseFilesBtn"
+                        Content="Browse Files"
+                        Width="145" Height="40" FontSize="15"
+                        Command="{Binding BrowseFilesCommand}">
+                    <Button.ToolTip>
+                        <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
+                    </Button.ToolTip>
+                </Button>
+                <Button Style="{StaticResource TransparentRoundedButton}" x:Name="CopyToClipBtn"
+                        Content="Copy to Clipboard"
+                        Width="145" Height="40" FontSize="15"
+                        Command="{Binding CopyImageToClipboardCommand}">
+                </Button>
+            </UniformGrid>
 
-            <Button Style="{StaticResource TransparentRoundedButton}" x:Name="CopyToClipBtn"
-                    Content="Copy to Clipboard" Grid.Row="4" Grid.Column="2" Margin="0,5,0,0"
-                    Width="145" Height="40" FontSize="15" VerticalAlignment="Top"
-                    Command="{Binding CopyImageToClipboardCommand}">
-            </Button>
         </Grid>
     </DockPanel>
 </Window>

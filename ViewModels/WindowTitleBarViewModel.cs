@@ -40,6 +40,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 parentWindow = win;
                 win.StateChanged += ParentWindow_StateChanged;
+                CanMaximize = win.ResizeMode is ResizeMode.CanResize or ResizeMode.CanResizeWithGrip;
 
                 DependencyPropertyDescriptor.FromProperty(Window.ResizeModeProperty, typeof(Window))
                     .AddValueChanged(win, ParentWindow_ResizeModeChanged);
