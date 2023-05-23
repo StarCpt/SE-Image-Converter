@@ -73,8 +73,25 @@
     <Grid WindowChrome.IsHitTestVisibleInChrome="True">
         <StackPanel Orientation="Horizontal">
             <!--App Icon-->
-            <Image Margin="8" Source="/icon16.png" Stretch="Uniform"
-                   RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image Margin="6" Source="/icon16.ico" Stretch="Uniform"
+                   RenderOptions.BitmapScalingMode="HighQuality">
+                <Image.ContextMenu>
+                    <ContextMenu Style="{StaticResource CustomMenu}">
+                        <MenuItem Style="{StaticResource CustomMenuItem}"
+                                  Header="Open Log"
+                                  Command="{Binding OpenLogsCommand}">
+                            <MenuItem.ToolTip>
+                                <ToolTip Style="{StaticResource CustomToolTip}" />
+                            </MenuItem.ToolTip>
+                        </MenuItem>
+                        <MenuItem Style="{StaticResource CustomMenuItem}"
+                                  Header="App Directory"
+                                  ToolTip="Open this application's base directory in File Explorer."
+                                  Command="{Binding OpenAppDirectoryCommand}">
+                        </MenuItem>
+                    </ContextMenu>
+                </Image.ContextMenu>
+            </Image>
             <!--App Title-->
             <TextBlock d:Text="SE Image Converter+" VerticalAlignment="Center"
                        WindowChrome.IsHitTestVisibleInChrome="False"

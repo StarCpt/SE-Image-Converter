@@ -39,5 +39,12 @@ namespace ImageConverterPlus
             point.Y = Math.Round(point.Y);
             return point;
         }
+
+        public static System.Windows.Size Round(this System.Windows.Size size)
+        {
+            size.Width = Math.Round(size.Width);
+            size.Height = Math.Round(size.Height);
+            return size;
+        }
     }
 }

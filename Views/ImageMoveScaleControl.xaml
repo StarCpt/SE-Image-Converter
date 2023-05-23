@@ -9,23 +9,18 @@
              MouseLeftButtonDown="UserControl_MouseLeftButtonDown"
              MouseLeftButtonUp="UserControl_MouseLeftButtonUp"
              MouseMove="UserControl_MouseMove"
-             MouseWheel="UserControl_MouseWheel">
+             MouseWheel="UserControl_MouseWheel"
+             ClipToBounds="True"
+             SizeChanged="UserControl_SizeChanged">
 
-    <Canvas ClipToBounds="True" x:Name="container"
-            Height="{Binding ActualHeight,RelativeSource={RelativeSource AncestorType=UserControl}}"
-            Width="{Binding ActualWidth,RelativeSource={RelativeSource AncestorType=UserControl}}">
-        <Image x:Name="image"
-               Source="/icon16.png"
-               RenderOptions.BitmapScalingMode="NearestNeighbor"
-               Stretch="Uniform"
-               Height="{Binding ActualHeight,RelativeSource={RelativeSource AncestorType=UserControl}}"
-               Width="{Binding ActualWidth,RelativeSource={RelativeSource AncestorType=UserControl}}"
-               HorizontalAlignment="Left"
-               VerticalAlignment="Top"
-               SizeChanged="image_SizeChanged">
-            <Image.RenderTransform>
-                <MatrixTransform />
-            </Image.RenderTransform>
-        </Image>
-    </Canvas>
+    <Image x:Name="image"
+           Source="{Binding PreviewImageSource}"
+           RenderOptions.BitmapScalingMode="NearestNeighbor"
+           Stretch="Uniform"
+           HorizontalAlignment="Left"
+           VerticalAlignment="Top" SizeChanged="image_SizeChanged">
+        <Image.RenderTransform>
+            <MatrixTransform />
+        </Image.RenderTransform>
+    </Image>
 </UserControl>

@@ -8,8 +8,6 @@
         xmlns:vm="clr-namespace:ImageConverterPlus.ViewModels"
         xmlns:controls="clr-namespace:ImageConverterPlus.Controls"
         xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
-        xmlns:drawing="clr-namespace:System.Drawing;assembly=System.Drawing.Common"
-        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:behaviors="clr-namespace:ImageConverterPlus.Behaviors"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
@@ -70,49 +68,72 @@
                 </Style>
             </Grid.Style>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="330" />
+                <ColumnDefinition Width="340" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="54" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="64" />
-            </Grid.RowDefinitions>
 
-            <!--Title Bar-->
-            <!--<StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4" FlowDirection="LeftToRight" Orientation="Horizontal">
-                <Image x:Name="AppTitleIcon" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0,3,0" Height="16" Width="16" Source="/icon16.png" Stretch="Uniform"
-                       IsHitTestVisible="True" WindowChrome.IsHitTestVisibleInChrome="True" MouseLeftButtonDown="AppTitleIcon_MouseLeftButtonChanged" 
-                       MouseLeftButtonUp="AppTitleIcon_MouseLeftButtonChanged" LostMouseCapture="AppTitleIcon_LostMouseCapture">
-                    <Image.ContextMenu>
-                        <ContextMenu Style="{StaticResource CustomMenu}">
-                            <MenuItem Style="{StaticResource CustomMenuItem}"
-                                      Header="Open Log"
-                                      Command="{Binding OpenLogsCommand}">
-                                <MenuItem.ToolTip>
-                                    <ToolTip Style="{StaticResource CustomToolTip}" x:Name="OpenLogBtnToolTip" />
-                                </MenuItem.ToolTip>
-                            </MenuItem>
-                            <MenuItem Style="{StaticResource CustomMenuItem}" Header="App Directory" Click="OpenAppDirBtn_Click" x:Name="OpenAppDirBtn"
-                                      ToolTip="Open this application's base directory in File Explorer.">
-                            </MenuItem>
-                        </ContextMenu>
-                    </Image.ContextMenu>
-                </Image>
-            </StackPanel>-->
+            <Grid Grid.Row="0" Grid.Column="0" Width="330"
+                  Margin="10,0,0,0" HorizontalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="54" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="64" />
+                </Grid.RowDefinitions>
 
-            <!--big title-->
-            <Label x:Name="AppBigTitle" Content="SE Image Converter+" HorizontalAlignment="Center" VerticalAlignment="Bottom" FontSize="23" 
-                   Grid.Column="1" Grid.Row="0" Foreground="White" />
+                <!--big title-->
+                <Label Grid.Row="0" x:Name="AppBigTitle" Content="SE Image Converter+" FontSize="23"
+                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Foreground="White" />
+
+                <!--Menu-->
+                <ScrollViewer Grid.Row="1"
+                              behaviors:ScrollAnimationBehavior.IsEnabled="True"
+                              behaviors:ScrollAnimationBehavior.TimeDuration="00:00:00.10"
+                              behaviors:ScrollAnimationBehavior.PointsToScroll="40" 
+                              FocusVisualStyle="{x:Null}" Margin="0,5,-5,0" Padding="0,0,5,0"
+                              VerticalScrollBarVisibility="Auto"
+                              VerticalAlignment="Center">
+                    <UniformGrid Columns="2">
+                        <!-- Column 1-->
+                        <StackPanel Width="145">
+                            <views:BitDepthAndDitherSelector Margin="5" />
+                            <views:ScaleModeSelector Margin="5" />
+                            <views:ImageTransformControls Margin="5" />
+                        </StackPanel>
+
+                        <!--Column 2-->
+                        <StackPanel Width="145">
+                            <views:LCDSizeSelector Margin="5,5,5,5" />
+                            <views:ImageSplitControls Margin="5" />
+                        </StackPanel>
+                    </UniformGrid>
+                </ScrollViewer>
+
+                <UniformGrid Grid.Row="2" Margin="0,5,0,0"
+                             VerticalAlignment="Top"
+                             Columns="2">
+                    <Button Style="{StaticResource TransparentRoundedButton}" x:Name="BrowseFilesBtn"
+                            Content="Browse Files"
+                            Width="145" Height="40" FontSize="15"
+                            Command="{Binding BrowseFilesCommand}">
+                        <Button.ToolTip>
+                            <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
+                        </Button.ToolTip>
+                    </Button>
+                    <Button Style="{StaticResource TransparentRoundedButton}" x:Name="CopyToClipBtn"
+                            Content="Copy to Clipboard"
+                            Width="145" Height="40" FontSize="15"
+                            Command="{Binding CopyImageToClipboardCommand}">
+                    </Button>
+                </UniformGrid>
+            </Grid>
 
             <!--Background Color Rectangle-->
-            <Grid Grid.Row="0" Grid.Column="2" Grid.RowSpan="3">
+            <Grid x:Name="PreviewContainerGrid" Grid.Row="0" Grid.Column="1"
+                  Margin="29.5,33.5" SizeChanged="PreviewContainerGrid_SizeChanged">
                 <Rectangle x:Name="ImagePreviewBackground" Fill="#101010" 
-                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Opacity="0.25"
-                           Width="350" Height="350"
-                           AllowDrop="True" PreviewDrop="Preview_PreviewDrop" Margin="29.5,33.5" Stretch="Uniform"
-                           ToolTip="Converted Image Preview">
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.25"
+                           AllowDrop="True" PreviewDrop="Preview_PreviewDrop"
+                           Stretch="Uniform" ToolTip="Converted Image Preview">
                     <Rectangle.ContextMenu>
                         <ContextMenu Style="{StaticResource CustomMenu}">
                             <MenuItem Style="{StaticResource CustomMenuItem}"
@@ -125,80 +146,37 @@
                 <!--"Image Preview" text-->
                 <TextBlock x:Name="ImagePreviewTextBlock" Text="Preview" Foreground="White"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
-            </Grid>
-            <!--The actual image previw control-->
-            <Border Grid.Row="0" Grid.Column="2" Grid.RowSpan="3" x:Name="ImagePreviewBorder" Background="#000000" Visibility="Hidden"
-                    Height="{Binding ActualHeight,ElementName=ImagePreviewBackground}" Width="{Binding ActualWidth,ElementName=ImagePreviewBackground}"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    PreviewDrop="Preview_PreviewDrop" ClipToBounds="True" AllowDrop="True">
-                <Border.ContextMenu>
-                    <ContextMenu Style="{StaticResource CustomMenu}">
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard"
-                                  Command="{Binding CopyImageToClipboardCommand}" />
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard"
-                                  Click="PasteFromClipboard" />
-                        <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan"
-                                  Command="{Binding ResetZoomAndPanCommand}" />
-                    </ContextMenu>
-                </Border.ContextMenu>
-                <Grid>
-                    <Image HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="ImagePreview" />
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="PreviewGrid"
-                                PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
-                                Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <Grid Visibility="{Binding PreviewImageExists,Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <views:ImageMoveScaleControl x:Name="previewNew" Background="#000000">
+                        <views:ImageMoveScaleControl.ContextMenu>
+                            <ContextMenu Style="{StaticResource CustomMenu}">
+                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Copy to Clipboard"
+                                          Command="{Binding CopyImageToClipboardCommand}" />
+                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Convert From Clipboard"
+                                          Click="PasteFromClipboard" />
+                                <MenuItem Style="{StaticResource CustomMenuItem}" Header="Reset Zoom &amp; Pan"
+                                          Command="{Binding ResetZoomAndPanCommand}" />
+                            </ContextMenu>
+                        </views:ImageMoveScaleControl.ContextMenu>
+                    </views:ImageMoveScaleControl>
+                    <UniformGrid
+                        x:Name="PreviewGrid"
+                        Columns="{Binding ImageSplitWidth}"
+                        Rows="{Binding ImageSplitHeight}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
+                        Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Width="{Binding ActualWidth,ElementName=previewNew}"
+                        Height="{Binding ActualHeight,ElementName=previewNew}" />
                 </Grid>
-            </Border>
-            <!--<views:ImageMoveScaleControl Grid.Row="0" Grid.Column="2" Grid.RowSpan="3"
-                                         Width="350" Height="350" Background="Green" Panel.ZIndex="-1" />-->
-            <TextBlock Foreground="Red" Text="captured" Grid.Row="2" Grid.Column="2" x:Name="debug1"
+            </Grid>
+
+            <TextBlock Foreground="Red" Text="debug1" Grid.Row="0" Grid.Column="1" x:Name="debug1"
                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="-200,0,0,0" />
-            <TextBlock Foreground="Red" Text="moveOrig" Grid.Row="2" Grid.Column="2" x:Name="debug2"
+            <TextBlock Foreground="Red" Text="debug2" Grid.Row="0" Grid.Column="1" x:Name="debug2"
                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,0" />
-            <TextBlock Foreground="Red" Text="currPos" Grid.Row="2" Grid.Column="2" x:Name="debug3"
+            <TextBlock Foreground="Red" Text="debug3" Grid.Row="0" Grid.Column="1" x:Name="debug3"
                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="200,0,0,0" />
-
-            <!--Menu-->
-            <ScrollViewer Grid.Row="1" Grid.Column="1"
-                          behaviors:ScrollAnimationBehavior.IsEnabled="True"
-                          behaviors:ScrollAnimationBehavior.TimeDuration="00:00:00.10"
-                          behaviors:ScrollAnimationBehavior.PointsToScroll="40" 
-                          FocusVisualStyle="{x:Null}" Margin="0,5,-5,0" Padding="0,0,5,0"
-                          VerticalScrollBarVisibility="Auto" CanContentScroll="True">
-                <UniformGrid Columns="2">
-                    <!-- column 1-->
-                    <!--Cool buttons from Dopamine player-->
-                    <StackPanel Width="145">
-                        <views:BitDepthAndDitherSelector Margin="5" />
-                        <views:ScaleModeSelector Margin="5" />
-                        <views:ImageTransformControls Margin="5" />
-                    </StackPanel>
-
-                    <!--Column 2-->
-                    <StackPanel Width="145">
-                        <views:LCDSizeSelector Margin="5,5,5,5" />
-                        <views:ImageSplitControls Margin="5" />
-                    </StackPanel>
-                </UniformGrid>
-            </ScrollViewer>
-
-            <UniformGrid Grid.Row="2" Grid.Column="1"
-                         Margin="0,5,0,0" VerticalAlignment="Top">
-                <Button Style="{StaticResource TransparentRoundedButton}" x:Name="BrowseFilesBtn"
-                        Content="Browse Files"
-                        Width="145" Height="40" FontSize="15"
-                        Command="{Binding BrowseFilesCommand}">
-                    <Button.ToolTip>
-                        <ToolTip Style="{StaticResource CustomToolTip}" x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
-                    </Button.ToolTip>
-                </Button>
-                <Button Style="{StaticResource TransparentRoundedButton}" x:Name="CopyToClipBtn"
-                        Content="Copy to Clipboard"
-                        Width="145" Height="40" FontSize="15"
-                        Command="{Binding CopyImageToClipboardCommand}">
-                </Button>
-            </UniformGrid>
-
         </Grid>
     </DockPanel>
 </Window>

@@ -64,6 +64,23 @@ namespace ImageConverterPlus.ImageConverter
         internal Converter(ConvertOptions options)
         {
             this.Options = options;
+
+            if (Options.ConvertedSize.Width > 10000)
+            {
+                Options.ConvertedSize = new Size(
+                    Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Width),
+                    Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Width));
+                MainWindow.Logging.Log($"Converter.ctor: Width too large. Resizing to 10000");
+            }
+
+            if (Options.ConvertedSize.Height > 10000)
+            {
+                Options.ConvertedSize = new Size(
+                    Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Height),
+                    Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Height));
+                MainWindow.Logging.Log($"Converter.ctor: Height too large. Resizing to 10000");
+            }
+
             Precalc = new byte[256];
             FillPrecalcArray();
         }
@@ -277,7 +294,7 @@ namespace ImageConverterPlus.ImageConverter
                 byte[] bitmapBytes = new byte[sizeInBytes];
                 System.Runtime.InteropServices.Marshal.Copy(ptr, bitmapBytes, 0, sizeInBytes);
 
-                ChangeBitDepth(bitmapBytes, data);
+                ChangeBitDepth(bitmapBytes, data, token);
 
                 long c2 = sw.ElapsedMilliseconds;
                 sw.Restart();
@@ -317,7 +334,7 @@ namespace ImageConverterPlus.ImageConverter
                 ApplyScaleOffset(ref bitmap);
 
                 double c1 = sw.Elapsed.TotalMilliseconds;
-                MainWindow.Logging.Log($"ChangeBitDepth {c1} ms");
+                MainWindow.Logging.Log($"ConvertToBitmapSafe ApplyScaleOffset {c1} ms");
                 sw.Restart();
 
                 token.ThrowIfCancellationRequested();
@@ -333,10 +350,10 @@ namespace ImageConverterPlus.ImageConverter
                 byte[] bitmapBytes = new byte[sizeInBytes];
                 System.Runtime.InteropServices.Marshal.Copy(ptr, bitmapBytes, 0, sizeInBytes);
 
-                ChangeBitDepth(bitmapBytes, data);
+                ChangeBitDepth(bitmapBytes, data, token);
 
                 double c2 = sw.Elapsed.TotalMilliseconds;
-                MainWindow.Logging.Log($"ChangeBitDepth {c2} ms");
+                MainWindow.Logging.Log($"ConvertToBitmapSafe ChangeBitDepth {c2} ms");
                 sw.Restart();
 
                 token.ThrowIfCancellationRequested();
@@ -356,7 +373,7 @@ namespace ImageConverterPlus.ImageConverter
             }
         }
 
-        private void ChangeBitDepth(byte[] bytes, BitmapData data)
+        private void ChangeBitDepth(byte[] bytes, BitmapData data, CancellationToken token)
         {
             int sizeInBytes = data.Stride * data.Height;
 
@@ -388,6 +405,7 @@ namespace ImageConverterPlus.ImageConverter
                 for (int r = 0; r < height; r++)
                 {
                     maxWorkerLock.Wait();
+                    token.ThrowIfCancellationRequested();
 
                     int row = r;
                     rowLocks[row] = new ManualResetEventSlim(false);
@@ -600,10 +618,10 @@ namespace ImageConverterPlus.ImageConverter
         {
             double widthScale = (double)bitmap.Width / Options.ConvertedSize.Width;
             double heightScale = (double)bitmap.Height / Options.ConvertedSize.Height;
-            double biggerScale = Math.Min(widthScale, heightScale); //Min = fill, Max = fit
+            double smallerScale = Math.Min(widthScale, heightScale); //Min = fill, Max = fit
 
-            double scaledBitmapWidth = bitmap.Width * Options.Scale / biggerScale;
-            double scaledBitmapHeight = bitmap.Height * Options.Scale / biggerScale;
+            double scaledBitmapWidth = bitmap.Width * Options.Scale / smallerScale;
+            double scaledBitmapHeight = bitmap.Height * Options.Scale / smallerScale;
 
             Size scaledSize = new Size
             {

@@ -21,7 +21,7 @@ namespace ImageConverterPlus
                 string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                MainWindow.Static.ResetPreviewZoomAndPan(true);
+                MainWindow.Static.ResetZoomAndPan();
                 ImageCache = new ImageInfo(image, url);
                 if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                 {
@@ -40,7 +40,7 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    MainWindow.Static.ResetPreviewZoomAndPan(true);
+                    MainWindow.Static.ResetZoomAndPan();
                     ImageCache = new ImageInfo(image, src);
                     if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
                     {

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,6 +21,8 @@ namespace ImageConverterPlus.ViewModels
         public ICommand MaximizeCommand { get; }
         public ICommand RestoreCommand { get; }
         public ICommand CloseCommand { get; }
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenAppDirectoryCommand { get; }
 
         private Window parentWindow;
         private bool isMaximized = false;
@@ -32,6 +35,8 @@ namespace ImageConverterPlus.ViewModels
             MaximizeCommand = new ButtonCommand(ExecuteMaximizeCommand);
             RestoreCommand = new ButtonCommand(ExecuteRestoreCommand);
             CloseCommand = new ButtonCommand(ExecuteCloseCommand);
+            OpenLogsCommand = new ButtonCommand(ExecuteOpenLogsCommand);
+            OpenAppDirectoryCommand = new ButtonCommand(ExecuteOpenAppDirectoryCommand);
         }
 
         private void ExecuteLoadedCommand(object? param)
@@ -81,6 +86,16 @@ namespace ImageConverterPlus.ViewModels
         private void ExecuteCloseCommand(object? param)
         {
             parentWindow.Close();
+        }
+
+        private void ExecuteOpenLogsCommand(object? param)
+        {
+            MainWindow.Logging.OpenLogFileAsync();
+        }
+
+        private void ExecuteOpenAppDirectoryCommand(object? param)
+        {
+            Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
         }
     }
 }

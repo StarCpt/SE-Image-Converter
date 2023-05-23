@@ -8,8 +8,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using HtmlAgilityPack;
-using System.Net;
 using System.IO;
 using Bitmap = System.Drawing.Bitmap;
 using Size = System.Drawing.Size;
@@ -17,82 +15,30 @@ using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 using Point = System.Windows.Point;
 using System.Timers;
 using System.Windows.Controls.Primitives;
-using System.Windows.Media.Animation;
 using System.ComponentModel;
-using BitDepth = ImageConverterPlus.ImageConverter.BitDepth;
 using ImageConverterPlus.ImageConverter;
 using System.Threading;
-using System.Drawing.Drawing2D;
-using System.Security.Cryptography;
 using System.Windows.Threading;
 
 namespace ImageConverterPlus
 {
     partial class MainWindow
     {
-        private Point origin;
-        private Point start;
+        //private const int PreviewContainerWidth = 350;
+        //private const int PreviewContainerHeight = 350;
 
-        private const int PreviewContainerWidth = 350;
-        private const int PreviewContainerHeight = 350;
-        //private double PreviewContainerWidth => ImagePreviewBorder.ActualWidth;
-        //private double PreviewContainerHeight => ImagePreviewBorder.ActualHeight;
-
-        private Point PreviewTopLeft;
-        public static double imagePreviewScale { get; private set; } = 1f;
+        private double PreviewContainerGridSize => Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight);
 
         private Size ImageSplitSize => viewModel.ImageSplitSize;
 
-        private System.Timers.Timer PreviewConvertTimer;
-
-        private Dictionary<ToggleButton, System.Drawing.Point> splitCtrlBtns = new Dictionary<ToggleButton, System.Drawing.Point>();
         private System.Drawing.Point checkedSplitBtnPos = System.Drawing.Point.Empty;
 
         private ContextMenu PreviewGridMenu;
 
         public void InitImagePreview()
         {
-            ImagePreview.PreviewMouseWheel += Preview_OnMouseWheelChanged;
-            ImagePreview.MouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-            //ImagePreview.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
-            ImagePreview.MouseMove += Preview_OnMouseMove;
-            ImagePreview.SizeChanged += UpdatePreviewTopLeft;
-
-            ImagePreviewBorder.PreviewMouseWheel += Preview_OnMouseWheelChanged;
-            ImagePreviewBorder.MouseLeftButtonDown += Preview_OnMouseLeftBtnDown;
-            //ImagePreviewBorder.MouseLeftButtonUp += Preview_OnMouseLeftBtnUp;
-            ImagePreviewBorder.MouseMove += Preview_OnMouseMove;
-            ImagePreviewBorder.SizeChanged += UpdatePreviewTopLeft;
-
-            ImagePreviewBorder.SizeChanged += UpdatePreviewGrid;
-
-            TransformGroup group = new TransformGroup();
-            ScaleTransform st = new ScaleTransform();
-            group.Children.Add(st);
-            TranslateTransform tt = new TranslateTransform();
-            group.Children.Add(tt);
-            ImagePreview.RenderTransform = group;
-            ImagePreview.RenderTransformOrigin = new Point(0.0, 0.0);
-        }
-
-        public void ResetPreviewZoomAndPan(bool update)
-        {
-            //ImagePreviewBorder.Visibility = Visibility.Visible;
-
-            var st = GetScaleTransform(ImagePreview);
-            st.ScaleX = 1d;
-            st.ScaleY = 1d;
-
-            var tt = GetTranslateTransform(ImagePreview);
-            tt.X = 0d;
-            tt.Y = 0d;
-
-            imagePreviewScale = 1.0d;
-
-            if (update)
-            {
-                UpdatePreviewDelayed(false, 0);
-            }
+            previewNew.ScaleChanged += PreviewNew_ScaleChanged;
+            UpdatePreviewGrid();
         }
 
         public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
@@ -120,8 +66,8 @@ namespace ImageConverterPlus
             Monitor.Exit(imageToConvert);
 
             //apply preview scale (zoom)
-            scaledImageWidth *= imagePreviewScale;
-            scaledImageHeight *= imagePreviewScale;
+            scaledImageWidth *= previewNew.Scale;
+            scaledImageHeight *= previewNew.Scale;
 
             //turn the size from above into lcd width/height % ratio
             double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
@@ -143,11 +89,11 @@ namespace ImageConverterPlus
             PreviewConvertTask = Task.Run(() => ConvertManager.ConvertToBitmap(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
         }
 
-        public void UpdatePreviewDelayed(bool resetZoom, ushort delay)
+        public void UpdatePreviewDelayed(bool resetZoom, double delay)
         {
             if (resetZoom)
             {
-                ResetPreviewZoomAndPan(false);
+                ResetZoomAndPan();
             }
 
             if (ImageCache?.Image == null)
@@ -180,141 +126,37 @@ namespace ImageConverterPlus
             };
             PreviewConvertTimer.Elapsed +=
                 (object? sender, ElapsedEventArgs e) =>
-                ImagePreview.Dispatcher.Invoke(
+                previewNew.Dispatcher.Invoke(
                     () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback));
             PreviewConvertTimer.Start();
         }
 
-        public void UpdatePreviewTopLeft(object sender, SizeChangedEventArgs e)
+        private void PreviewNew_ScaleChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            PreviewTopLeft = new Point((-ImagePreviewBorder.ActualWidth + ImagePreview.ActualWidth) / 2, (-ImagePreviewBorder.ActualHeight + ImagePreview.ActualHeight) / 2);
+            UpdatePreviewDelayed(false, previewNew.animationDuration.TotalMilliseconds);
         }
 
-        public void Preview_OnMouseWheelChanged(object sender, MouseWheelEventArgs e)
-        {
-            if (viewModel.ShowPreviewGrid)
-            {
-                return;
-            }
-
-            ScaleTransform st = GetScaleTransform(ImagePreview);
-            TranslateTransform tt = GetTranslateTransform(ImagePreview);
-
-            double zoomAmount = 0.2;
-
-            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
-            {
-                zoomAmount = 0.02;
-            }
-
-            double zoom = e.Delta > 0 ? zoomAmount : -zoomAmount;
-
-            if ((e.Delta < 0 && st.ScaleX <= 0.4) || (e.Delta > 0 && st.ScaleX >= 10))
-            {
-                return;
-            }
-
-            Point relative = e.GetPosition(ImagePreview);
-            double absX;
-            double absY;
-
-            absX = relative.X * st.ScaleX + tt.X;
-            absY = relative.Y * st.ScaleY + tt.Y;
-
-
-
-            st.ScaleX = Math.Clamp(st.ScaleX + zoom, 0.4, 10);
-            st.ScaleY = Math.Clamp(st.ScaleY + zoom, 0.4, 10);
-
-            imagePreviewScale = st.ScaleX;
-
-            tt.X = (absX - relative.X * st.ScaleX).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX));
-            tt.Y = (absY - relative.Y * st.ScaleY).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY));
-
-            start = e.GetPosition(ImagePreviewBorder);
-            origin = new Point(tt.X, tt.Y);
-
-            UpdatePreviewDelayed(false, 100);
-
-            e.Handled = true;
-        }
-
-        private void SetPreviewZoom(double zoom)
-        {
-            ScaleTransform st = GetScaleTransform(ImagePreview);
-            TranslateTransform tt = GetTranslateTransform(ImagePreview);
-
-            st.ScaleX = zoom;
-            st.ScaleY = zoom;
-
-            imagePreviewScale = zoom;
-
-            UpdatePreviewDelayed(false, 0);
-
-            tt.X = ((PreviewTopLeft.X * 2) + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * st.ScaleX)) / 2;
-            tt.Y = ((PreviewTopLeft.Y * 2) + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * st.ScaleY)) / 2;
-        }
-
-        public void Preview_OnMouseLeftBtnDown(object sender, MouseButtonEventArgs e)
-        {
-            TranslateTransform tt = GetTranslateTransform(ImagePreview);
-            start = e.GetPosition(ImagePreviewBorder);
-            origin = new Point(tt.X, tt.Y);
-            ImagePreview.Cursor = Cursors.Hand;
-            ImagePreview.CaptureMouse();
-        }
-
-        public void Preview_OnMouseLeftBtnUp(object sender, MouseButtonEventArgs e)
-        {
-            ImagePreview.ReleaseMouseCapture();
-            ImagePreview.Cursor = Cursors.Arrow;
-        }
-
-        public void Preview_OnMouseMove(object sender, MouseEventArgs e)
-        {
-            if (ImagePreview.IsMouseCaptured)
-            {
-                TranslateTransform tt = GetTranslateTransform(ImagePreview);
-                Vector vec = start - e.GetPosition(ImagePreviewBorder);
-
-                tt.X = (origin.X - vec.X).ClampDoubleExt(PreviewTopLeft.X, PreviewTopLeft.X + (ImagePreviewBorder.ActualWidth - ImagePreview.ActualWidth * imagePreviewScale));
-                tt.Y = (origin.Y - vec.Y).ClampDoubleExt(PreviewTopLeft.Y, PreviewTopLeft.Y + (ImagePreviewBorder.ActualHeight - ImagePreview.ActualHeight * imagePreviewScale));
-            }
-        }
-
-        public TranslateTransform GetTranslateTransform(Image image)
-        {
-            return (TranslateTransform)((TransformGroup)image.RenderTransform)
-                .Children.First(tr => tr is TranslateTransform);
-        }
-
-        public ScaleTransform GetScaleTransform(Image image)
-        {
-            return (ScaleTransform)((TransformGroup)image.RenderTransform)
-                .Children.First(tr => tr is ScaleTransform);
-        }
-
-        private void ChangePreviewThreadSafe(BitmapImage image)
+        private void UpdatePreviewSourceThreadSafe(BitmapImage image)
         {
             image.Freeze();
-            ImagePreview.Dispatcher.Invoke(() =>
+            previewNew.Dispatcher.Invoke(() =>
             {
-                ImagePreview.Source = image;
+                viewModel.PreviewImageSource = image;
                 CopyToClipBtn.IsEnabled = true;
 
                 Size lcdSize = GetLCDSize();
                 if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
                 {
-                    ImagePreviewBorder.Width = PreviewContainerWidth;
-                    ImagePreviewBorder.Height = PreviewContainerHeight * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
+                    previewNew.Width = PreviewContainerGridSize;
+                    previewNew.Height = PreviewContainerGridSize * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
                 }
                 else
                 {
-                    ImagePreviewBorder.Width = PreviewContainerWidth * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
-                    ImagePreviewBorder.Height = PreviewContainerHeight;
+                    previewNew.Width = PreviewContainerGridSize * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
+                    previewNew.Height = PreviewContainerGridSize;
                 }
 
-                ImagePreviewBorder.Visibility = Visibility.Visible;
+                previewNew.Visibility = Visibility.Visible;
                 ImagePreviewTextBlock.Visibility = Visibility.Hidden;
             });
         }
@@ -323,12 +165,12 @@ namespace ImageConverterPlus
 
         private void RemovePreview()
         {
-            ImagePreview.Source = null;
+            viewModel.PreviewImageSource = null;
             ConvertedImageStr = string.Empty;
             CopyToClipBtn.IsEnabled = false;
-            ResetPreviewZoomAndPan(false);
+            ResetZoomAndPan();
 
-            ImagePreviewBorder.Visibility = Visibility.Hidden;
+            previewNew.Visibility = Visibility.Hidden;
             ImagePreviewTextBlock.Visibility = Visibility.Visible;
         }
 
@@ -353,7 +195,7 @@ namespace ImageConverterPlus
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
                 Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                ResetPreviewZoomAndPan(true);
+                ResetZoomAndPan();
                 ImageCache = new ImageInfo(bitImage, "Drag & Droped Image Bitmap");
                 if (TryConvertImageThreaded(ImageCache.Image, ConvertResultCallback, PreviewConvertResultCallback))
                 {
@@ -371,32 +213,102 @@ namespace ImageConverterPlus
             }
         }
 
-        public void PreviewConvertResultCallback(Bitmap resultPreviewImg) => ChangePreviewThreadSafe(Helpers.BitmapToBitmapImage(resultPreviewImg));
+        public void PreviewConvertResultCallback(Bitmap resultPreviewImg) => UpdatePreviewSourceThreadSafe(Helpers.BitmapToBitmapImage(resultPreviewImg));
 
         public void ZoomToFit()
         {
-            if (imagePreviewScale != 1.0d)
+            if (ImageCache?.Image != null)
             {
-                SetPreviewZoom(1.0d);
+                double scaleOld = previewNew.Scale;
+                double scaleChange = -scaleOld + 1;
+                previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
+
+                Monitor.Enter(ImageCache.Image);
+                
+                double imageToContainerWidthRatio = ImageCache.Image.Width / previewNew.ActualWidth;
+                double imageToContainerHeightRatio = ImageCache.Image.Height / previewNew.ActualHeight;
+                
+                //get the bigger ratio taking into account the image split
+                double biggerImageToContainerRatio = Math.Max(imageToContainerWidthRatio, imageToContainerHeightRatio);
+                
+                double scaledImageWidth = ImageCache.Image.Width / biggerImageToContainerRatio;
+                double scaledImageHeight = ImageCache.Image.Height / biggerImageToContainerRatio;
+                
+                Monitor.Exit(ImageCache.Image);
+
+                Point offsetTo;
+                if (scaledImageWidth < scaledImageHeight)
+                    offsetTo = new Point(previewNew.Offset.X - scaledImageWidth / 2 * scaleChange, previewNew.Offset.Y);
+                else
+                    offsetTo = new Point(previewNew.Offset.X, previewNew.Offset.Y - scaledImageHeight / 2 * scaleChange);
+                
+                previewNew.SetOffsetAnimated(previewNew.ClampOffset(offsetTo, previewNew.Scale), previewNew.animationDuration);
             }
         }
 
         public void ZoomToFill()
         {
-            if (ImageCache.Image != null)
+            if (ImageCache?.Image != null)
             {
-                Size lcdSize = GetLCDSize();
-                double imageXRatio = (double)ImageCache.Image.Width / (lcdSize.Width * ImageSplitSize.Width);
-                double imageYRatio = (double)ImageCache.Image.Height / (lcdSize.Height * ImageSplitSize.Height);
-                double zoom = imageXRatio > imageYRatio ? imageXRatio / imageYRatio : imageYRatio / imageXRatio;
-                if (imagePreviewScale != zoom)
-                {
-                    SetPreviewZoom(zoom);
-                }
+                Monitor.Enter(ImageCache.Image);
+
+                double imageToLCDWidthRatio = (double)ImageCache.Image.Width / viewModel.LCDWidth * viewModel.ImageSplitWidth;
+                double imageToLCDHeightRatio = (double)ImageCache.Image.Height / viewModel.LCDHeight * viewModel.ImageSplitHeight;
+                double minRatio = Math.Min(imageToLCDWidthRatio, imageToLCDHeightRatio);
+
+                var convertedImageSize = new System.Windows.Size(ImageCache.Image.Width / minRatio, ImageCache.Image.Height / minRatio);
+                convertedImageSize = convertedImageSize.Round();
+
+                Monitor.Exit(ImageCache.Image);
+
+                double imageToContainerWidthRatio = convertedImageSize.Width / previewNew.ActualWidth;
+                double imageToContainerHeightRatio = convertedImageSize.Height / previewNew.ActualHeight;
+
+                double scale =
+                    imageToContainerWidthRatio > imageToContainerHeightRatio ?
+                    imageToContainerWidthRatio / imageToContainerHeightRatio :
+                    imageToContainerHeightRatio / imageToContainerWidthRatio;
+
+                double scaleOld = previewNew.Scale;
+                double scaleChange = -scaleOld + scale;
+
+                Point offsetTo;
+                if (imageToContainerWidthRatio > imageToContainerHeightRatio)
+                    offsetTo = new Point(previewNew.Offset.X - previewNew.ActualWidth / 2 * scaleChange, previewNew.Offset.Y);
+                else
+                    offsetTo = new Point(previewNew.Offset.X, previewNew.Offset.Y - previewNew.ActualHeight / 2 * scaleChange);
+
+                previewNew.SetScaleAnimated(scale, previewNew.animationDuration);
+                previewNew.SetOffsetAnimated(previewNew.ClampOffset(offsetTo, previewNew.Scale), previewNew.animationDuration);
             }
         }
 
-        private void UpdatePreviewGrid(object sender, SizeChangedEventArgs e) => UpdatePreviewGrid();
+        public void ResetZoomAndPan()
+        {
+            if (ImageCache?.Image != null)
+            {
+                previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
+
+                Monitor.Enter(ImageCache.Image);
+
+                double imageToContainerWidthRatio = ImageCache.Image.Width / previewNew.ActualWidth;
+                double imageToContainerHeightRatio = ImageCache.Image.Height / previewNew.ActualHeight;
+
+                //get the bigger ratio taking into account the image split
+                double biggerImageToContainerRatio = Math.Max(imageToContainerWidthRatio, imageToContainerHeightRatio);
+
+                double scaledImageWidth = ImageCache.Image.Width / biggerImageToContainerRatio;
+                double scaledImageHeight = ImageCache.Image.Height / biggerImageToContainerRatio;
+
+                Monitor.Exit(ImageCache.Image);
+
+                Point offsetTo = new Point(
+                    (previewNew.ActualWidth - scaledImageWidth) / 2,
+                    (previewNew.ActualHeight - scaledImageHeight) / 2);
+
+                previewNew.SetOffsetAnimated(offsetTo, previewNew.animationDuration);
+            }
+        }
 
         private void UpdatePreviewGrid()
         {
@@ -407,20 +319,18 @@ namespace ImageConverterPlus
 
             if (lcdSize.Width * splitX > lcdSize.Height * splitY)
             {
-                ImagePreviewBorder.Width = PreviewContainerWidth;
-                ImagePreviewBorder.Height = PreviewContainerHeight * (((double)lcdSize.Height * splitY) / ((double)lcdSize.Width * splitX));
+                previewNew.Width = PreviewContainerGridSize;
+                previewNew.Height = PreviewContainerGridSize * ((double)(lcdSize.Height * splitY) / (lcdSize.Width * splitX));
             }
             else
             {
-                ImagePreviewBorder.Width = PreviewContainerWidth * (((double)lcdSize.Width * splitX) / ((double)lcdSize.Height * splitY));
-                ImagePreviewBorder.Height = PreviewContainerHeight;
+                previewNew.Width = PreviewContainerGridSize * ((double)(lcdSize.Width * splitX) / (lcdSize.Height * splitY));
+                previewNew.Height = PreviewContainerGridSize;
             }
 
             PreviewGrid.Children.Clear();
-            splitCtrlBtns.Clear();
 
             checkedSplitBtnPos = System.Drawing.Point.Empty;
-            bool firstBtn = true;
 
             if (PreviewGridMenu == null)
             {
@@ -455,64 +365,43 @@ namespace ImageConverterPlus
 
             for (int x = 0; x < ImageSplitSize.Width; x++)
             {
-                StackPanel column = new StackPanel();
                 for (int y = 0; y < ImageSplitSize.Height; y++)
                 {
                     ToggleButton btn = new ToggleButton
                     {
-                        Name = $"x{x.ToString()}y{y.ToString()}",
                         Style = (Style)FindResource("PreviewSplitBtn"),
-                        Width = ImagePreviewBorder.ActualWidth / ImageSplitSize.Width,
-                        Height = ImagePreviewBorder.ActualHeight / ImageSplitSize.Height,
+                        Tag = new System.Drawing.Point(x, y),
+                        IsChecked = x == 0 && y == 0,
+                        ContextMenu = PreviewGridMenu,
                     };
-
-                    if (firstBtn)
-                    {
-                        btn.IsChecked = true;
-                        firstBtn = false;
-                    }
+                    Grid.SetColumn(btn, x);
+                    Grid.SetRow(btn, y);
                     btn.Click += SplitCtrlBtn_Click;
-                    btn.ContextMenu = PreviewGridMenu;
-                    column.Children.Add(btn);
-                    splitCtrlBtns.Add(btn, new System.Drawing.Point(x, y));
+                    PreviewGrid.Children.Add(btn);
                 }
-                PreviewGrid.Children.Add(column);
             }
         }
 
         private void SplitCtrlBtn_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var btn in splitCtrlBtns)
+            ToggleButton btn = (ToggleButton)sender;
+            foreach (var tb in PreviewGrid.Children.OfType<ToggleButton>())
             {
-                if (btn.Key == sender as ToggleButton)
-                {
-                    btn.Key.IsChecked = true;
-                    checkedSplitBtnPos = btn.Value;
-                }
-                else
-                {
-                    btn.Key.IsChecked = false;
-                }
+                tb.IsChecked = tb == btn;
             }
+            checkedSplitBtnPos = (System.Drawing.Point)btn.Tag;
         }
 
         private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
         {
             ToggleButton openedOver = (ToggleButton)((ContextMenu)((MenuItem)sender).Parent).PlacementTarget;
-            if (openedOver != null && splitCtrlBtns.ContainsKey(openedOver))
+            if (openedOver != null && PreviewGrid.Children.Contains(openedOver))
             {
-                foreach (var btn in splitCtrlBtns)
+                foreach (var tb in PreviewGrid.Children.OfType<ToggleButton>())
                 {
-                    if (btn.Key == openedOver)
-                    {
-                        btn.Key.IsChecked = true;
-                        checkedSplitBtnPos = btn.Value;
-                    }
-                    else
-                    {
-                        btn.Key.IsChecked = false;
-                    }
+                    tb.IsChecked = tb == openedOver;
                 }
+                checkedSplitBtnPos = (System.Drawing.Point)openedOver.Tag;
 
                 if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache.Image, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
                 {
@@ -523,6 +412,31 @@ namespace ImageConverterPlus
             {
                 ShowAcrylDialog("Could not find square menu was opened over!");
             }
+        }
+
+        private void PreviewContainerGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            Size lcdSize = GetLCDSize();
+            if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
+            {
+                previewNew.Width = PreviewContainerGridSize;
+                previewNew.Height = PreviewContainerGridSize * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
+            }
+            else
+            {
+                previewNew.Width = PreviewContainerGridSize * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
+                previewNew.Height = PreviewContainerGridSize;
+            }
+
+            if (e.PreviousSize.Width != 0 && e.PreviousSize.Height != 0)
+            {
+                previewNew.Offset = new Point(
+                    previewNew.Offset.X * (e.NewSize.Width / e.PreviousSize.Width),
+                    previewNew.Offset.Y * (e.NewSize.Height / e.PreviousSize.Height));
+            }
+
+            ImagePreviewBackground.Width = PreviewContainerGridSize;
+            ImagePreviewBackground.Height = PreviewContainerGridSize;
         }
     }
 }

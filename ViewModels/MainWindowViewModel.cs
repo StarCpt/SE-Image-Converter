@@ -2,6 +2,7 @@
 using ImageConverterPlus.ImageConverter;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
@@ -25,12 +26,62 @@ namespace ImageConverterPlus.ViewModels
 
         private static MainWindow view => MainWindow.Static; //temp
 
-        public bool EnableDithering { get => enableDithering; set => SetValue(ref enableDithering, value); }
-        public BitDepth ColorDepth { get => colorDepth; set => SetValue(ref colorDepth, value); }
-        public InterpolationMode InterpolationMode { get => interpolationMode; set => SetValue(ref interpolationMode, value); }
+        public bool EnableDithering
+        {
+            get => enableDithering;
+            set
+            {
+                if (SetValue(ref enableDithering, value))
+                {
+                    view.EnableDitheringChanged(this, value);
+                }
+            }
+        }
+        public BitDepth ColorDepth
+        {
+            get => colorDepth;
+            set
+            {
+                if (SetValue(ref colorDepth, value))
+                {
+                    view.ColorDepthChanged(this, value);
+                }
+            }
+        }
+        public InterpolationMode InterpolationMode
+        {
+            get => interpolationMode;
+            set
+            {
+                if (SetValue(ref interpolationMode, value))
+                {
+                    view.ScaleModeChanged(this, value);
+                }
+            }
+        }
         public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
-        public int LCDWidth { get => lcdWidth; set => SetValue(ref lcdWidth, value); }
-        public int LCDHeight { get => lcdHeight; set => SetValue(ref lcdHeight, value); }
+        public int LCDWidth
+        {
+            get => lcdWidth;
+            set
+            {
+                if (SetValue(ref lcdWidth, value))
+                {
+                    view.LCDSizeChanged(this, LCDWidth, LCDHeight);
+                }
+            }
+        }
+        public int LCDHeight
+        {
+            get => lcdHeight;
+            set
+            {
+                if (SetValue(ref lcdHeight, value))
+                {
+                    view.LCDSizeChanged(this, LCDWidth, LCDHeight);
+                }
+            }
+        }
         public Size ImageSplitSize
         {
             get => imageSplitSize;
@@ -39,7 +90,10 @@ namespace ImageConverterPlus.ViewModels
                 bool widthChanged = imageSplitSize.Width != value.Width;
                 bool heightChanged = imageSplitSize.Height != value.Height;
 
-                SetValue(ref imageSplitSize, value);
+                if (SetValue(ref imageSplitSize, value))
+                {
+                    view.ImageSplitSizeChanged(this, value);
+                }
 
                 if (widthChanged)
                     RaisePropertyChanged(nameof(ImageSplitWidth));
@@ -66,8 +120,19 @@ namespace ImageConverterPlus.ViewModels
         }
         public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
         public bool IsMouseOverScrollableTextBox { get => isMouseOverScrollableTextBox; set => SetValue(ref isMouseOverScrollableTextBox, value); }
+        public ImageSource PreviewImageSource
+        {
+            get => previewImageSource;
+            set
+            {
+                if (SetValue(ref previewImageSource, value))
+                {
+                    RaisePropertyChanged(nameof(PreviewImageExists));
+                }
+            }
+        }
+        public bool PreviewImageExists => previewImageSource != null;
 
-        public ICommand OpenLogsCommand { get; }
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
         public ICommand ZoomToFillCommand { get; }
@@ -84,10 +149,10 @@ namespace ImageConverterPlus.ViewModels
         private bool showPreviewGrid;
         private Size imageSplitSize;
         private bool isMouseOverScrollableTextBox;
+        private ImageSource previewImageSource;
 
         public MainWindowViewModel()
         {
-            OpenLogsCommand = new ButtonCommand(ExecuteOpenLogsCommand);
             BrowseFilesCommand = new ButtonCommand(ExecuteBrowseFilesCommand);
             ZoomToFitCommand = new ButtonCommand(ExecuteZoomToFitCommand);
             ZoomToFillCommand = new ButtonCommand(ExecuteZoomToFillCommand);
@@ -104,11 +169,6 @@ namespace ImageConverterPlus.ViewModels
             showPreviewGrid = false;
             imageSplitSize = new Size(1, 1);
             isMouseOverScrollableTextBox = false;
-        }
-
-        private void ExecuteOpenLogsCommand(object? param)
-        {
-            MainWindow.Logging.OpenLogFileAsync();
         }
 
         private void ExecuteBrowseFilesCommand(object? param)
@@ -128,7 +188,7 @@ namespace ImageConverterPlus.ViewModels
 
         private void ExecuteResetZoomAndPanCommand(object? param)
         {
-            view.ResetPreviewZoomAndPan(true);
+            view.ResetZoomAndPan();
         }
 
         private void ExecuteImageTransformCommand(object? param)

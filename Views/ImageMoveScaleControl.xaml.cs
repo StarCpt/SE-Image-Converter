@@ -1,5 +1,8 @@
-﻿using System;
+﻿using ImageConverterPlus.Controls;
+using ImageConverterPlus.ViewModels;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -40,48 +43,72 @@ namespace ImageConverterPlus.Views
                     new Point(0, 0),
                     OffsetPropertyChanged));
 
-        public static readonly DependencyProperty ImageSourceProperty =
-            DependencyProperty.Register(
-                nameof(ImageSource),
-                typeof(ImageSource),
-                typeof(ImageMoveScaleControl),
-                new PropertyMetadata(
-                    null,
-                    ImageSourcePropertyChanged));
+        public static readonly RoutedEvent ScaleChangedEvent =
+            EventManager.RegisterRoutedEvent(
+                nameof(ScaleChanged),
+                RoutingStrategy.Bubble,
+                typeof(RoutedPropertyChangedEventHandler<double>),
+                typeof(ImageMoveScaleControl));
+
+        public static readonly RoutedEvent OffsetChangedEvent =
+            EventManager.RegisterRoutedEvent(
+                nameof(OffsetChanged),
+                RoutingStrategy.Bubble,
+                typeof(RoutedPropertyChangedEventHandler<Point>),
+                typeof(ImageMoveScaleControl));
+
+        public event RoutedPropertyChangedEventHandler<double> ScaleChanged
+        {
+            add => AddHandler(ScaleChangedEvent, value);
+            remove => RemoveHandler(ScaleChangedEvent, value);
+        }
+
+        public event RoutedPropertyChangedEventHandler<Point> OffsetChanged
+        {
+            add => AddHandler(OffsetChangedEvent, value);
+            remove => RemoveHandler(OffsetChangedEvent, value);
+        }
 
         public double Scale
         {
             get => scaleTo;
             set
             {
-                this.BeginAnimation(ScaleProperty, null);
-                animatingScale = false;
-                scaleTo = value;
-                SetValue(ScaleProperty, value);
+                if (ScaleAnim != value)
+                {
+                    this.BeginAnimation(ScaleProperty, null);
+                    animatingScale = false;
+                    scaleTo = value;
+                    SetValue(ScaleProperty, value);
+
+                    var clamped = ClampOffset(offsetTo, scaleTo);
+                    if (clamped != offsetTo)
+                        Offset = clamped;
+                }
             }
         }
-
         public double ScaleAnim => (double)GetValue(ScaleProperty);
-
         public Point Offset
         {
             get => offsetTo;
             set
             {
-                this.BeginAnimation(OffsetProperty, null);
-                animatingOffset = false;
-                offsetTo = value;
-                SetValue(OffsetProperty, value);
+                var clamped = ClampOffset(value, scaleTo);
+                if (clamped != value)
+                    value = clamped;
+
+                if (OffsetAnim != value)
+                {
+                    this.BeginAnimation(OffsetProperty, null);
+                    animatingOffset = false;
+                    offsetTo = value;
+                    SetValue(OffsetProperty, value);
+                }
             }
         }
-
         public Point OffsetAnim => (Point)GetValue(OffsetProperty);
-
-        public ImageSource ImageSource
-        {
-            get => (ImageSource)GetValue(ImageSourceProperty);
-            set => SetValue(ImageSourceProperty, value);
-        }
+        public double ImageActualWidth => image.ActualWidth;
+        public double ImageActualHeight => image.ActualHeight;
 
         private double scaleTo = (double)ScaleProperty.DefaultMetadata.DefaultValue;
         private Point offsetTo = (Point)OffsetProperty.DefaultMetadata.DefaultValue;
@@ -89,10 +116,10 @@ namespace ImageConverterPlus.Views
         private bool animatingScale = false;
         private bool animatingOffset = false;
 
-        Point moveOrigin;
-        Point imageMoveOrigin;
+        private Point moveOrigin;
+        private Point imageMoveOrigin;
 
-        TimeSpan animationDuration => TimeSpan.FromMilliseconds(100);
+        public  TimeSpan animationDuration => TimeSpan.FromMilliseconds(100);
 
         public ImageMoveScaleControl()
         {
@@ -101,47 +128,75 @@ namespace ImageConverterPlus.Views
 
         private static void ScalePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            ((ImageMoveScaleControl)d).SetMoveOrigin();
+            ImageMoveScaleControl source = (ImageMoveScaleControl)d;
+
+            source.SetMoveOrigin();
             double newScale = (double)e.NewValue;
-            var mt = GetMatrixTransform(((ImageMoveScaleControl)d).image);
+            var mt = GetMatrixTransform(source.image);
             var mat = mt.Matrix;
             mat.M11 = newScale;
             mat.M22 = newScale;
             mt.Matrix = mat;
+
             MainWindow.Static.debug1.Text = newScale.ToString("0.0000");
+
+            RoutedPropertyChangedEventArgs<double> args = new RoutedPropertyChangedEventArgs<double>((double)e.OldValue, newScale)
+            {
+                RoutedEvent = ScaleChangedEvent,
+                Source = source,
+            };
+
+            source.RaiseEvent(args);
+        }
+
+        protected virtual void OnScaleChanged(RoutedPropertyChangedEventArgs<double> e)
+        {
+
         }
 
         private static void OffsetPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
+            ImageMoveScaleControl source = (ImageMoveScaleControl)d;
+
             Point newOffset = (Point)e.NewValue;
-            newOffset = newOffset.Round();
-            var mt = GetMatrixTransform(((ImageMoveScaleControl)d).image);
+            //newOffset = newOffset.Round();
+            var mt = GetMatrixTransform(source.image);
             var mat = mt.Matrix;
             mat.OffsetX = newOffset.X;
             mat.OffsetY = newOffset.Y;
             mt.Matrix = mat;
-            MainWindow.Static.debug2.Text = $"{newOffset.X:0.0000}, {newOffset.Y:0.0000}";
+
+            if (MainWindow.Static?.debug2?.Text != null)
+                MainWindow.Static.debug2.Text = $"{newOffset.X:0.0000}, {newOffset.Y:0.0000}";
+
+            RoutedPropertyChangedEventArgs<Point> args = new RoutedPropertyChangedEventArgs<Point>((Point)e.OldValue, newOffset)
+            {
+                RoutedEvent = OffsetChangedEvent,
+                Source = source,
+            };
+
+            source.RaiseEvent(args);
         }
 
-        private static void ImageSourcePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        protected virtual void OnOffsetChanged(RoutedPropertyChangedEventArgs<Point> e)
         {
-            ((ImageMoveScaleControl)d).image.Source = (ImageSource)e.NewValue;
+
         }
 
-        private Point ClampOffset(Point offset, double scale)
+        public Point ClampOffset(Point offset, double scale)
         {
-            double scaledWidth = Math.Truncate(Math.FusedMultiplyAdd(image.ActualWidth, scale, 0.01));
-            double scaledHeight = Math.Truncate(Math.FusedMultiplyAdd(image.ActualHeight, scale, 0.01));
+            double scaledWidth = image.ActualWidth * scale;
+            double scaledHeight = image.ActualHeight * scale;
 
-            if (scaledWidth < container.ActualWidth)
-                offset.X = Math.Clamp(offset.X, 0, container.ActualWidth - scaledWidth);
+            if (scaledWidth < this.ActualWidth)
+                offset.X = Math.Clamp(offset.X, 0, this.ActualWidth - scaledWidth);
             else
-                offset.X = Math.Clamp(offset.X, -scaledWidth + container.ActualWidth, 0);
+                offset.X = Math.Clamp(offset.X, -scaledWidth + this.ActualWidth, 0);
 
-            if (scaledHeight < container.ActualHeight)
-                offset.Y = Math.Clamp(offset.Y, 0, container.ActualHeight - scaledHeight);
+            if (scaledHeight < this.ActualHeight)
+                offset.Y = Math.Clamp(offset.Y, 0, this.ActualHeight - scaledHeight);
             else
-                offset.Y = Math.Clamp(offset.Y, -scaledHeight + container.ActualHeight, 0);
+                offset.Y = Math.Clamp(offset.Y, -scaledHeight + this.ActualHeight, 0);
 
             return offset;
         }
@@ -176,7 +231,7 @@ namespace ImageConverterPlus.Views
                     SetMoveOrigin();
                 }
                 Offset = ClampOffset(new Point(diff.X + imageMoveOrigin.X, diff.Y + imageMoveOrigin.Y), Scale);
-                MainWindow.Static.debug3.Text = $"{diff.X:0.0000}, {diff.Y:0.0000}";
+                //MainWindow.Static.debug3.Text = $"{diff.X:0.0000}, {diff.Y:0.0000}";
             }
         }
 
@@ -205,7 +260,7 @@ namespace ImageConverterPlus.Views
             imageMoveOrigin = Offset;
         }
 
-        private void SetScaleAnimated(double scaleTo, TimeSpan duration)
+        public void SetScaleAnimated(double scaleTo, TimeSpan duration)
         {
             this.scaleTo = scaleTo;
             DoubleAnimation scaleAni = new DoubleAnimation(ScaleAnim, scaleTo, duration);
@@ -213,15 +268,23 @@ namespace ImageConverterPlus.Views
             scaleAni.DecelerationRatio = 0.5;
             this.BeginAnimation(ScaleProperty, scaleAni);
             animatingScale = true;
+
+            var clamped = ClampOffset(offsetTo, scaleTo);
+            if (clamped != offsetTo)
+            {
+                SetOffsetAnimated(clamped, duration);
+            }
         }
 
         private void SkipScaleAnimation()
         {
             Scale = scaleTo;
+            animatingScale = false;
         }
 
-        private void SetOffsetAnimated(Point offsetTo, TimeSpan duration)
+        public void SetOffsetAnimated(Point offsetTo, TimeSpan duration)
         {
+            //if (offsetTo.X != double.NaN && offsetTo.Y != double.NaN)
             this.offsetTo = offsetTo;
             PointAnimation pointAni = new PointAnimation(OffsetAnim, offsetTo, duration);
             pointAni.AccelerationRatio = 0.5;
@@ -233,6 +296,7 @@ namespace ImageConverterPlus.Views
         private void SkipOffsetAnimation()
         {
             Offset = offsetTo;
+            animatingOffset = false;
         }
 
         private static MatrixTransform GetMatrixTransform(UIElement element)
@@ -240,9 +304,31 @@ namespace ImageConverterPlus.Views
             return (MatrixTransform)element.RenderTransform;
         }
 
+        private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (Scale != 1.0)
+                return;
+
+            Point offsetNew = new Point(
+                (this.ActualWidth - this.ImageActualWidth) / 2,
+                (this.ActualHeight - this.ImageActualHeight) / 2);
+            Offset = ClampOffset(offsetNew, Scale);
+        }
+
         private void image_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+            //SetOffsetAnimated(ClampOffset(Offset, Scale), animationDuration);
             Offset = ClampOffset(Offset, Scale);
+            MainWindow.Static.debug3.Text = image.ActualHeight.ToString("0.0000");
+            MainWindowViewModel vm = (MainWindowViewModel)DataContext;
+            if (vm.LCDWidth * vm.ImageSplitWidth <= this.ActualWidth && vm.LCDHeight * vm.ImageSplitHeight <= this.ActualHeight)
+            {
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);
+            }
+            else
+            {
+                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+            }
         }
     }
 }
