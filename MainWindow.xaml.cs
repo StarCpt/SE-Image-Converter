@@ -31,7 +31,7 @@ namespace ImageConverterPlus
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "1.0 Alpha";
+        public const string version = "1.0 Beta";
 
         public static MainWindow Static { get; private set; }
         public static Logging Logging { get; private set; }
