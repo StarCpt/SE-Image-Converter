@@ -21,53 +21,6 @@ namespace ImageConverterPlus
 
         private ContextMenu PreviewGridMenu;
 
-        //private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, Action<Bitmap> callback)
-        //{
-        //    if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
-        //    {
-        //        PreviewConvertCancellationTokenSource?.Cancel();
-        //    }
-        //
-        //    //scale the bitmap size to the lcd size
-        //
-        //    Monitor.Enter(imageToConvert);
-        //
-        //    double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
-        //    double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
-        //
-        //    //get the bigger ratio taking into account the image split
-        //    double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
-        //
-        //    double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
-        //    double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
-        //
-        //    Monitor.Exit(imageToConvert);
-        //
-        //    //apply preview scale (zoom)
-        //    scaledImageWidth *= previewNew.Scale;
-        //    scaledImageHeight *= previewNew.Scale;
-        //
-        //    //turn the size from above into lcd width/height % ratio
-        //    double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
-        //    double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
-        //
-        //    double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
-        //
-        //    ConvertOptions options = new ConvertOptions
-        //    {
-        //        Dithering = ConvertManager.Instance.EnableDithering,
-        //        Interpolation = ConvertManager.Instance.Interpolation,
-        //        BitsPerChannel = (int)ConvertManager.Instance.BitDepth,
-        //        ConvertedSize = new Size(
-        //            Convert.ToInt32(scaledImageWidth),
-        //            Convert.ToInt32(scaledImageHeight)),
-        //        Scale = 1,
-        //        TopLeft = System.Drawing.Point.Empty,
-        //    };
-        //    PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-        //    PreviewConvertTask = Task.Run(() => ConvertManager.ProcessImageOld(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
-        //}
-
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
