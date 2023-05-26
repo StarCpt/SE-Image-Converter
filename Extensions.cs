@@ -46,5 +46,15 @@ namespace ImageConverterPlus
             size.Height = Math.Round(size.Height);
             return size;
         }
+
+        /// <summary>
+        /// Checks if either width or height is zero
+        /// </summary>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public static bool IsAnyZero(this System.Windows.Size size)
+        {
+            return size.Width == 0 || size.Height == 0;
+        }
     }
 }

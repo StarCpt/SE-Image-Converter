@@ -122,7 +122,7 @@ namespace ImageConverterPlus.ImageConverter
                 {
                     if (value == null)
                         old?.Dispose();
-                    SourceImageChanged();
+                    OnSourceImageChanged();
                 }
             }
         }
@@ -181,7 +181,8 @@ namespace ImageConverterPlus.ImageConverter
             set => SetValue(ref _delay, value);
         }
 
-        public event Action<Image?> ProcessedImageFullChanged = delegate { };
+        public event Action<Image?> SourceImageChanged = delegate { };
+        public event Action<Bitmap?> ProcessedImageFullChanged = delegate { };
         public event Action<string?> ConvertedImageStringChanged = delegate { };
 
         private BitDepth bitDepth;
@@ -254,9 +255,10 @@ namespace ImageConverterPlus.ImageConverter
             processImageTaskTokenSource?.Cancel();
         }
 
-        public void SourceImageChanged()
+        public void OnSourceImageChanged()
         {
             RaisePropertyChanged(nameof(SourceImage));
+            SourceImageChanged.Invoke(SourceImage);
             ProcessedImageFull = null;
             if (SourceImage != null)
                 ProcessImageNextInterval();
@@ -426,11 +428,5 @@ namespace ImageConverterPlus.ImageConverter
 
             return convertTask.IsCompletedSuccessfully;
         }
-
-        //[Obsolete]
-        //public static void ConvertImageOld(Image image, ConvertOptions options, Action<string> callback, CancellationToken token)
-        //{
-        //    callback?.Invoke(new Converter(options).ConvertSafe(image, token));
-        //}
     }
 }

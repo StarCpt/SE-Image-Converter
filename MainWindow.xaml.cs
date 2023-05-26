@@ -13,21 +13,16 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Drawing;
 using System.IO;
 using Brushes = System.Windows.Media.Brushes;
 using Size = System.Drawing.Size;
-using Timer = System.Timers.Timer;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
-using System.Timers;
 using ImageConverterPlus.ViewModels;
-using System.ComponentModel;
-using ImageConverterPlus.ImageConverter;
 using System.Collections.Specialized;
-using System.Diagnostics;
+using System.Drawing;
 
 namespace ImageConverterPlus
 {
@@ -39,25 +34,11 @@ namespace ImageConverterPlus
         public const string version = "1.0 Alpha";
 
         public static MainWindow Static { get; private set; }
-        private MainWindowViewModel viewModel;
-
-        private Timer? ClipboardTimer;
-
         public static Logging Logging { get; private set; }
+        public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
-        ConvertManager convMgr => ConvertManager.Instance;
-
-        public class ImageInfo
-        {
-            public Bitmap? Image;
-            public string FileNameOrImageSource;
-
-            public ImageInfo(Bitmap? image, string fileNameOrOther)
-            {
-                Image = image;
-                FileNameOrImageSource = fileNameOrOther;
-            }
-        }
+        private MainWindowViewModel viewModel;
+        ImageConverter.ConvertManager convMgr => ImageConverter.ConvertManager.Instance;
 
         public MainWindow()
         {
@@ -67,6 +48,7 @@ namespace ImageConverterPlus
             InitializeComponent();
             viewModel = (MainWindowViewModel)this.DataContext;
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
+            convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
             this.Title = $"SE Image Converter+ v{version}";
             AppBigTitle.Content = "SE Image Converter+";
@@ -263,37 +245,40 @@ namespace ImageConverterPlus
 
         public void CopyToClipClicked(object? param)
         {
-            convMgr.ConvertImage(SetClipboardDelayed);
+            convMgr.ConvertImage(lcdStr => SetClipboardDelayed(lcdStr, 150));
         }
 
-        private void SetClipboardDelayed(string text)
+        object tokenSourceLock = new object();
+        CancellationTokenSource? clipboardDelaySetTokenSource = null;
+        private async void SetClipboardDelayed(string text, int delayMs)
         {
             if (text == null)
             {
                 throw new NullReferenceException(nameof(text));
             }
 
-            if (ClipboardTimer != null)
+            CancellationToken myToken;
+            lock (tokenSourceLock)
             {
-                ClipboardTimer.Enabled = false;
-                ClipboardTimer.Dispose();
+                clipboardDelaySetTokenSource?.Cancel();
+                clipboardDelaySetTokenSource?.Dispose();
+                clipboardDelaySetTokenSource = new CancellationTokenSource();
+                myToken = clipboardDelaySetTokenSource.Token;
             }
+            await Task.Delay(delayMs);
 
-            ClipboardTimer = new Timer(150)
+            if (myToken.IsCancellationRequested)
+                return;
+
+            try
             {
-                Enabled = true,
-                AutoReset = false,
-            };
-            ClipboardTimer.Elapsed += (object? sender, ElapsedEventArgs e) =>
-            this.Dispatcher.Invoke(() =>
+                Clipboard.SetDataObject(text, true);
+            }
+            catch (Exception e)
             {
-                try { Clipboard.SetDataObject(text, true); }
-                catch { ShowAcrylDialog("Clipboard error, try again!"); }
-                finally { ClipboardTimer = null; }
-            });
+                ShowAcrylDialog($"Clipboard error, try again! {e}");
+            }
         }
-
-        public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
         public void PasteFromClipboard()
         {
@@ -390,7 +375,8 @@ namespace ImageConverterPlus
                 {
                     convMgr.SourceImage.RotateFlip(type);
                 }
-                convMgr.SourceImageChanged();
+
+                convMgr.OnSourceImageChanged();
 
                 if (type == RotateFlipType.Rotate90FlipNone && imgSize.Width != imgSize.Height)
                 {
@@ -401,6 +387,7 @@ namespace ImageConverterPlus
                 }
                 else
                 {
+                    previewNew.image.SizeChanged -= SizeChangedOTEHandler;
                     convMgr.ProcessImage();
                 }
 
@@ -411,15 +398,16 @@ namespace ImageConverterPlus
         public void LCDSizeChanged(object? sender, int newWidth, int newHeight)
         {
             convMgr.ImageSplitSize = new Size(1, 1);
-            ResetZoomAndPan(false);
-
             UpdatePreviewContainerSize();
+            ResetZoomAndPanOnPreviewNewSizeChanged(); //so jank
+            //ResetZoomAndPan(false);
         }
 
         public void ImageSplitSizeChanged(object? sender, Size newSize)
         {
-            ResetZoomAndPan(false);
             UpdatePreviewGrid();
+            ResetZoomAndPanOnPreviewNewSizeChanged();
+            //ResetZoomAndPan(false);
         }
 
         public void UpdatePreviewContainerSize()
@@ -438,6 +426,32 @@ namespace ImageConverterPlus
             }
         }
 
-        public static void ConversionFailedDialog() => ShowAcrylDialog(new StackTrace(1).ToString());
+        public static void ConversionFailedDialog() => ShowAcrylDialog(new System.Diagnostics.StackTrace(1).ToString());
+
+        private void ConvMgr_SourceImageChanged(System.Drawing.Image? obj)
+        {
+            ResetZoomAndPanOnPreviewNewImageSizeChanged();
+        }
+
+        private void ResetZoomAndPanOnPreviewNewSizeChanged()
+        {
+            previewNew.SizeChanged += SizeChangedOTEHandler;
+        }
+
+        private void ResetZoomAndPanOnPreviewNewImageSizeChanged()
+        {
+            previewNew.image.SizeChanged += SizeChangedOTEHandler; //so damn jank dude
+        }
+        /// <summary>
+        /// please for the love of god dont use this thing
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void SizeChangedOTEHandler(object sender, SizeChangedEventArgs e)
+        {
+            ResetZoomAndPan(false);
+            previewNew.SizeChanged -= SizeChangedOTEHandler;
+            previewNew.image.SizeChanged -= SizeChangedOTEHandler;
+        }
     }
 }

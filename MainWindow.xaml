@@ -141,7 +141,7 @@
                 <TextBlock Text="Preview" Foreground="White" Visibility="{Binding PreviewImageLoaded,Converter={StaticResource BooleanToVisibilityInverter}}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
                 <Grid Visibility="{Binding PreviewImageLoaded,Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <views:ImageMoveScaleControl x:Name="previewNew" Background="#0000ff"
+                    <views:ImageMoveScaleControl x:Name="previewNew" Background="#000000"
                                                  Scale="{Binding PreviewScale,Mode=OneWayToSource}"
                                                  OffsetRatio="{Binding PreviewOffsetRatio,Mode=OneWayToSource}">
                         <views:ImageMoveScaleControl.ContextMenu>

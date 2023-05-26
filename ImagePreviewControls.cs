@@ -8,15 +8,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.IO;
 using Bitmap = System.Drawing.Bitmap;
 using Size = System.Drawing.Size;
 using Point = System.Windows.Point;
 using System.Windows.Controls.Primitives;
-using System.ComponentModel;
-using ImageConverterPlus.ImageConverter;
-using System.Threading;
-using System.Diagnostics;
 
 namespace ImageConverterPlus
 {
@@ -87,7 +82,7 @@ namespace ImageConverterPlus
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
-                            UpdateBrowseImagesBtn(Path.GetFileName(file), file);
+                            UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
                             Logging.Log("Image Drag & Dropped (FileDrop)");
                         });
                         return;
@@ -282,7 +277,7 @@ namespace ImageConverterPlus
                 convMgr.ConvertImage(lcdStr =>
                 {
                     if (lcdStr != null)
-                        SetClipboardDelayed(lcdStr);
+                        SetClipboardDelayed(lcdStr, 150);
                     else
                         ConversionFailedDialog();
                 });
@@ -296,14 +291,6 @@ namespace ImageConverterPlus
         private void PreviewContainerGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             UpdatePreviewContainerSize();
-
-            if (e.PreviousSize.Width != 0 && e.PreviousSize.Height != 0)
-            {
-                Point offsetNew = new Point(
-                    previewNew.Offset.X * (e.NewSize.Width / e.PreviousSize.Width),
-                    previewNew.Offset.Y * (e.NewSize.Height / e.PreviousSize.Height));
-                previewNew.SetOffsetNoAnim(offsetNew);
-            }
 
             ImagePreviewBackground.Width = PreviewContainerGridSize;
             ImagePreviewBackground.Height = PreviewContainerGridSize;

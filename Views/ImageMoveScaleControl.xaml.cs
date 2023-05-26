@@ -117,8 +117,6 @@ namespace ImageConverterPlus.Views
             get => (Point)GetValue(OffsetRatioProperty);
             set => SetValue(OffsetRatioProperty, value);
         }
-        public double ImageActualWidth => image.ActualWidth;
-        public double ImageActualHeight => image.ActualHeight;
 
         private bool animatingScale = false;
         private bool animatingOffset = false;
@@ -198,17 +196,21 @@ namespace ImageConverterPlus.Views
         {
             double scaledWidth = image.ActualWidth * scale;
             double scaledHeight = image.ActualHeight * scale;
+#pragma warning disable CS8509 //double.CompareTo(double) only returns -1, 0, and 1
+            offset.X = scaledWidth.CompareTo(this.ActualWidth) switch
+            {
+                0 => 0,
+                -1 => Math.Clamp(offset.X, 0, this.ActualWidth - scaledWidth),
+                1 => Math.Clamp(offset.X, -scaledWidth + this.ActualWidth, 0),
+            };
 
-            if (scaledWidth < this.ActualWidth)
-                offset.X = Math.Clamp(offset.X, 0, this.ActualWidth - scaledWidth);
-            else
-                offset.X = Math.Clamp(offset.X, -scaledWidth + this.ActualWidth, 0);
-
-            if (scaledHeight < this.ActualHeight)
-                offset.Y = Math.Clamp(offset.Y, 0, this.ActualHeight - scaledHeight);
-            else
-                offset.Y = Math.Clamp(offset.Y, -scaledHeight + this.ActualHeight, 0);
-
+            offset.Y = scaledHeight.CompareTo(this.ActualHeight) switch
+            {
+                0 => 0,
+                -1 => Math.Clamp(offset.Y, 0, this.ActualHeight - scaledHeight),
+                1 => Math.Clamp(offset.Y, -scaledHeight + this.ActualHeight, 0),
+            };
+#pragma warning restore CS8509
             return offset;
         }
 
@@ -260,9 +262,13 @@ namespace ImageConverterPlus.Views
 
             double changeActual = newScale - Scale;
 
-            SetScaleAnimated(newScale, animationDuration);
+            Point oldoffset = Offset;
 
-            SetOffsetAnimated(ClampOffset(Offset - new Vector(mousePos.X * changeActual, mousePos.Y * changeActual), Scale), animationDuration);
+            SetScaleAnimated(newScale, animationDuration);
+            //SetScaleNoAnim(newScale);
+            var clamped = ClampOffset(oldoffset - new Vector(mousePos.X * changeActual, mousePos.Y * changeActual), newScale);
+            SetOffsetAnimated(clamped, animationDuration);
+            //SetOffsetNoAnim(clamped);
         }
 
         private void SetMoveOrigin()
@@ -290,12 +296,13 @@ namespace ImageConverterPlus.Views
         public void SetScaleNoAnim(double value)
         {
             animatingScale = false;
-            if (Scale != value)
+            if (ScaleAnim != value)
             {
-                this.BeginAnimation(ScaleAnimProperty, null);
+                DoubleAnimation scaleAni = new DoubleAnimation(ScaleAnim, value, TimeSpan.Zero);
+                this.BeginAnimation(ScaleAnimProperty, scaleAni);
                 Scale = value;
 
-                SetValue(ScaleAnimProperty, value);
+                //SetValue(ScaleAnimProperty, value);
 
                 var clamped = ClampOffset(Offset, Scale);
                 if (clamped != Offset)
@@ -320,12 +327,13 @@ namespace ImageConverterPlus.Views
                 value = clamped;
 
             animatingOffset = false;
-            if (Offset != value)
+            if (OffsetAnim != value)
             {
-                this.BeginAnimation(OffsetAnimProperty, null);
+                PointAnimation pointAni = new PointAnimation(OffsetAnim, value, TimeSpan.Zero);
+                this.BeginAnimation(OffsetAnimProperty, pointAni);
                 Offset = value;
 
-                SetValue(OffsetAnimProperty, value);
+                //SetValue(OffsetAnimProperty, value);
             }
         }
 
@@ -336,19 +344,32 @@ namespace ImageConverterPlus.Views
 
         private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (Scale != 1.0)
-                return;
+            Point offsetNew;
 
-            Point offsetNew = new Point(
-                (this.ActualWidth - this.ImageActualWidth) / 2,
-                (this.ActualHeight - this.ImageActualHeight) / 2);
+            if (e.PreviousSize.IsAnyZero() || e.NewSize.IsAnyZero())
+            {
+                return;
+                //offsetNew = new Point
+                //{
+                //    X = (this.ActualWidth - this.image.ActualWidth) / 2,
+                //    Y = (this.ActualHeight - this.image.ActualHeight) / 2,
+                //};
+            }
+            else
+            {
+                offsetNew = new Point
+                {
+                    X = Offset.X * (e.NewSize.Width / e.PreviousSize.Width),
+                    Y = Offset.Y * (e.NewSize.Height / e.PreviousSize.Height),
+                };
+            }
+
             SetOffsetNoAnim(ClampOffset(offsetNew, Scale));
         }
 
         private void image_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             SetOffsetNoAnim(ClampOffset(Offset, Scale));
-            MainWindow.Static.debug3.Text = image.ActualHeight.ToString("0.0000");
             if (ConvertManager.Instance.ConvertedSize.Width * ConvertManager.Instance.ImageSplitSize.Width <= this.ActualWidth &&
                 ConvertManager.Instance.ConvertedSize.Height * ConvertManager.Instance.ImageSplitSize.Height <= this.ActualHeight)
             {
