@@ -24,5 +24,10 @@ namespace ImageConverterPlus.Views
         {
             InitializeComponent();
         }
+
+        private void GC_Click(object sender, RoutedEventArgs e)
+        {
+            GC.Collect();
+        }
     }
 }

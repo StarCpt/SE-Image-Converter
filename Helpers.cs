@@ -32,6 +32,9 @@ namespace ImageConverterPlus
         //https://stackoverflow.com/questions/6484357/converting-bitmapimage-to-bitmap-and-vice-versa
         public static Bitmap BitmapSourceToBitmap(BitmapSource bitmapImage)
         {
+            if (bitmapImage == null)
+                return null;
+
             using (MemoryStream outStream = new MemoryStream())
             {
                 BitmapEncoder enc = new BmpBitmapEncoder();
@@ -44,8 +47,11 @@ namespace ImageConverterPlus
         }
 
         //https://stackoverflow.com/questions/94456/load-a-wpf-bitmapimage-from-a-system-drawing-bitmap
-        public static BitmapImage BitmapToBitmapImage(Bitmap bitmap)
+        public static BitmapImage BitmapToBitmapImage(Image bitmap, bool disposeBitmap)
         {
+            if (bitmap == null)
+                return null;
+
             using (MemoryStream memory = new MemoryStream())
             {
                 bitmap.Save(memory, ImageFormat.Bmp);
@@ -56,7 +62,8 @@ namespace ImageConverterPlus
                 bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
                 bitmapimage.EndInit();
 
-                bitmap.Dispose();
+                if (disposeBitmap)
+                    bitmap.Dispose();
 
                 return bitmapimage;
             }

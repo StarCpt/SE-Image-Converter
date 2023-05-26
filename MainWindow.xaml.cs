@@ -14,14 +14,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using Brushes = System.Windows.Media.Brushes;
-using System.Windows.Controls.Primitives;
-using System.Diagnostics;
-using BitDepth = ImageConverterPlus.ImageConverter.BitDepth;
-using DitherMode = ImageConverterPlus.ImageConverter.DitherMode;
 using Size = System.Drawing.Size;
 using Timer = System.Timers.Timer;
 using SixLabors.ImageSharp;
@@ -32,6 +26,8 @@ using System.Timers;
 using ImageConverterPlus.ViewModels;
 using System.ComponentModel;
 using ImageConverterPlus.ImageConverter;
+using System.Collections.Specialized;
+using System.Diagnostics;
 
 namespace ImageConverterPlus
 {
@@ -42,23 +38,14 @@ namespace ImageConverterPlus
     {
         public const string version = "1.0 Alpha";
 
-        private string? ConvertedImageStr;
-        public static ImageInfo ImageCache;//load image here first then convert so it can be used again
         public static MainWindow Static { get; private set; }
         private MainWindowViewModel viewModel;
 
-        private Timer ClipboardTimer;
+        private Timer? ClipboardTimer;
 
         public static Logging Logging { get; private set; }
 
-        public ConvertManager LcdConvertManager { get; } = new ConvertManager();
-        //public ConvertManager PreviewConvertManager { get; } = new ConvertManager();
- 
-        private CancellationTokenSource ConvertCancellationTokenSource;
-
-        private Timer PreviewConvertTimer;
-        private CancellationTokenSource PreviewConvertCancellationTokenSource;
-        private Task PreviewConvertTask;
+        ConvertManager convMgr => ConvertManager.Instance;
 
         public class ImageInfo
         {
@@ -79,36 +66,36 @@ namespace ImageConverterPlus
             Static = this;
             InitializeComponent();
             viewModel = (MainWindowViewModel)this.DataContext;
-            CopyToClipBtn.IsEnabled = !string.IsNullOrEmpty(ConvertedImageStr);
-            //OpenLogBtnToolTip.Content = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
+            convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
 
             this.Title = $"SE Image Converter+ v{version}";
             AppBigTitle.Content = "SE Image Converter+";
 
-            InitImagePreview();
+            UpdatePreviewGrid();
 
             Logging.Log("MainWindow initialized");
         }
 
         public void BrowseImageFiles()
         {
-            Microsoft.Win32.OpenFileDialog dialog = new()
+            Microsoft.Win32.OpenFileDialog dialog = new Microsoft.Win32.OpenFileDialog()
             {
                 Filter = "Image files (*.jpeg, *.jpg, *.jfif, *.png, *.tiff, *.bmp, *.gif, *.ico, *.webp)|*.jpeg;*.jpg;*.jfif;*.png;*.tiff;*.bmp;*.gif;*.ico;*.webp",
             };
 
-            bool? result = dialog.ShowDialog();
-            if (result == true)
+            if (dialog.ShowDialog() == true)
             {
-                var supportedFlag = IsFileTypeSupported(dialog.FileName);
-                if (supportedFlag != IsFileSupportedEnum.NotSupported && TryGetImageInfo(dialog.FileName, supportedFlag, out ImageCache))
+                if (TryGetImageInfo(dialog.FileName, out Bitmap? result) && result is not null)
                 {
+                    convMgr.SourceImage = result;
                     UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
-                    if (ImageCache.Image != null)
+                    if (convMgr.SourceImage != null)
                     {
-                        viewModel.ImageSplitSize = new Size(1, 1);
-                        UpdatePreviewDelayed(true, 0);
-                        //TryConvertImageThreaded(ImageCache, true, convertCallback, previewConvertCallback);
+                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ProcessImage(delegate
+                        {
+                            ResetZoomAndPan(false);
+                        });
                     }
                 }
                 else
@@ -118,32 +105,31 @@ namespace ImageConverterPlus
             }
         }
 
-        private bool TryGetImageInfo(string filePath, IsFileSupportedEnum supEnum, out ImageInfo result)
+        private bool TryGetImageInfo(string filePath, out Bitmap? result)
         {
             try
             {
+                IsFileSupportedEnum supEnum = IsFileTypeSupported(filePath);
                 if (supEnum == IsFileSupportedEnum.Supported)
                 {
-                    Bitmap bitmap = new(filePath);
-                    result = new ImageInfo(bitmap, filePath);
+                    result = new Bitmap(filePath);
                     return true;
                 }
                 else if (supEnum == IsFileSupportedEnum.Webp)
                 {
-                    Bitmap bitmap = DecodeWebpImage(filePath);
-                    result = new ImageInfo(bitmap, filePath);
+                    result = DecodeWebpImage(filePath);
                     return true;
                 }
                 else
                 {
-                    result = new ImageInfo(null, filePath);
+                    result = null;
                     return false;
                 }
             }
             catch (Exception e)
             {
                 Logging.Log(e.ToString());
-                result = new ImageInfo(null, filePath);
+                result = null;
                 return false;
             }
         }
@@ -203,140 +189,90 @@ namespace ImageConverterPlus
         }
 
         /// <summary>
-        /// displays error dialogs automatically. does file type checks as well. does not check if path is empty/null
-        /// </summary>
-        /// <param name="imagePath"></param>
-        /// <returns></returns>
-        private bool TryConvertFromFile(string imagePath)
-        {
-            try
-            {
-                IsFileSupportedEnum supportedFlag = IsFileTypeSupported(imagePath);
-                if (supportedFlag != IsFileSupportedEnum.NotSupported)
-                {
-                    if (TryGetImageInfo(imagePath, supportedFlag, out ImageInfo bitImageInfo))
-                    {
-                        viewModel.ImageSplitSize = new Size(1, 1);
-                        ResetZoomAndPan();
-                        ImageCache = bitImageInfo;
-                        return TryConvertImageThreaded(ImageCache.Image, ConvertResultCallback, PreviewConvertResultCallback);
-                    }
-                    else
-                    {
-                        ShowAcrylDialog("This file type is not supported!");
-                        return false;
-                    }
-                }
-                else
-                {
-                    ShowAcrylDialog("This file type is not supported! (2)");
-                    return false;
-                }
-            }
-            catch (Exception e)
-            {
-                Logging.Log($"Caught exception at TryConvertFromFile(string, bool, bool) ({imagePath})");
-                Logging.Log(e.ToString());
-                ShowAcrylDialog("Error occurred while decoding the file! Make sure file type is valid.");
-                return false;
-            }
-        }
-
-        /// <summary>
         /// Gets the settings, converts, and updates the preview and ConvertedImageStr. Diaplays error dialogs automagically
         /// </summary>
         /// <param name="image"></param>
         /// <returns>whether or not the operation succeeded</returns>
-        public bool TryConvertImageThreaded(System.Drawing.Image image, Action<string> convertCallback, Action<Bitmap> previewConvertCallback)
-        {
-            try
-            {
-                if (image != null)
-                {
-                    //if (ConvertTask != null && !ConvertTask.IsCompleted)
-                    //{
-                    //    ConvertCancellationTokenSource.Cancel();
-                    //}
-
-                    //scale the bitmap size to the lcd size
-
-                    var lcdSize = LcdConvertManager.ConvertedSize;
-
-                    double imageToLcdWidthRatio = (double)image.Width / lcdSize.Width;
-                    double imageToLcdHeightRatio = (double)image.Height / lcdSize.Height;
-
-                    //get the bigger ratio taking into account the image split
-                    double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
-
-                    double scaledImageWidth = image.Width / biggerImageToLcdRatio;
-                    double scaledImageHeight = image.Height / biggerImageToLcdRatio;
-
-                    //apply preview scale (zoom)
-                    scaledImageWidth *= previewNew.Scale;
-                    scaledImageHeight *= previewNew.Scale;
-
-                    //turn the size from above into lcd width/height % ratio
-                    double scaledImageToLcdWidthRatio = scaledImageWidth / lcdSize.Width;
-                    double scaledImageToLcdHeightRatio = scaledImageHeight / lcdSize.Height;
-
-                    double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
-
-                    int xOffset = Convert.ToInt32((previewNew.Offset.X) / (previewNew.ActualWidth / lcdSize.Width) * ImageSplitSize.Width - (lcdSize.Width * checkedSplitBtnPos.X));
-                    int yOffset = Convert.ToInt32((previewNew.Offset.Y) / (previewNew.ActualHeight / lcdSize.Height) * ImageSplitSize.Height - (lcdSize.Height * checkedSplitBtnPos.Y));
-
-                    UpdatePreview(image, lcdSize, (int)viewModel.ColorDepth, viewModel.InterpolationMode, previewConvertCallback);
-
-                    var options = new ConvertOptions
-                    {
-                        Dithering = LcdConvertManager.EnableDithering,
-                        BitsPerChannel = (int)viewModel.ColorDepth,
-                        ConvertedSize = lcdSize,
-                        Interpolation = LcdConvertManager.Interpolation,
-                        Scale = biggerScaledImageToLcdRatio,
-                        TopLeft = new System.Drawing.Point(xOffset, yOffset),
-                    };
-                    ConvertCancellationTokenSource = new CancellationTokenSource();
-                    ConvertManager.ConvertToString(image, options, convertCallback, ConvertCancellationTokenSource.Token);
-
-                    return true;
-                }
-                else
-                {
-                    Logging.Log($"Caught exception at {nameof(TryConvertImageThreaded)}, Image is null");
-                    ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
-                    return false;
-                }
-            }
-            catch (Exception e)
-            {
-                Logging.Log($"Caught exception at {nameof(TryConvertImageThreaded)}");
-                Logging.Log(e.ToString());
-                ShowAcrylDialog("Error occurred during image conversion! (Exception)");
-                return false;
-            }
-        }
-        
-        public void ConvertResultCallback(string resultStr)
-        {
-            ConvertedImageStr = resultStr;
-            CopyToClipBtn.Dispatcher.Invoke(() => CopyToClipBtn.IsEnabled = true);
-        }
-
-        private Size GetLCDSize()
-        {
-            return new Size(viewModel.LCDWidth, viewModel.LCDHeight);
-        }
+        //public bool TryConvertImageThreadedOld(System.Drawing.Image image, Action<string> convertCallback)
+        //{
+        //    try
+        //    {
+        //        if (image != null)
+        //        {
+        //            //if (ConvertTask != null && !ConvertTask.IsCompleted)
+        //            //{
+        //            //    ConvertCancellationTokenSource.Cancel();
+        //            //}
+        //
+        //            //scale the bitmap size to the lcd size
+        //
+        //            var lcdSize = convMgr.ConvertedSize;
+        //
+        //            double imageToLcdWidthRatio = (double)image.Width / lcdSize.Width;
+        //            double imageToLcdHeightRatio = (double)image.Height / lcdSize.Height;
+        //
+        //            //get the bigger ratio taking into account the image split
+        //            double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / convMgr.ImageSplitSize.Width, imageToLcdHeightRatio / convMgr.ImageSplitSize.Height);
+        //
+        //            double scaledImageWidth = image.Width / biggerImageToLcdRatio;
+        //            double scaledImageHeight = image.Height / biggerImageToLcdRatio;
+        //
+        //            //apply preview scale (zoom)
+        //            scaledImageWidth *= previewNew.Scale;
+        //            scaledImageHeight *= previewNew.Scale;
+        //
+        //            //turn the size from above into lcd width/height % ratio
+        //            double scaledImageToLcdWidthRatio = scaledImageWidth / lcdSize.Width;
+        //            double scaledImageToLcdHeightRatio = scaledImageHeight / lcdSize.Height;
+        //
+        //            double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
+        //
+        //            int xOffset = Convert.ToInt32(previewNew.Offset.X / (previewNew.ActualWidth / lcdSize.Width) * convMgr.ImageSplitSize.Width - (lcdSize.Width * convMgr.SelectedSplitPos.X));
+        //            int yOffset = Convert.ToInt32(previewNew.Offset.Y / (previewNew.ActualHeight / lcdSize.Height) * convMgr.ImageSplitSize.Height - (lcdSize.Height * convMgr.SelectedSplitPos.Y));
+        //            
+        //            ConvertManager.Instance.ProcessImage();
+        //
+        //            var options = new ConvertOptions
+        //            {
+        //                Dithering = convMgr.EnableDithering,
+        //                BitsPerChannel = (int)convMgr.BitDepth,
+        //                ConvertedSize = convMgr.ConvertedSize,
+        //                Interpolation = convMgr.Interpolation,
+        //                Scale = biggerScaledImageToLcdRatio,
+        //                TopLeft = new System.Drawing.Point(xOffset, yOffset),
+        //            };
+        //            ConvertCancellationTokenSource = new CancellationTokenSource();
+        //            //ConvertManager.ConvertImageOld(image, options, convertCallback, ConvertCancellationTokenSource.Token);
+        //
+        //            return true;
+        //        }
+        //        else
+        //        {
+        //            Logging.Log($"Image is null {new StackTrace()}");
+        //            ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
+        //            return false;
+        //        }
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Logging.Log(e.ToString());
+        //        ShowAcrylDialog($"Exception occurred during image conversion! {e}");
+        //        return false;
+        //    }
+        //}
 
         public void CopyToClipClicked(object? param)
         {
-            if (!TryConvertImageThreaded(ImageCache?.Image, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
-            {
-                ShowAcrylDialog($"Convert {(ImageCache?.Image != null ? "the" : "an")} image first!");
-            }
+            convMgr.ConvertImage(SetClipboardDelayed);
         }
 
-        private void SetClipDelayed(string text)
+        private void SetClipboardDelayed(string text)
         {
+            if (text == null)
+            {
+                throw new NullReferenceException(nameof(text));
+            }
+
             if (ClipboardTimer != null)
             {
                 ClipboardTimer.Enabled = false;
@@ -349,7 +285,7 @@ namespace ImageConverterPlus
                 AutoReset = false,
             };
             ClipboardTimer.Elapsed += (object? sender, ElapsedEventArgs e) =>
-            CopyToClipBtn.Dispatcher.Invoke(() =>
+            this.Dispatcher.Invoke(() =>
             {
                 try { Clipboard.SetDataObject(text, true); }
                 catch { ShowAcrylDialog("Clipboard error, try again!"); }
@@ -357,71 +293,57 @@ namespace ImageConverterPlus
             });
         }
 
-        private void ConvertCallbackCopyToClip(string resultStr)
-        {
-            ConvertedImageStr = resultStr;
-            //CopyToClipBtn.Dispatcher.Invoke(() =>
-            //{
-            //    CopyToClipBtn.IsEnabled = true;
-            //});
-
-            SetClipDelayed(resultStr);
-        }
-
-        public void ColorDepthChanged(object? sender, BitDepth newColorDepth)
-        {
-            LcdConvertManager.BitDepth = newColorDepth;
-            UpdatePreviewDelayed(false, 0);
-        }
-
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
-        public void ScaleModeChanged(object? sender, InterpolationMode newScaleMode)
-        {
-            LcdConvertManager.Interpolation = newScaleMode;
-            UpdatePreviewDelayed(false, 0);
-        }
-
-        public void EnableDitheringChanged(object? sender, bool newValue)
-        {
-            LcdConvertManager.EnableDithering = newValue;
-            UpdatePreviewDelayed(false, 0);
-        }
-
-        private void PasteFromClipboard(object sender, RoutedEventArgs e)
+        public void PasteFromClipboard()
         {
             if (Clipboard.ContainsImage())
             {
                 Bitmap image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
-                ImageCache = new ImageInfo(image, "Image loaded from Clipboard");
-                if (TryConvertImageThreaded(image, ConvertResultCallback, PreviewConvertResultCallback))
+                convMgr.SourceImage = image;
+                if (convMgr.SourceImage != null)
                 {
-                    UpdateBrowseImagesBtn("Loaded from Clipboard", "");
-                    Logging.Log("Image loaded from Clipboard (Bitmap)");
+                    convMgr.ProcessImage(bitmap =>
+                    {
+                        ResetZoomAndPan(false);
+                        if (bitmap != null)
+                        {
+                            Logging.Log("Image loaded from Clipboard (Bitmap)");
+                        }
+                        else
+                        {
+                            ConversionFailedDialog();
+                        }
+                    });
                 }
             }
             else if (Clipboard.ContainsFileDropList())
             {
-                System.Collections.Specialized.StringCollection filedroplist = Clipboard.GetFileDropList();
+                StringCollection filedroplist = Clipboard.GetFileDropList();
                 for (int i = 0; i < filedroplist.Count; i++)
                 {
-                    if (TryConvertFromFile(filedroplist[i]))
+                    string? file = filedroplist[i];
+                    if (file != null && TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        UpdateBrowseImagesBtn(System.IO.Path.GetFileName(filedroplist[i]), filedroplist[i]);
-                        Logging.Log("Loaded from Clipboard (FileDrop)");
-                        break;
+                        convMgr.SourceImage = result;
+                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ProcessImage(bitmap =>
+                        {
+                            ResetZoomAndPan(false);
+                            if (bitmap != null)
+                            {
+                                UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
+                                Logging.Log("Loaded from Clipboard (FileDrop)");
+                            }
+                            else
+                            {
+                                ConversionFailedDialog();
+                            }
+                        });
+                        return;
                     }
                 }
-                //foreach (string file in filedroplist)
-                //{
-                //    if (TryConvertFromFile(file))
-                //    {
-                //        UpdateBrowseImagesBtn(file.GetFileName(), file);
-                //        UpdateCurrentConvertBtnToolTip(file, true);
-                //        Logging.Log("Loaded from Clipboard (FileDrop)");
-                //        break;
-                //    }
-                //}
+                ShowAcrylDialog("This file type is not supported!");
             }
             else
             {
@@ -462,18 +384,24 @@ namespace ImageConverterPlus
 
         public void TransformImage(RotateFlipType type)
         {
-            if (ImageCache?.Image != null)
+            if (convMgr.SourceImage != null && convMgr.SourceImageSize is Size imgSize)
             {
-                ImageCache.Image.RotateFlip(type);
-
-                if (type == RotateFlipType.Rotate90FlipNone && ImageCache.Image.Width != ImageCache.Image.Height)
+                lock(convMgr.SourceImage)
                 {
-                    ResetZoomAndPan();
-                    TryConvertImageThreaded(ImageCache.Image, ConvertResultCallback, PreviewConvertResultCallback);
+                    convMgr.SourceImage.RotateFlip(type);
+                }
+                convMgr.SourceImageChanged();
+
+                if (type == RotateFlipType.Rotate90FlipNone && imgSize.Width != imgSize.Height)
+                {
+                    convMgr.ProcessImage(lcdStr =>
+                    {
+                        ResetZoomAndPan(false);
+                    });
                 }
                 else
                 {
-                    UpdatePreviewDelayed(false, 0);
+                    convMgr.ProcessImage();
                 }
 
                 Logging.Log($"Image Transformed ({type.ToString()})");
@@ -482,19 +410,34 @@ namespace ImageConverterPlus
 
         public void LCDSizeChanged(object? sender, int newWidth, int newHeight)
         {
-            viewModel.ImageSplitSize = new Size(1, 1);
-            LcdConvertManager.ConvertedSize = new Size(newWidth, newHeight);
+            convMgr.ImageSplitSize = new Size(1, 1);
+            ResetZoomAndPan(false);
 
-            UpdatePreviewDelayed(true, 50);
+            UpdatePreviewContainerSize();
         }
 
         public void ImageSplitSizeChanged(object? sender, Size newSize)
         {
+            ResetZoomAndPan(false);
             UpdatePreviewGrid();
-            if (ImageCache?.Image != null)
+        }
+
+        public void UpdatePreviewContainerSize()
+        {
+            Size lcd = convMgr.ConvertedSize;
+            Size split = convMgr.ImageSplitSize;
+            if (lcd.Width * split.Width > lcd.Height * split.Height)
             {
-                UpdatePreviewDelayed(true, 100);
+                previewNew.Width = PreviewContainerGridSize;
+                previewNew.Height = PreviewContainerGridSize * ((double)(lcd.Height * split.Height) / (lcd.Width * split.Width));
+            }
+            else
+            {
+                previewNew.Width = PreviewContainerGridSize * ((double)(lcd.Width * split.Width) / (lcd.Height * split.Height));
+                previewNew.Height = PreviewContainerGridSize;
             }
         }
+
+        public static void ConversionFailedDialog() => ShowAcrylDialog(new StackTrace(1).ToString());
     }
 }

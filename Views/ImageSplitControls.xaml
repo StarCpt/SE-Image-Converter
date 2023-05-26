@@ -57,9 +57,9 @@
                 </controls:ScrollablePositiveIntegerTextBox>
             </StackPanel>
             <ToggleButton Style="{StaticResource ShowGridToggleButton}"
-                    Content="Show Grid" Margin="0,8,0,0"
-                    IsChecked="{Binding ShowPreviewGrid}"
-                    ToolTip="Show the split squares to select." />
+                          Content="Show Grid" Margin="0,8,0,0"
+                          IsChecked="{Binding ShowPreviewGrid}"
+                          ToolTip="Show the split squares to select." />
         </StackPanel>
     </Border>
 </UserControl>

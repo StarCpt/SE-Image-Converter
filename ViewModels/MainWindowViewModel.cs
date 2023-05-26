@@ -33,7 +33,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref enableDithering, value))
                 {
-                    view.EnableDitheringChanged(this, value);
+                    ConvertManager.Instance.EnableDithering = value;
                 }
             }
         }
@@ -44,7 +44,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref colorDepth, value))
                 {
-                    view.ColorDepthChanged(this, value);
+                    ConvertManager.Instance.BitDepth = value;
                 }
             }
         }
@@ -55,7 +55,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref interpolationMode, value))
                 {
-                    view.ScaleModeChanged(this, value);
+                    ConvertManager.Instance.Interpolation = value;
                 }
             }
         }
@@ -67,7 +67,8 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdWidth, value))
                 {
-                    view.LCDSizeChanged(this, LCDWidth, LCDHeight);
+                    ConvertManager.Instance.ConvertedSize = new Size(value, LCDHeight);
+                    view.LCDSizeChanged(this, value, LCDHeight);
                 }
             }
         }
@@ -78,7 +79,8 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdHeight, value))
                 {
-                    view.LCDSizeChanged(this, LCDWidth, LCDHeight);
+                    ConvertManager.Instance.ConvertedSize = new Size(LCDWidth, value);
+                    view.LCDSizeChanged(this, LCDWidth, value);
                 }
             }
         }
@@ -92,6 +94,7 @@ namespace ImageConverterPlus.ViewModels
 
                 if (SetValue(ref imageSplitSize, value))
                 {
+                    ConvertManager.Instance.ImageSplitSize = value;
                     view.ImageSplitSizeChanged(this, value);
                 }
 
@@ -105,18 +108,12 @@ namespace ImageConverterPlus.ViewModels
         public int ImageSplitWidth
         {
             get => ImageSplitSize.Width;
-            set
-            {
-                ImageSplitSize = new Size(value, ImageSplitHeight);
-            }
+            set => ImageSplitSize = new Size(value, ImageSplitHeight);
         }
         public int ImageSplitHeight
         {
             get => ImageSplitSize.Height;
-            set
-            {
-                ImageSplitSize = new Size(ImageSplitWidth, value);
-            }
+            set => ImageSplitSize = new Size(ImageSplitWidth, value);
         }
         public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
         public bool IsMouseOverScrollableTextBox { get => isMouseOverScrollableTextBox; set => SetValue(ref isMouseOverScrollableTextBox, value); }
@@ -127,11 +124,31 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref previewImageSource, value))
                 {
-                    RaisePropertyChanged(nameof(PreviewImageExists));
+                    RaisePropertyChanged(nameof(PreviewImageLoaded));
                 }
             }
         }
-        public bool PreviewImageExists => previewImageSource != null;
+        public bool PreviewImageLoaded => previewImageSource != null;
+        public double PreviewScale
+        {
+            set
+            {
+                if (SetValue(ref previewScale, value))
+                {
+                    ConvertManager.Instance.Scale = value;
+                }
+            }
+        }
+        public System.Windows.Point PreviewOffsetRatio
+        {
+            set
+            {
+                if (SetValue(ref previewOffset, value))
+                {
+                    ConvertManager.Instance.TopLeftRatio = value;
+                }
+            }
+        }
 
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
@@ -139,6 +156,7 @@ namespace ImageConverterPlus.ViewModels
         public ICommand ResetZoomAndPanCommand { get; }
         public ICommand ImageTransformCommand { get; }
         public ICommand CopyImageToClipboardCommand { get; }
+        public ICommand ConvertFromClipboardCommand { get; }
 
         private bool enableDithering;
         private BitDepth colorDepth;
@@ -150,6 +168,8 @@ namespace ImageConverterPlus.ViewModels
         private Size imageSplitSize;
         private bool isMouseOverScrollableTextBox;
         private ImageSource previewImageSource;
+        private double previewScale;
+        private System.Windows.Point previewOffset;
 
         public MainWindowViewModel()
         {
@@ -159,6 +179,7 @@ namespace ImageConverterPlus.ViewModels
             ResetZoomAndPanCommand = new ButtonCommand(ExecuteResetZoomAndPanCommand);
             ImageTransformCommand = new ButtonCommand(ExecuteImageTransformCommand);
             CopyImageToClipboardCommand = new ButtonCommand(ExecuteCopyImageToClipboardCommand);
+            ConvertFromClipboardCommand = new ButtonCommand(ExecuteConvertFromClipboardCommand);
 
             colorDepth = BitDepth.Color3;
             enableDithering = true;
@@ -169,6 +190,40 @@ namespace ImageConverterPlus.ViewModels
             showPreviewGrid = false;
             imageSplitSize = new Size(1, 1);
             isMouseOverScrollableTextBox = false;
+
+            ConvertManager.Instance.PropertyChanged += Instance_PropertyChanged;
+        }
+
+        private void Instance_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (sender is not ConvertManager mgr)
+                return;
+
+            switch (e.PropertyName)
+            {
+                case nameof(ConvertManager.BitDepth):
+                    this.ColorDepth = mgr.BitDepth;
+                    break;
+                case nameof(ConvertManager.EnableDithering):
+                    this.EnableDithering = mgr.EnableDithering;
+                    break;
+                case nameof(ConvertManager.Interpolation):
+                    this.InterpolationMode = mgr.Interpolation;
+                    break;
+                case nameof(ConvertManager.ConvertedSize):
+                    this.LCDWidth = mgr.ConvertedSize.Width;
+                    this.LCDHeight = mgr.ConvertedSize.Height;
+                    break;
+                case nameof(ConvertManager.ImageSplitSize):
+                    this.ImageSplitSize = mgr.ImageSplitSize;
+                    break;
+                case nameof(ConvertManager.ProcessedImageFull):
+                    if (mgr.ProcessedImageFull != null)
+                    {
+                        this.PreviewImageSource = Helpers.BitmapToBitmapImage(mgr.ProcessedImageFull, false);
+                    }
+                    break;
+            }
         }
 
         private void ExecuteBrowseFilesCommand(object? param)
@@ -188,7 +243,7 @@ namespace ImageConverterPlus.ViewModels
 
         private void ExecuteResetZoomAndPanCommand(object? param)
         {
-            view.ResetZoomAndPan();
+            view.ResetZoomAndPan(true);
         }
 
         private void ExecuteImageTransformCommand(object? param)
@@ -202,6 +257,11 @@ namespace ImageConverterPlus.ViewModels
         private void ExecuteCopyImageToClipboardCommand(object? param)
         {
             view.CopyToClipClicked(param);
+        }
+
+        private void ExecuteConvertFromClipboardCommand(object? param)
+        {
+            view.PasteFromClipboard();
         }
     }
 }

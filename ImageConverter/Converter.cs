@@ -104,7 +104,7 @@ namespace ImageConverterPlus.ImageConverter
 
             try
             {
-                ApplyScaleOffset(ref bitmap);
+                ApplyScaleOffset(ref bitmap, false);
 
                 token.ThrowIfCancellationRequested();
 
@@ -141,7 +141,7 @@ namespace ImageConverterPlus.ImageConverter
 
             try
             {
-                ApplyScaleOffset(ref bitmap);
+                ApplyScaleOffset(ref bitmap, true);
 
                 token.ThrowIfCancellationRequested();
 
@@ -267,20 +267,18 @@ namespace ImageConverterPlus.ImageConverter
 
         internal string ConvertSafe(Image image, CancellationToken token)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Restart();
+
             Monitor.Enter(image);
-            Bitmap bitmap = new Bitmap(image);
+            Bitmap bitmap = ApplyScaleOffset(image, false);
             Monitor.Exit(image);
+
+            long c1 = sw.ElapsedMilliseconds;
+            sw.Restart();
 
             try
             {
-                Stopwatch sw = new Stopwatch();
-                sw.Restart();
-
-                ApplyScaleOffset(ref bitmap);
-
-                long c1 = sw.ElapsedMilliseconds;
-                sw.Restart();
-
                 token.ThrowIfCancellationRequested();
 
                 if (bitmap.PixelFormat != PixelFormat.Format24bppRgb)
@@ -320,23 +318,67 @@ namespace ImageConverterPlus.ImageConverter
             }
         }
 
-        internal Bitmap ConvertToBitmapSafe(Image image, CancellationToken token)
+        internal string ConvertNoColorDepthChangeSafe(Image image, CancellationToken token)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+
             Monitor.Enter(image);
-            Bitmap bitmap = new Bitmap(image);
+            Bitmap bitmap = ApplyScaleOffset(image, false);
             Monitor.Exit(image);
+
+            long c1 = sw.ElapsedMilliseconds;
+            sw.Restart();
 
             try
             {
-                Stopwatch sw = new Stopwatch();
+                token.ThrowIfCancellationRequested();
+
+                if (bitmap.PixelFormat != PixelFormat.Format24bppRgb)
+                    throw new Exception("Pixel format not supported");
+
+                //Format24bppRgb is [Blue, Green, Red]
+                BitmapData data = bitmap.LockBits(new Rectangle(Point.Empty, bitmap.Size), ImageLockMode.ReadWrite, bitmap.PixelFormat);
+                IntPtr ptr = data.Scan0;
+
+                int sizeInBytes = data.Stride * data.Height;
+                byte[] bitmapBytes = new byte[sizeInBytes];
+                System.Runtime.InteropServices.Marshal.Copy(ptr, bitmapBytes, 0, sizeInBytes);
+
+                string convertedString = GetConvertedString(bitmapBytes, data);
+
+                long c3 = sw.ElapsedMilliseconds;
                 sw.Restart();
 
-                ApplyScaleOffset(ref bitmap);
+                System.Runtime.InteropServices.Marshal.Copy(bitmapBytes, 0, ptr, sizeInBytes);
 
-                double c1 = sw.Elapsed.TotalMilliseconds;
-                MainWindow.Logging.Log($"ConvertToBitmapSafe ApplyScaleOffset {c1} ms");
-                sw.Restart();
+                bitmap.UnlockBits(data);
 
+                token.ThrowIfCancellationRequested();
+
+                return convertedString;
+            }
+            finally
+            {
+                bitmap.Dispose();
+            }
+        }
+
+        internal Bitmap ConvertToBitmapSafe(Image image, CancellationToken token)
+        {
+            Stopwatch sw = new Stopwatch();
+            sw.Restart();
+
+            Monitor.Enter(image);
+            Bitmap bitmap = ApplyScaleOffset(image, true);
+            Monitor.Exit(image);
+
+            double c1 = sw.Elapsed.TotalMilliseconds;
+            MainWindow.Logging.Log($"ConvertToBitmapSafe ApplyScaleOffset {c1} ms");
+            sw.Restart();
+
+            try
+            {
                 token.ThrowIfCancellationRequested();
 
                 if (bitmap.PixelFormat != PixelFormat.Format24bppRgb)
@@ -614,14 +656,24 @@ namespace ImageConverterPlus.ImageConverter
             return (char)(add + ((r >> shiftRight) << (shiftLeft * 2)) + ((g >> shiftRight) << shiftLeft) + (b >> shiftRight));
         }
 
-        private void ApplyScaleOffset(ref Bitmap bitmap)
+        private void ApplyScaleOffset(ref Bitmap bitmap, bool fillTarget)
+        {
+            Bitmap result = ApplyScaleOffset(bitmap, fillTarget);
+
+            bitmap.Dispose();
+            bitmap = result;
+        }
+
+        private Bitmap ApplyScaleOffset(Image bitmap, bool fillTarget)
         {
             double widthScale = (double)bitmap.Width / Options.ConvertedSize.Width;
             double heightScale = (double)bitmap.Height / Options.ConvertedSize.Height;
-            double smallerScale = Math.Min(widthScale, heightScale); //Min = fill, Max = fit
+            //Min = scale source to fill the convertedSize rect
+            //Max = scale source to fit the convertedSize rect
+            double biggerScale = fillTarget ? Math.Min(widthScale, heightScale) : Math.Max(widthScale, heightScale);
 
-            double scaledBitmapWidth = bitmap.Width * Options.Scale / smallerScale;
-            double scaledBitmapHeight = bitmap.Height * Options.Scale / smallerScale;
+            double scaledBitmapWidth = bitmap.Width * Options.Scale / biggerScale;
+            double scaledBitmapHeight = bitmap.Height * Options.Scale / biggerScale;
 
             Size scaledSize = new Size
             {
@@ -638,7 +690,7 @@ namespace ImageConverterPlus.ImageConverter
                 g.SmoothingMode = SmoothingMode.HighQuality;
                 g.CompositingMode = CompositingMode.SourceCopy;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                
+
                 using (ImageAttributes attributes = new ImageAttributes())
                 {
                     attributes.SetWrapMode(WrapMode.TileFlipXY);
@@ -646,8 +698,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
 
-            bitmap.Dispose();
-            bitmap = destImage;
+            return destImage;
         }
     }
 }

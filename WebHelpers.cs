@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static ImageConverterPlus.MainWindow;
 using System.Windows;
+using ImageConverterPlus.ImageConverter;
 
 namespace ImageConverterPlus
 {
@@ -21,12 +22,22 @@ namespace ImageConverterPlus
                 string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                MainWindow.Static.ResetZoomAndPan();
-                ImageCache = new ImageInfo(image, url);
-                if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                ConvertManager.Instance.SourceImage = image;
+                if (image != null)
                 {
-                    Static.UpdateBrowseImagesBtn("Loaded from URL", url);
-                    MainWindow.Logging.Log($"Image loaded from image URL ({url})");
+                    ConvertManager.Instance.ConvertImage(lcdStr =>
+                    {
+                        MainWindow.Static.ResetZoomAndPan(false);
+                        if (lcdStr != null)
+                        {
+                            MainWindow.Static.UpdateBrowseImagesBtn("Loaded from URL", url);
+                            MainWindow.Logging.Log($"Image loaded from image URL ({url})");
+                        }
+                        else
+                        {
+                            MainWindow.ConversionFailedDialog();
+                        }
+                    });
                 }
             }
             else
@@ -40,12 +51,22 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    MainWindow.Static.ResetZoomAndPan();
-                    ImageCache = new ImageInfo(image, src);
-                    if (image != null && Static.TryConvertImageThreaded(ImageCache.Image, Static.ConvertResultCallback, Static.PreviewConvertResultCallback))
+                    ConvertManager.Instance.SourceImage = image;
+                    if (image != null)
                     {
-                        Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
-                        MainWindow.Logging.Log($"Image loaded from HTML ({src})");
+                        ConvertManager.Instance.ConvertImage(lcdStr =>
+                        {
+                            MainWindow.Static.ResetZoomAndPan(false);
+                            if (lcdStr != null)
+                            {
+                                MainWindow.Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
+                                MainWindow.Logging.Log($"Image loaded from HTML ({src})");
+                            }
+                            else
+                            {
+                                MainWindow.ConversionFailedDialog();
+                            }
+                        });
                     }
                 }
                 else

@@ -11,180 +11,85 @@ using System.Windows.Media.Imaging;
 using System.IO;
 using Bitmap = System.Drawing.Bitmap;
 using Size = System.Drawing.Size;
-using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 using Point = System.Windows.Point;
-using System.Timers;
 using System.Windows.Controls.Primitives;
 using System.ComponentModel;
 using ImageConverterPlus.ImageConverter;
 using System.Threading;
-using System.Windows.Threading;
+using System.Diagnostics;
 
 namespace ImageConverterPlus
 {
     partial class MainWindow
     {
-        //private const int PreviewContainerWidth = 350;
-        //private const int PreviewContainerHeight = 350;
-
         private double PreviewContainerGridSize => Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight);
-
-        private Size ImageSplitSize => viewModel.ImageSplitSize;
-
-        private System.Drawing.Point checkedSplitBtnPos = System.Drawing.Point.Empty;
 
         private ContextMenu PreviewGridMenu;
 
-        public void InitImagePreview()
-        {
-            previewNew.ScaleChanged += PreviewNew_ScaleChanged;
-            UpdatePreviewGrid();
-        }
-
-        public void ResetPreviewSplit(object sender, RoutedEventArgs e) => viewModel.ImageSplitSize = new Size(1, 1);
-
-        private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, int bitsPerColor, InterpolationMode interpolationMode, Action<Bitmap> callback)
-        {
-            if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
-            {
-                PreviewConvertCancellationTokenSource?.Cancel();
-            }
-
-            //scale the bitmap size to the lcd size
-
-            Monitor.Enter(imageToConvert);
-
-            double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
-            double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
-
-            //get the bigger ratio taking into account the image split
-            double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
-
-            double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
-            double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
-
-            Monitor.Exit(imageToConvert);
-
-            //apply preview scale (zoom)
-            scaledImageWidth *= previewNew.Scale;
-            scaledImageHeight *= previewNew.Scale;
-
-            //turn the size from above into lcd width/height % ratio
-            double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
-            double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
-
-            double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
-
-            ConvertOptions options = new ConvertOptions
-            {
-                Dithering = viewModel.EnableDithering,
-                Interpolation = interpolationMode,
-                BitsPerChannel = bitsPerColor,
-                ConvertedSize = new Size(
-                    Convert.ToInt32(scaledImageWidth),
-                    Convert.ToInt32(scaledImageHeight)),
-                Scale = 1,
-            };
-            PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-            PreviewConvertTask = Task.Run(() => ConvertManager.ConvertToBitmap(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
-        }
-
-        public void UpdatePreviewDelayed(bool resetZoom, double delay)
-        {
-            if (resetZoom)
-            {
-                ResetZoomAndPan();
-            }
-
-            if (ImageCache?.Image == null)
-            {
-                return;
-            }
-
-            if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
-            {
-                PreviewConvertCancellationTokenSource.Cancel();
-            }
-
-            if (PreviewConvertTimer != null)
-            {
-                PreviewConvertTimer.Stop();
-                PreviewConvertTimer.Dispose();
-                PreviewConvertTimer = null;
-            }
-
-            if (delay == 0)
-            {
-                UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback);
-                return;
-            }
-
-            PreviewConvertTimer = new System.Timers.Timer(delay)
-            {
-                Enabled = true,
-                AutoReset = false,
-            };
-            PreviewConvertTimer.Elapsed +=
-                (object? sender, ElapsedEventArgs e) =>
-                previewNew.Dispatcher.Invoke(
-                    () => UpdatePreview(ImageCache.Image, GetLCDSize(), (int)viewModel.ColorDepth, viewModel.InterpolationMode, PreviewConvertResultCallback));
-            PreviewConvertTimer.Start();
-        }
-
-        private void PreviewNew_ScaleChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            UpdatePreviewDelayed(false, previewNew.animationDuration.TotalMilliseconds);
-        }
-
-        private void UpdatePreviewSourceThreadSafe(BitmapImage image)
-        {
-            image.Freeze();
-            previewNew.Dispatcher.Invoke(() =>
-            {
-                viewModel.PreviewImageSource = image;
-                CopyToClipBtn.IsEnabled = true;
-
-                Size lcdSize = GetLCDSize();
-                if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
-                {
-                    previewNew.Width = PreviewContainerGridSize;
-                    previewNew.Height = PreviewContainerGridSize * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
-                }
-                else
-                {
-                    previewNew.Width = PreviewContainerGridSize * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
-                    previewNew.Height = PreviewContainerGridSize;
-                }
-
-                previewNew.Visibility = Visibility.Visible;
-                ImagePreviewTextBlock.Visibility = Visibility.Hidden;
-            });
-        }
-
-        private void RemovePreview(object sender, RoutedEventArgs e) => RemovePreview();
-
-        private void RemovePreview()
-        {
-            viewModel.PreviewImageSource = null;
-            ConvertedImageStr = string.Empty;
-            CopyToClipBtn.IsEnabled = false;
-            ResetZoomAndPan();
-
-            previewNew.Visibility = Visibility.Hidden;
-            ImagePreviewTextBlock.Visibility = Visibility.Visible;
-        }
+        //private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, Action<Bitmap> callback)
+        //{
+        //    if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
+        //    {
+        //        PreviewConvertCancellationTokenSource?.Cancel();
+        //    }
+        //
+        //    //scale the bitmap size to the lcd size
+        //
+        //    Monitor.Enter(imageToConvert);
+        //
+        //    double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
+        //    double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
+        //
+        //    //get the bigger ratio taking into account the image split
+        //    double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
+        //
+        //    double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
+        //    double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
+        //
+        //    Monitor.Exit(imageToConvert);
+        //
+        //    //apply preview scale (zoom)
+        //    scaledImageWidth *= previewNew.Scale;
+        //    scaledImageHeight *= previewNew.Scale;
+        //
+        //    //turn the size from above into lcd width/height % ratio
+        //    double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
+        //    double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
+        //
+        //    double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
+        //
+        //    ConvertOptions options = new ConvertOptions
+        //    {
+        //        Dithering = ConvertManager.Instance.EnableDithering,
+        //        Interpolation = ConvertManager.Instance.Interpolation,
+        //        BitsPerChannel = (int)ConvertManager.Instance.BitDepth,
+        //        ConvertedSize = new Size(
+        //            Convert.ToInt32(scaledImageWidth),
+        //            Convert.ToInt32(scaledImageHeight)),
+        //        Scale = 1,
+        //        TopLeft = System.Drawing.Point.Empty,
+        //    };
+        //    PreviewConvertCancellationTokenSource = new CancellationTokenSource();
+        //    PreviewConvertTask = Task.Run(() => ConvertManager.ProcessImageOld(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
+        //}
 
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                foreach (var file in files)
+                foreach (string file in files)
                 {
-                    if (TryConvertFromFile(file))
+                    if (TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        UpdateBrowseImagesBtn(Path.GetFileName(file), file);
-                        Logging.Log("Image Drag & Dropped (FileDrop)");
+                        convMgr.SourceImage = result;
+                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ProcessImage(delegate
+                        {
+                            ResetZoomAndPan(false);
+                            UpdateBrowseImagesBtn(Path.GetFileName(file), file);
+                            Logging.Log("Image Drag & Dropped (FileDrop)");
+                        });
                         return;
                     }
                 }
@@ -194,14 +99,14 @@ namespace ImageConverterPlus
             }
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
-                Bitmap bitImage = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                ResetZoomAndPan();
-                ImageCache = new ImageInfo(bitImage, "Drag & Droped Image Bitmap");
-                if (TryConvertImageThreaded(ImageCache.Image, ConvertResultCallback, PreviewConvertResultCallback))
+                Bitmap image = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
+                convMgr.SourceImage = image;
+                convMgr.ProcessImage(delegate
                 {
+                    ResetZoomAndPan(false);
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
                     Logging.Log("Image Drag & Dropped (Bitmap)");
-                }
+                });
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
             {
@@ -213,28 +118,22 @@ namespace ImageConverterPlus
             }
         }
 
-        public void PreviewConvertResultCallback(Bitmap resultPreviewImg) => UpdatePreviewSourceThreadSafe(Helpers.BitmapToBitmapImage(resultPreviewImg));
-
         public void ZoomToFit()
         {
-            if (ImageCache?.Image != null)
+            if (convMgr.SourceImageSize is Size imgSize)
             {
                 double scaleOld = previewNew.Scale;
                 double scaleChange = -scaleOld + 1;
                 previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
-
-                Monitor.Enter(ImageCache.Image);
                 
-                double imageToContainerWidthRatio = ImageCache.Image.Width / previewNew.ActualWidth;
-                double imageToContainerHeightRatio = ImageCache.Image.Height / previewNew.ActualHeight;
+                double imageToContainerWidthRatio = imgSize.Width / previewNew.ActualWidth;
+                double imageToContainerHeightRatio = imgSize.Height / previewNew.ActualHeight;
                 
                 //get the bigger ratio taking into account the image split
                 double biggerImageToContainerRatio = Math.Max(imageToContainerWidthRatio, imageToContainerHeightRatio);
                 
-                double scaledImageWidth = ImageCache.Image.Width / biggerImageToContainerRatio;
-                double scaledImageHeight = ImageCache.Image.Height / biggerImageToContainerRatio;
-                
-                Monitor.Exit(ImageCache.Image);
+                double scaledImageWidth = imgSize.Width / biggerImageToContainerRatio;
+                double scaledImageHeight = imgSize.Height / biggerImageToContainerRatio;
 
                 Point offsetTo;
                 if (scaledImageWidth < scaledImageHeight)
@@ -248,18 +147,14 @@ namespace ImageConverterPlus
 
         public void ZoomToFill()
         {
-            if (ImageCache?.Image != null)
+            if (convMgr.SourceImageSize is Size imgSize)
             {
-                Monitor.Enter(ImageCache.Image);
-
-                double imageToLCDWidthRatio = (double)ImageCache.Image.Width / viewModel.LCDWidth * viewModel.ImageSplitWidth;
-                double imageToLCDHeightRatio = (double)ImageCache.Image.Height / viewModel.LCDHeight * viewModel.ImageSplitHeight;
+                double imageToLCDWidthRatio = (double)imgSize.Width / convMgr.ConvertedSize.Width * convMgr.ImageSplitSize.Width;
+                double imageToLCDHeightRatio = (double)imgSize.Height / convMgr.ConvertedSize.Height * convMgr.ImageSplitSize.Height;
                 double minRatio = Math.Min(imageToLCDWidthRatio, imageToLCDHeightRatio);
 
-                var convertedImageSize = new System.Windows.Size(ImageCache.Image.Width / minRatio, ImageCache.Image.Height / minRatio);
+                var convertedImageSize = new System.Windows.Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
                 convertedImageSize = convertedImageSize.Round();
-
-                Monitor.Exit(ImageCache.Image);
 
                 double imageToContainerWidthRatio = convertedImageSize.Width / previewNew.ActualWidth;
                 double imageToContainerHeightRatio = convertedImageSize.Height / previewNew.ActualHeight;
@@ -283,89 +178,71 @@ namespace ImageConverterPlus
             }
         }
 
-        public void ResetZoomAndPan()
+        public void ResetZoomAndPan(bool animate)
         {
-            if (ImageCache?.Image != null)
+            if (convMgr.SourceImageSize is Size imgSize)
             {
-                previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
+                if (animate)
+                    previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
+                else
+                    previewNew.SetScaleNoAnim(1.0);
 
-                Monitor.Enter(ImageCache.Image);
-
-                double imageToContainerWidthRatio = ImageCache.Image.Width / previewNew.ActualWidth;
-                double imageToContainerHeightRatio = ImageCache.Image.Height / previewNew.ActualHeight;
+                double imageToContainerWidthRatio = imgSize.Width / previewNew.ActualWidth;
+                double imageToContainerHeightRatio = imgSize.Height / previewNew.ActualHeight;
 
                 //get the bigger ratio taking into account the image split
                 double biggerImageToContainerRatio = Math.Max(imageToContainerWidthRatio, imageToContainerHeightRatio);
 
-                double scaledImageWidth = ImageCache.Image.Width / biggerImageToContainerRatio;
-                double scaledImageHeight = ImageCache.Image.Height / biggerImageToContainerRatio;
-
-                Monitor.Exit(ImageCache.Image);
+                double scaledImageWidth = imgSize.Width / biggerImageToContainerRatio;
+                double scaledImageHeight = imgSize.Height / biggerImageToContainerRatio;
 
                 Point offsetTo = new Point(
                     (previewNew.ActualWidth - scaledImageWidth) / 2,
                     (previewNew.ActualHeight - scaledImageHeight) / 2);
 
-                previewNew.SetOffsetAnimated(offsetTo, previewNew.animationDuration);
+                if (animate)
+                    previewNew.SetOffsetAnimated(offsetTo, previewNew.animationDuration);
+                else
+                    previewNew.SetOffsetNoAnim(offsetTo);
             }
         }
 
         private void UpdatePreviewGrid()
         {
-            Size lcdSize = GetLCDSize();
-
-            int splitX = viewModel.ImageSplitWidth;
-            int splitY = viewModel.ImageSplitHeight;
-
-            if (lcdSize.Width * splitX > lcdSize.Height * splitY)
-            {
-                previewNew.Width = PreviewContainerGridSize;
-                previewNew.Height = PreviewContainerGridSize * ((double)(lcdSize.Height * splitY) / (lcdSize.Width * splitX));
-            }
-            else
-            {
-                previewNew.Width = PreviewContainerGridSize * ((double)(lcdSize.Width * splitX) / (lcdSize.Height * splitY));
-                previewNew.Height = PreviewContainerGridSize;
-            }
+            UpdatePreviewContainerSize();
 
             PreviewGrid.Children.Clear();
 
-            checkedSplitBtnPos = System.Drawing.Point.Empty;
+            convMgr.SelectedSplitPos = System.Drawing.Point.Empty;
 
             if (PreviewGridMenu == null)
             {
-                ContextMenu imgSplitMenu = new ContextMenu
-                {
-                    Style = (Style)FindResource("CustomMenu"),
-                };
+                ContextMenu imgSplitMenu = new ContextMenu();
                 MenuItem menuItemCopyToClip = new MenuItem
                 {
-                    Style = (Style)FindResource("CustomMenuItem"),
                     Header = "Copy to Clipboard",
                 };
                 menuItemCopyToClip.Click += PreviewGridCopyToClip;
                 imgSplitMenu.Items.Add(menuItemCopyToClip);
                 MenuItem menuItemConvertFromClip = new MenuItem
                 {
-                    Style = (Style)FindResource("CustomMenuItem"),
                     Header = "Convert From Clipboard",
                 };
-                menuItemConvertFromClip.Click += PasteFromClipboard;
+                menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
                 imgSplitMenu.Items.Add(menuItemConvertFromClip);
                 MenuItem menuItemResetSplit = new MenuItem
                 {
-                    Style = (Style)FindResource("CustomMenuItem"),
                     Header = "Reset Image Split",
                 };
-                menuItemResetSplit.Click += ResetPreviewSplit;
+                menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Size(1, 1); };
                 imgSplitMenu.Items.Add(menuItemResetSplit);
 
                 PreviewGridMenu = imgSplitMenu;
             }
 
-            for (int x = 0; x < ImageSplitSize.Width; x++)
+            for (int x = 0; x < convMgr.ImageSplitSize.Width; x++)
             {
-                for (int y = 0; y < ImageSplitSize.Height; y++)
+                for (int y = 0; y < convMgr.ImageSplitSize.Height; y++)
                 {
                     ToggleButton btn = new ToggleButton
                     {
@@ -389,7 +266,7 @@ namespace ImageConverterPlus
             {
                 tb.IsChecked = tb == btn;
             }
-            checkedSplitBtnPos = (System.Drawing.Point)btn.Tag;
+            convMgr.SelectedSplitPos = (System.Drawing.Point)btn.Tag;
         }
 
         private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
@@ -401,12 +278,14 @@ namespace ImageConverterPlus
                 {
                     tb.IsChecked = tb == openedOver;
                 }
-                checkedSplitBtnPos = (System.Drawing.Point)openedOver.Tag;
-
-                if (ImageCache.Image == null || !TryConvertImageThreaded(ImageCache.Image, ConvertCallbackCopyToClip, PreviewConvertResultCallback))
+                convMgr.SelectedSplitPos = (System.Drawing.Point)openedOver.Tag;
+                convMgr.ConvertImage(lcdStr =>
                 {
-                    ShowAcrylDialog($"Convert an image first!");
-                }
+                    if (lcdStr != null)
+                        SetClipboardDelayed(lcdStr);
+                    else
+                        ConversionFailedDialog();
+                });
             }
             else
             {
@@ -416,23 +295,14 @@ namespace ImageConverterPlus
 
         private void PreviewContainerGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            Size lcdSize = GetLCDSize();
-            if (lcdSize.Width * ImageSplitSize.Width > lcdSize.Height * ImageSplitSize.Height)
-            {
-                previewNew.Width = PreviewContainerGridSize;
-                previewNew.Height = PreviewContainerGridSize * (((double)lcdSize.Height * ImageSplitSize.Height) / ((double)lcdSize.Width * ImageSplitSize.Width));
-            }
-            else
-            {
-                previewNew.Width = PreviewContainerGridSize * (((double)lcdSize.Width * ImageSplitSize.Width) / ((double)lcdSize.Height * ImageSplitSize.Height));
-                previewNew.Height = PreviewContainerGridSize;
-            }
+            UpdatePreviewContainerSize();
 
             if (e.PreviousSize.Width != 0 && e.PreviousSize.Height != 0)
             {
-                previewNew.Offset = new Point(
+                Point offsetNew = new Point(
                     previewNew.Offset.X * (e.NewSize.Width / e.PreviousSize.Width),
                     previewNew.Offset.Y * (e.NewSize.Height / e.PreviousSize.Height));
+                previewNew.SetOffsetNoAnim(offsetNew);
             }
 
             ImagePreviewBackground.Width = PreviewContainerGridSize;

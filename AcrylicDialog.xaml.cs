@@ -23,15 +23,15 @@ namespace ImageConverterPlus
         public AcrylicDialog(Window parent, string message)
         {
             InitializeComponent();
-            AcrylicDialogWindow.Owner = parent;
-            DialogMessage.Content = message;
+            this.Owner = parent;
+            DialogMessage.Text = message;
             MainWindow.Logging.Log($"AcrylicDialog: {message}");
         }
 
         private void DialogCloseBtn_Click(object sender, RoutedEventArgs e)
         {
-            AcrylicDialogWindow.Close();
-            AcrylicDialogWindow.Owner.Focus();
+            this.Close();
+            this.Owner.Focus();
         }
     }
 }
