@@ -36,7 +36,7 @@ namespace ImageConverterPlus
                         {
                             ResetZoomAndPan(false);
                             UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                            Logging.Log("Image Drag & Dropped (FileDrop)");
+                            App.Instance.Log.Log("Image Drag & Dropped (FileDrop)");
                         });
                         return;
                     }
@@ -53,7 +53,7 @@ namespace ImageConverterPlus
                 {
                     ResetZoomAndPan(false);
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
-                    Logging.Log("Image Drag & Dropped (Bitmap)");
+                    App.Instance.Log.Log("Image Drag & Dropped (Bitmap)");
                 });
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))

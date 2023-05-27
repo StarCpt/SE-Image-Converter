@@ -90,7 +90,7 @@ namespace ImageConverterPlus.ViewModels
 
         private void ExecuteOpenLogsCommand(object? param)
         {
-            MainWindow.Logging.OpenLogFileAsync();
+            App.Instance.Log.OpenLogFile();
         }
 
         private void ExecuteOpenAppDirectoryCommand(object? param)

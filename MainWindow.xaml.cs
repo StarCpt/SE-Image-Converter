@@ -31,10 +31,7 @@ namespace ImageConverterPlus
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "1.0 Beta";
-
         public static MainWindow Static { get; private set; }
-        public static Logging Logging { get; private set; }
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
         private MainWindowViewModel viewModel;
@@ -42,20 +39,18 @@ namespace ImageConverterPlus
 
         public MainWindow()
         {
-            Logging = new Logging(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log", 1000, true);
-
             Static = this;
             InitializeComponent();
             viewModel = (MainWindowViewModel)this.DataContext;
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
-            this.Title = $"SE Image Converter+ v{version}";
-            AppBigTitle.Content = "SE Image Converter+";
+            this.Title = $"{App.AppName} v{App.AppVersion}";
+            AppBigTitle.Content = App.AppName;
 
             UpdatePreviewGrid();
 
-            Logging.Log("MainWindow initialized");
+            App.Instance.Log.Log("MainWindow initialized");
         }
 
         public void BrowseImageFiles()
@@ -110,7 +105,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                Logging.Log(e.ToString());
+                App.Instance.Log.Log(e.ToString());
                 result = null;
                 return false;
             }
@@ -150,8 +145,8 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                Logging.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
-                Logging.Log(e.ToString());
+                App.Instance.Log.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
+                App.Instance.Log.Log(e.ToString());
                 return IsFileSupportedEnum.NotSupported;
             }
         }
@@ -220,7 +215,7 @@ namespace ImageConverterPlus
                         ResetZoomAndPan(false);
                         if (bitmap != null)
                         {
-                            Logging.Log("Image loaded from Clipboard (Bitmap)");
+                            App.Instance.Log.Log("Image loaded from Clipboard (Bitmap)");
                         }
                         else
                         {
@@ -245,7 +240,7 @@ namespace ImageConverterPlus
                             if (bitmap != null)
                             {
                                 UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                                Logging.Log("Loaded from Clipboard (FileDrop)");
+                                App.Instance.Log.Log("Loaded from Clipboard (FileDrop)");
                             }
                             else
                             {
@@ -263,7 +258,7 @@ namespace ImageConverterPlus
             }
         }
 
-        public static void ShowAcrylDialog(string message) => new AcrylicDialog(Static, message).ShowDialog();
+        public static void ShowAcrylDialog(string message) => new AcrylicDialog(App.Current.MainWindow, message).ShowDialog();
 
         public void UpdateBrowseImagesBtn(string text, string fullpath)
         {
@@ -318,7 +313,7 @@ namespace ImageConverterPlus
                     convMgr.ProcessImage();
                 }
 
-                Logging.Log($"Image Transformed ({type.ToString()})");
+                App.Instance.Log.Log($"Image Transformed ({type.ToString()})");
             }
         }
 
