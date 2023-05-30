@@ -94,6 +94,9 @@
                             <views:BitDepthAndDitherSelector Margin="5" />
                             <views:ScaleModeSelector Margin="5" />
                             <views:ImageTransformControls Margin="5" />
+                            <ToggleButton Style="{StaticResource TransparentRoundedToggleButtonSmall}"
+                                          Content="Debug Tools" Height="25" Margin="5"
+                                          IsChecked="{Binding Debug}" />
                         </StackPanel>
 
                         <!--Column 2-->
@@ -163,11 +166,14 @@
                         Height="{Binding ActualHeight,ElementName=previewNew}" />
                 </Grid>
                 <TextBlock Foreground="Red" Text="debug1" Grid.Column="1" x:Name="debug1"
-                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="-200,0,0,-30" />
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="-200,0,0,-30"
+                           Visibility="{Binding Debug,Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <TextBlock Foreground="Red" Text="debug2" Grid.Column="1" x:Name="debug2"
-                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-30" />
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-30"
+                           Visibility="{Binding Debug,Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <TextBlock Foreground="Red" Text="debug3" Grid.Column="1" x:Name="debug3"
-                       HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="200,0,0,-30" />
+                           HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="200,0,0,-30"
+                           Visibility="{Binding Debug,Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </DockPanel>
     </DockPanel>

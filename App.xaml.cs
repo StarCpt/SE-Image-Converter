@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.IO;
@@ -16,10 +17,27 @@ namespace ImageConverterPlus
     {
         public const string AppVersion = "1.0 Beta2";
         public const string AppName = "SE Image Converter+";
+
+        public static event RoutedPropertyChangedEventHandler<bool>? DebugStateChanged;
+
 #pragma warning disable CS8618
         public static App Instance { get; private set; }
 #pragma warning restore CS8618
         public LogService Log { get; }
+        public bool Debug
+        {
+            get => debug;
+            set
+            {
+                if (debug != value)
+                {
+                    debug = value;
+                    DebugStateChanged?.Invoke(this, new RoutedPropertyChangedEventArgs<bool>(!value, value));
+                }
+            }
+        }
+
+        private bool debug = false;
 
         public App()
         {

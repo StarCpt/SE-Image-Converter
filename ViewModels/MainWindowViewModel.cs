@@ -149,6 +149,11 @@ namespace ImageConverterPlus.ViewModels
                 }
             }
         }
+        public bool Debug
+        {
+            get => App.Instance.Debug;
+            set => App.Instance.Debug = value;
+        }
 
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
@@ -191,10 +196,11 @@ namespace ImageConverterPlus.ViewModels
             imageSplitSize = new Int32Size(1, 1);
             isMouseOverScrollableTextBox = false;
 
-            ConvertManager.Instance.PropertyChanged += Instance_PropertyChanged;
+            ConvertManager.Instance.PropertyChanged += ConvertManager_PropertyChanged;
+            App.DebugStateChanged += (sender, e) => RaisePropertyChanged(nameof(Debug));
         }
 
-        private void Instance_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        private void ConvertManager_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is not ConvertManager mgr)
                 return;

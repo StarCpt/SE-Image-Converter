@@ -17,8 +17,6 @@ namespace ImageConverterPlus
     {
         private double PreviewContainerGridSize => Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight);
 
-        private ContextMenu PreviewGridMenu;
-
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -161,30 +159,25 @@ namespace ImageConverterPlus
 
             convMgr.SelectedSplitPos = new Int32Point(0, 0);
 
-            if (PreviewGridMenu == null)
+            ContextMenu imgSplitMenu = new ContextMenu();
+            MenuItem menuItemCopyToClip = new MenuItem
             {
-                ContextMenu imgSplitMenu = new ContextMenu();
-                MenuItem menuItemCopyToClip = new MenuItem
-                {
-                    Header = "Copy to Clipboard",
-                };
-                menuItemCopyToClip.Click += PreviewGridCopyToClip;
-                imgSplitMenu.Items.Add(menuItemCopyToClip);
-                MenuItem menuItemConvertFromClip = new MenuItem
-                {
-                    Header = "Convert From Clipboard",
-                };
-                menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
-                imgSplitMenu.Items.Add(menuItemConvertFromClip);
-                MenuItem menuItemResetSplit = new MenuItem
-                {
-                    Header = "Reset Image Split",
-                };
-                menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Int32Size(1, 1); };
-                imgSplitMenu.Items.Add(menuItemResetSplit);
-
-                PreviewGridMenu = imgSplitMenu;
-            }
+                Header = "Copy to Clipboard",
+            };
+            menuItemCopyToClip.Click += PreviewGridCopyToClip;
+            imgSplitMenu.Items.Add(menuItemCopyToClip);
+            MenuItem menuItemConvertFromClip = new MenuItem
+            {
+                Header = "Convert From Clipboard",
+            };
+            menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
+            imgSplitMenu.Items.Add(menuItemConvertFromClip);
+            MenuItem menuItemResetSplit = new MenuItem
+            {
+                Header = "Reset Image Split",
+            };
+            menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Int32Size(1, 1); };
+            imgSplitMenu.Items.Add(menuItemResetSplit);
 
             for (int x = 0; x < convMgr.ImageSplitSize.Width; x++)
             {
@@ -195,7 +188,7 @@ namespace ImageConverterPlus
                         Style = (Style)FindResource("PreviewSplitBtn"),
                         Tag = new Int32Point(x, y),
                         IsChecked = x == 0 && y == 0,
-                        ContextMenu = PreviewGridMenu,
+                        ContextMenu = imgSplitMenu,
                     };
                     Grid.SetColumn(btn, x);
                     Grid.SetRow(btn, y);

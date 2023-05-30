@@ -15,6 +15,7 @@ namespace ImageConverterPlus.ViewModels
     {
         public bool IsMaximized { get => isMaximized; set { SetValue(ref isMaximized, value); } }
         public bool CanMaximize { get => canMaximize; set => SetValue(ref canMaximize, value); }
+        public bool Debug => App.Instance.Debug;
 
         public ICommand LoadedCommand { get; }
         public ICommand MinimizeCommand { get; }
@@ -24,7 +25,7 @@ namespace ImageConverterPlus.ViewModels
         public ICommand OpenLogsCommand { get; }
         public ICommand OpenAppDirectoryCommand { get; }
 
-        private Window parentWindow;
+        private Window parentWindow = App.Current.MainWindow;
         private bool isMaximized = false;
         private bool canMaximize = false;
 
@@ -37,6 +38,8 @@ namespace ImageConverterPlus.ViewModels
             CloseCommand = new ButtonCommand(ExecuteCloseCommand);
             OpenLogsCommand = new ButtonCommand(ExecuteOpenLogsCommand);
             OpenAppDirectoryCommand = new ButtonCommand(ExecuteOpenAppDirectoryCommand);
+
+            App.DebugStateChanged += (sender, e) => RaisePropertyChanged(nameof(Debug));
         }
 
         private void ExecuteLoadedCommand(object? param)
