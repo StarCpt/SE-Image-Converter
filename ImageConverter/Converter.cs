@@ -33,9 +33,9 @@ namespace ImageConverterPlus.ImageConverter
         public int BitsPerChannel { readonly get; set; }
         public bool Dithering { readonly get; set; }
         public InterpolationMode Interpolation { readonly get; set; }
-        public Size ConvertedSize { readonly get; set; }
+        public Int32Size ConvertedSize { readonly get; set; }
         public double Scale { readonly get; set; }
-        public Point TopLeft { readonly get; set; }
+        public Int32Point TopLeft { readonly get; set; }
     }
 
     internal class Converter
@@ -67,7 +67,7 @@ namespace ImageConverterPlus.ImageConverter
 
             if (Options.ConvertedSize.Width > 10000)
             {
-                Options.ConvertedSize = new Size(
+                Options.ConvertedSize = new Int32Size(
                     Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Width),
                     Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Width));
                 App.Instance.Log.Log($"Converter.ctor: Width too large. Resizing to 10000");
@@ -75,7 +75,7 @@ namespace ImageConverterPlus.ImageConverter
 
             if (Options.ConvertedSize.Height > 10000)
             {
-                Options.ConvertedSize = new Size(
+                Options.ConvertedSize = new Int32Size(
                     Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Height),
                     Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Height));
                 App.Instance.Log.Log($"Converter.ctor: Height too large. Resizing to 10000");
@@ -680,7 +680,7 @@ namespace ImageConverterPlus.ImageConverter
                 Width = Convert.ToInt32(scaledBitmapWidth),
                 Height = Convert.ToInt32(scaledBitmapHeight),
             };
-            Rectangle destREct = new Rectangle(Options.TopLeft, scaledSize);
+            Rectangle destREct = new Rectangle((Point)Options.TopLeft, scaledSize);
             //Format24bppRgb is [Blue, Green, Red]
             Bitmap destImage = new Bitmap(Options.ConvertedSize.Width, Options.ConvertedSize.Height, PixelFormat.Format24bppRgb);
 

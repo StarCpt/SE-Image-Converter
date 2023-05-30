@@ -15,14 +15,14 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
 using Brushes = System.Windows.Media.Brushes;
-using Size = System.Drawing.Size;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
 using ImageConverterPlus.ViewModels;
 using System.Collections.Specialized;
-using System.Drawing;
+using Bitmap = System.Drawing.Bitmap;
+using RotateFlipType = System.Drawing.RotateFlipType;
 
 namespace ImageConverterPlus
 {
@@ -68,7 +68,7 @@ namespace ImageConverterPlus
                     UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
                     if (convMgr.SourceImage != null)
                     {
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
@@ -233,7 +233,7 @@ namespace ImageConverterPlus
                     if (file != null && TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
                         convMgr.SourceImage = result;
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(bitmap =>
                         {
                             ResetZoomAndPan(false);
@@ -291,7 +291,7 @@ namespace ImageConverterPlus
 
         public void TransformImage(RotateFlipType type)
         {
-            if (convMgr.SourceImage != null && convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImage != null && convMgr.SourceImageSize is Int32Size imgSize)
             {
                 lock(convMgr.SourceImage)
                 {
@@ -319,13 +319,13 @@ namespace ImageConverterPlus
 
         public void LCDSizeChanged(object? sender, int newWidth, int newHeight)
         {
-            convMgr.ImageSplitSize = new Size(1, 1);
+            convMgr.ImageSplitSize = new Int32Size(1, 1);
             UpdatePreviewContainerSize();
             ResetZoomAndPanOnPreviewNewSizeChanged(); //so jank
             //ResetZoomAndPan(false);
         }
 
-        public void ImageSplitSizeChanged(object? sender, Size newSize)
+        public void ImageSplitSizeChanged(object? sender, Int32Size newSize)
         {
             UpdatePreviewGrid();
             ResetZoomAndPanOnPreviewNewSizeChanged();
@@ -334,8 +334,8 @@ namespace ImageConverterPlus
 
         public void UpdatePreviewContainerSize()
         {
-            Size lcd = convMgr.ConvertedSize;
-            Size split = convMgr.ImageSplitSize;
+            Int32Size lcd = convMgr.ConvertedSize;
+            Int32Size split = convMgr.ImageSplitSize;
             if (lcd.Width * split.Width > lcd.Height * split.Height)
             {
                 previewNew.Width = PreviewContainerGridSize;

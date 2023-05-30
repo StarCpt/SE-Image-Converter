@@ -67,7 +67,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdWidth, value))
                 {
-                    ConvertManager.Instance.ConvertedSize = new Size(value, LCDHeight);
+                    ConvertManager.Instance.ConvertedSize = new Int32Size(value, LCDHeight);
                     view.LCDSizeChanged(this, value, LCDHeight);
                 }
             }
@@ -79,12 +79,12 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdHeight, value))
                 {
-                    ConvertManager.Instance.ConvertedSize = new Size(LCDWidth, value);
+                    ConvertManager.Instance.ConvertedSize = new Int32Size(LCDWidth, value);
                     view.LCDSizeChanged(this, LCDWidth, value);
                 }
             }
         }
-        public Size ImageSplitSize
+        public Int32Size ImageSplitSize
         {
             get => imageSplitSize;
             set
@@ -108,12 +108,12 @@ namespace ImageConverterPlus.ViewModels
         public int ImageSplitWidth
         {
             get => ImageSplitSize.Width;
-            set => ImageSplitSize = new Size(value, ImageSplitHeight);
+            set => ImageSplitSize = new Int32Size(value, ImageSplitHeight);
         }
         public int ImageSplitHeight
         {
             get => ImageSplitSize.Height;
-            set => ImageSplitSize = new Size(ImageSplitWidth, value);
+            set => ImageSplitSize = new Int32Size(ImageSplitWidth, value);
         }
         public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
         public bool IsMouseOverScrollableTextBox { get => isMouseOverScrollableTextBox; set => SetValue(ref isMouseOverScrollableTextBox, value); }
@@ -165,7 +165,7 @@ namespace ImageConverterPlus.ViewModels
         private int lcdWidth;
         private int lcdHeight;
         private bool showPreviewGrid;
-        private Size imageSplitSize;
+        private Int32Size imageSplitSize;
         private bool isMouseOverScrollableTextBox;
         private ImageSource previewImageSource;
         private double previewScale;
@@ -188,7 +188,7 @@ namespace ImageConverterPlus.ViewModels
             lcdWidth = 178;
             lcdHeight = 178;
             showPreviewGrid = false;
-            imageSplitSize = new Size(1, 1);
+            imageSplitSize = new Int32Size(1, 1);
             isMouseOverScrollableTextBox = false;
 
             ConvertManager.Instance.PropertyChanged += Instance_PropertyChanged;

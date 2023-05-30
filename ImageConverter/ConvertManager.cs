@@ -52,7 +52,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size ConvertedSize
+        public Int32Size ConvertedSize
         {
             get => convertedSize;
             set
@@ -64,7 +64,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size ImageSplitSize
+        public Int32Size ImageSplitSize
         {
             get => imageSplitSize;
             set
@@ -76,7 +76,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Point SelectedSplitPos
+        public Int32Point SelectedSplitPos
         {
             get => selectedSplitPos;
             set
@@ -126,13 +126,13 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size? SourceImageSize
+        public Int32Size? SourceImageSize
         {
             get
             {
                 if (_sourceImage != null)
                     lock (_sourceImage)
-                        return _sourceImage.Size;
+                        return (Int32Size)_sourceImage.Size;
                 else
                     return null;
             }
@@ -152,13 +152,13 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size? ProcessedImageFullSize
+        public Int32Size? ProcessedImageFullSize
         {
             get
             {
                 if (_processedImageFull != null)
                     lock (_processedImageFull)
-                        return _processedImageFull.Size;
+                        return (Int32Size)_processedImageFull.Size;
                 else
                     return null;
             }
@@ -188,9 +188,9 @@ namespace ImageConverterPlus.ImageConverter
         private BitDepth bitDepth;
         private bool enableDithering;
         private InterpolationMode interpolation;
-        private Size convertedSize;
-        private Size imageSplitSize;
-        private Point selectedSplitPos;
+        private Int32Size convertedSize;
+        private Int32Size imageSplitSize;
+        private Int32Point selectedSplitPos;
         private double scale;
         private System.Windows.Point topLeftRatio;
 
@@ -221,7 +221,7 @@ namespace ImageConverterPlus.ImageConverter
             bitDepth = BitDepth.Color3;
             enableDithering = true;
             interpolation = InterpolationMode.HighQualityBicubic;
-            convertedSize = new Size(178, 178);
+            convertedSize = new Int32Size(178, 178);
             scale = 1.0;
             topLeftRatio = new System.Windows.Point(0, 0);
             
@@ -311,7 +311,7 @@ namespace ImageConverterPlus.ImageConverter
                 return false;
             }
 
-            Size sourceSize = SourceImageSize.Value;
+            Int32Size sourceSize = SourceImageSize.Value;
 
             double imageToLcdWidthRatio = (double)sourceSize.Width / ConvertedSize.Width;
             double imageToLcdHeightRatio = (double)sourceSize.Height / ConvertedSize.Height;
@@ -330,11 +330,11 @@ namespace ImageConverterPlus.ImageConverter
                 BitsPerChannel = (int)BitDepth,
                 Dithering = EnableDithering,
                 Interpolation = Interpolation,
-                ConvertedSize = new Size(
+                ConvertedSize = new Int32Size(
                     Convert.ToInt32(scaledImageWidth),
                     Convert.ToInt32(scaledImageHeight)),
                 Scale = 1.0,
-                TopLeft = Point.Empty,
+                TopLeft = new Int32Point(0, 0),
             };
             Converter converter = new Converter(options);
             Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(SourceImage, token), token);
@@ -410,7 +410,7 @@ namespace ImageConverterPlus.ImageConverter
                 ConvertedSize = ConvertedSize,
                 Interpolation = Interpolation,
                 Scale = Scale,
-                TopLeft = new Point(
+                TopLeft = new Int32Point(
                     Convert.ToInt32(ConvertedSize.Width * TopLeftRatio.X + ConvertedSize.Width * SelectedSplitPos.X),
                     Convert.ToInt32(ConvertedSize.Height * TopLeftRatio.Y + ConvertedSize.Height * SelectedSplitPos.Y)),
             };

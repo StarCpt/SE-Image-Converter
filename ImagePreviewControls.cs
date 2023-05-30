@@ -9,8 +9,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Bitmap = System.Drawing.Bitmap;
-using Size = System.Drawing.Size;
-using Point = System.Windows.Point;
 using System.Windows.Controls.Primitives;
 
 namespace ImageConverterPlus
@@ -31,7 +29,7 @@ namespace ImageConverterPlus
                     if (TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
                         convMgr.SourceImage = result;
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
@@ -68,7 +66,7 @@ namespace ImageConverterPlus
 
         public void ZoomToFit()
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 double scaleOld = previewNew.Scale;
                 double scaleChange = -scaleOld + 1;
@@ -95,13 +93,13 @@ namespace ImageConverterPlus
 
         public void ZoomToFill()
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 double imageToLCDWidthRatio = (double)imgSize.Width / convMgr.ConvertedSize.Width * convMgr.ImageSplitSize.Width;
                 double imageToLCDHeightRatio = (double)imgSize.Height / convMgr.ConvertedSize.Height * convMgr.ImageSplitSize.Height;
                 double minRatio = Math.Min(imageToLCDWidthRatio, imageToLCDHeightRatio);
 
-                var convertedImageSize = new System.Windows.Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
+                var convertedImageSize = new Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
                 convertedImageSize = convertedImageSize.Round();
 
                 double imageToContainerWidthRatio = convertedImageSize.Width / previewNew.ActualWidth;
@@ -128,7 +126,7 @@ namespace ImageConverterPlus
 
         public void ResetZoomAndPan(bool animate)
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 if (animate)
                     previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
@@ -161,7 +159,7 @@ namespace ImageConverterPlus
 
             PreviewGrid.Children.Clear();
 
-            convMgr.SelectedSplitPos = System.Drawing.Point.Empty;
+            convMgr.SelectedSplitPos = new Int32Point(0, 0);
 
             if (PreviewGridMenu == null)
             {
@@ -182,7 +180,7 @@ namespace ImageConverterPlus
                 {
                     Header = "Reset Image Split",
                 };
-                menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Size(1, 1); };
+                menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Int32Size(1, 1); };
                 imgSplitMenu.Items.Add(menuItemResetSplit);
 
                 PreviewGridMenu = imgSplitMenu;
@@ -195,7 +193,7 @@ namespace ImageConverterPlus
                     ToggleButton btn = new ToggleButton
                     {
                         Style = (Style)FindResource("PreviewSplitBtn"),
-                        Tag = new System.Drawing.Point(x, y),
+                        Tag = new Int32Point(x, y),
                         IsChecked = x == 0 && y == 0,
                         ContextMenu = PreviewGridMenu,
                     };
@@ -214,7 +212,7 @@ namespace ImageConverterPlus
             {
                 tb.IsChecked = tb == btn;
             }
-            convMgr.SelectedSplitPos = (System.Drawing.Point)btn.Tag;
+            convMgr.SelectedSplitPos = (Int32Point)btn.Tag;
         }
 
         private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
@@ -226,7 +224,7 @@ namespace ImageConverterPlus
                 {
                     tb.IsChecked = tb == openedOver;
                 }
-                convMgr.SelectedSplitPos = (System.Drawing.Point)openedOver.Tag;
+                convMgr.SelectedSplitPos = (Int32Point)openedOver.Tag;
                 convMgr.ConvertImage(lcdStr =>
                 {
                     if (lcdStr != null)
