@@ -25,10 +25,10 @@ namespace ImageConverterPlus
                 ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 if (image != null)
                 {
-                    ConvertManager.Instance.ConvertImage(lcdStr =>
+                    ConvertManager.Instance.ProcessImage(bitmap =>
                     {
                         MainWindow.Static.ResetZoomAndPan(false);
-                        if (lcdStr != null)
+                        if (bitmap != null)
                         {
                             MainWindow.Static.UpdateBrowseImagesBtn("Loaded from URL", url);
                             App.Instance.Log.Log($"Image loaded from image URL ({url})");
@@ -54,7 +54,7 @@ namespace ImageConverterPlus
                     ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                     if (image != null)
                     {
-                        ConvertManager.Instance.ConvertImage(lcdStr =>
+                        ConvertManager.Instance.ProcessImage(lcdStr =>
                         {
                             MainWindow.Static.ResetZoomAndPan(false);
                             if (lcdStr != null)

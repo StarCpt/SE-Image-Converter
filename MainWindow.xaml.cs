@@ -14,7 +14,6 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
-using Brushes = System.Windows.Media.Brushes;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
@@ -23,7 +22,6 @@ using ImageConverterPlus.ViewModels;
 using System.Collections.Specialized;
 using Bitmap = System.Drawing.Bitmap;
 using RotateFlipType = System.Drawing.RotateFlipType;
-using System.Drawing;
 
 namespace ImageConverterPlus
 {

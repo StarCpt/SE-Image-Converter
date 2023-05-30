@@ -2,14 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Bitmap = System.Drawing.Bitmap;
+using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 
 namespace ImageConverterPlus.ImageConverter
 {
@@ -219,6 +219,7 @@ namespace ImageConverterPlus.ImageConverter
             enableDithering = true;
             interpolation = InterpolationMode.HighQualityBicubic;
             convertedSize = new Int32Size(178, 178);
+            imageSplitSize = new Int32Size(1, 1);
             scale = 1.0;
             topLeftRatio = new System.Windows.Point(0, 0);
             
