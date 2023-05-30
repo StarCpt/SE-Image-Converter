@@ -31,8 +31,15 @@ namespace ImageConverterPlus
             TimeZoneInfo timeZone = TimeZoneInfo.Local;
             bool overwriteExisting = true;
 
-            Log = new LogService(logPath, logFlushInterval, logDateTimeFormat, timeZone, overwriteExisting);
+            Log = new LogService(logPath, logDateTimeFormat, timeZone, overwriteExisting);
             Log.Log($"Version {AppVersion}");
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            Log.Close();
+
+            base.OnExit(e);
         }
     }
 }

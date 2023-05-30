@@ -1,60 +1,64 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text;
-using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace ImageConverterPlus
 {
-    public sealed class LogService : IDisposable
+    public sealed class LogService
     {
         public string LogPath { get; }
 
-        ConcurrentQueue<string> logBuffer = new ConcurrentQueue<string>();
-        System.Threading.Timer flushTimer;
+        Channel<string> logBuffer;
         readonly string dateTimeFormat;
         readonly TimeZoneInfo timeZone;
 
-        public LogService(string path, TimeSpan flushInterval, string dateTimeFormat, TimeZoneInfo timeZone, bool overwriteExistingFile)
+        public LogService(string path, string dateTimeFormat, TimeZoneInfo timeZone, bool overwriteExistingFile)
         {
             if (overwriteExistingFile)
             {
                 File.CreateText(path).Close();
             }
-
+            
             this.LogPath = path;
-            this.flushTimer = new System.Threading.Timer(FlushLogBuffer, null, flushInterval, flushInterval);
+            this.logBuffer = Channel.CreateUnbounded<string>();
             this.dateTimeFormat = dateTimeFormat;
             this.timeZone = timeZone;
 
             Log("Log Started");
             Log(timeZone.ToString());
+
+            Task.Run(BufferConsumerLoop);
         }
 
-        public void Log(string str)
+        public void Log(Exception e) => Log(e.ToString());
+        public async void Log(string str)
         {
             string logStr = $"{TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).ToString(dateTimeFormat)}  {Environment.CurrentManagedThreadId,3}  {str}";
-            logBuffer.Enqueue(logStr);
+            await logBuffer.Writer.WriteAsync(logStr);
         }
-        public void Log(Exception e) => Log(e.ToString());
 
-        void FlushLogBuffer(object? state)
+        async Task BufferConsumerLoop()
         {
-            try
+            ChannelReader<string> reader = logBuffer.Reader;
+            while (await reader.WaitToReadAsync())
             {
-                while (logBuffer.TryDequeue(out string? result))
+                try
                 {
-                    WriteLine(result);
+                    while (reader.TryRead(out string? logEntry))
+                    {
+                        WriteLine(logEntry);
+                    }
                 }
-            }
-            catch (Exception e)
-            {
-                Log(e);
+                catch (Exception e)
+                {
+                    Log(e);
+                    await Task.Delay(5000);
+                }
             }
         }
 
@@ -75,9 +79,11 @@ namespace ImageConverterPlus
             Process.Start("notepad.exe", LogPath);
         }
 
-        public void Dispose()
+        public void Close()
         {
-            flushTimer.Dispose();
+            string logStr = $"{TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone).ToString(dateTimeFormat)}  {Environment.CurrentManagedThreadId,3}  ";
+            WriteLine(logStr + "Log Closed");
+            logBuffer.Writer.Complete();
         }
     }
 }
