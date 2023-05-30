@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace ImageConverterPlus.ImageConverter
@@ -137,16 +138,14 @@ namespace ImageConverterPlus.ImageConverter
                     return null;
             }
         }
-        public Bitmap? ProcessedImageFull
+        public BitmapSource? ProcessedImageFull
         {
             get => _processedImageFull;
             private set
             {
-                Bitmap? old = _processedImageFull;
+                BitmapSource? old = _processedImageFull;
                 if (SetValue(ref _processedImageFull, value))
                 {
-                    if (value == null)
-                        old?.Dispose();
                     ProcessedImageFullChanged.Invoke(value);
                     ConvertedImageString = null;
                 }
@@ -158,7 +157,7 @@ namespace ImageConverterPlus.ImageConverter
             {
                 if (_processedImageFull != null)
                     lock (_processedImageFull)
-                        return (Int32Size)_processedImageFull.Size;
+                        return new Int32Size(_processedImageFull.PixelWidth, _processedImageFull.PixelHeight);
                 else
                     return null;
             }
@@ -182,7 +181,7 @@ namespace ImageConverterPlus.ImageConverter
         }
 
         public event Action<Image?> SourceImageChanged = delegate { };
-        public event Action<Bitmap?> ProcessedImageFullChanged = delegate { };
+        public event Action<BitmapSource?> ProcessedImageFullChanged = delegate { };
         public event Action<string?> ConvertedImageStringChanged = delegate { };
 
         private BitDepth bitDepth;
@@ -198,7 +197,7 @@ namespace ImageConverterPlus.ImageConverter
         /// <summary>
         /// Non-cropped version of the converted (dithered, rescaled, etc) image
         /// </summary>
-        private Bitmap? _processedImageFull;
+        private BitmapSource? _processedImageFull;
         /// <summary>
         /// Converted and cropped lcd image string
         /// </summary>
@@ -209,7 +208,7 @@ namespace ImageConverterPlus.ImageConverter
         private CancellationTokenSource? processImageTaskTokenSource;
         private CancellationTokenSource? convertImageTaskTokenSource;
 
-        private Queue<Action<Bitmap>> processImageCallbackQueue = new Queue<Action<Bitmap>>();
+        private Queue<Action<BitmapSource>> processImageCallbackQueue = new Queue<Action<BitmapSource>>();
         private Queue<Action<string>> convertImageCallbackQueue = new Queue<Action<string>>();
 
         private readonly DispatcherTimer _periodicTimer;
@@ -266,7 +265,7 @@ namespace ImageConverterPlus.ImageConverter
 
         public void ProcessImage(bool noDelay = false) => ProcessImage(null, noDelay);
 
-        public void ProcessImage(Action<Bitmap>? callback, bool noDelay = false)
+        public void ProcessImage(Action<BitmapSource>? callback, bool noDelay = false)
         {
             if (ProcessedImageFull != null)
             {
@@ -340,7 +339,7 @@ namespace ImageConverterPlus.ImageConverter
             Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(SourceImage, token), token);
             Bitmap result = await converterTask;
 
-            ProcessedImageFull = result;
+            ProcessedImageFull = Helpers.BitmapToBitmapSourceFast(result, true);
 
             while (processImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {
@@ -417,9 +416,11 @@ namespace ImageConverterPlus.ImageConverter
 
             Converter converter = new Converter(options);
 #pragma warning disable CS8604
-            Task<string> convertTask = Task.Run(() => converter.ConvertSafe(ProcessedImageFull, token), token);
+            Bitmap bitmap = Helpers.BitmapSourceToBitmap(ProcessedImageFull);
 #pragma warning restore CS8604
+            Task<string> convertTask = Task.Run(() => converter.ConvertSafe(bitmap, token), token);
             ConvertedImageString = await convertTask;
+            bitmap.Dispose();
 
             while (convertImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {
