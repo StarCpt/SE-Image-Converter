@@ -45,9 +45,16 @@ namespace ImageConverterPlus
 
         void FlushLogBuffer(object? state)
         {
-            while (logBuffer.TryDequeue(out string? result))
+            try
             {
-                WriteLine(result);
+                while (logBuffer.TryDequeue(out string? result))
+                {
+                    WriteLine(result);
+                }
+            }
+            catch (Exception e)
+            {
+                Log(e);
             }
         }
 
