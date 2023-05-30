@@ -28,7 +28,7 @@ namespace ImageConverterPlus
                 {
                     if (TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        convMgr.SourceImage = result;
+                        convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
                         convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
@@ -46,7 +46,7 @@ namespace ImageConverterPlus
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
                 Bitmap image = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                convMgr.SourceImage = image;
+                convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 convMgr.ProcessImage(delegate
                 {
                     ResetZoomAndPan(false);

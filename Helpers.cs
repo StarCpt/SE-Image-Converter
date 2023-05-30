@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ImageConverterPlus
 {
@@ -32,7 +33,7 @@ namespace ImageConverterPlus
         }
 
         //https://stackoverflow.com/questions/6484357/converting-bitmapimage-to-bitmap-and-vice-versa
-        public static Bitmap BitmapSourceToBitmap(BitmapSource bitmapImage)
+        public static Bitmap? BitmapSourceToBitmap([NotNullIfNotNull("bitmapImage")] BitmapSource bitmapImage)
         {
             if (bitmapImage == null)
                 return null;
@@ -49,14 +50,14 @@ namespace ImageConverterPlus
         }
 
         //https://stackoverflow.com/questions/94456/load-a-wpf-bitmapimage-from-a-system-drawing-bitmap
-        public static BitmapImage BitmapToBitmapImage(Image bitmap, bool disposeBitmap)
+        public static BitmapImage? BitmapToBitmapImage([NotNullIfNotNull("image")] Image image, bool disposeBitmap)
         {
-            if (bitmap == null)
+            if (image == null)
                 return null;
 
             using (MemoryStream memory = new MemoryStream())
             {
-                bitmap.Save(memory, ImageFormat.Bmp);
+                image.Save(memory, ImageFormat.Bmp);
                 memory.Position = 0;
                 BitmapImage bitmapimage = new();
                 bitmapimage.BeginInit();
@@ -65,14 +66,17 @@ namespace ImageConverterPlus
                 bitmapimage.EndInit();
 
                 if (disposeBitmap)
-                    bitmap.Dispose();
+                    image.Dispose();
 
                 return bitmapimage;
             }
         }
 
-        public static BitmapSource BitmapToBitmapSourceFast(Bitmap bitmap, bool disposeBitmap)
+        public static BitmapSource? BitmapToBitmapSourceFast([NotNullIfNotNull("bitmap")] Bitmap? bitmap, bool disposeBitmap)
         {
+            if (bitmap is null)
+                return null;
+
             IntPtr hBitmap = bitmap.GetHbitmap();
 
             try

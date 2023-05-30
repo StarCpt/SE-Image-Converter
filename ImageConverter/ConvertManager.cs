@@ -113,16 +113,14 @@ namespace ImageConverterPlus.ImageConverter
             }
         }
 
-        public Image? SourceImage
+        public BitmapSource? SourceImage
         {
             get => _sourceImage;
             set
             {
-                Image? old = _sourceImage;
+                BitmapSource? old = _sourceImage;
                 if (SetValue(ref _sourceImage, value))
                 {
-                    if (value == null)
-                        old?.Dispose();
                     OnSourceImageChanged();
                 }
             }
@@ -133,7 +131,7 @@ namespace ImageConverterPlus.ImageConverter
             {
                 if (_sourceImage != null)
                     lock (_sourceImage)
-                        return (Int32Size)_sourceImage.Size;
+                        return new Int32Size(_sourceImage.PixelWidth, _sourceImage.PixelHeight);
                 else
                     return null;
             }
@@ -180,7 +178,7 @@ namespace ImageConverterPlus.ImageConverter
             set => SetValue(ref _delay, value);
         }
 
-        public event Action<Image?> SourceImageChanged = delegate { };
+        public event Action<BitmapSource?> SourceImageChanged = delegate { };
         public event Action<BitmapSource?> ProcessedImageFullChanged = delegate { };
         public event Action<string?> ConvertedImageStringChanged = delegate { };
 
@@ -193,7 +191,7 @@ namespace ImageConverterPlus.ImageConverter
         private double scale;
         private System.Windows.Point topLeftRatio;
 
-        private Image? _sourceImage;
+        private BitmapSource? _sourceImage;
         /// <summary>
         /// Non-cropped version of the converted (dithered, rescaled, etc) image
         /// </summary>
@@ -336,14 +334,20 @@ namespace ImageConverterPlus.ImageConverter
                 TopLeft = new Int32Point(0, 0),
             };
             Converter converter = new Converter(options);
-            Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(SourceImage, token), token);
+#pragma warning disable CS8600, CS8602, CS8604
+            Bitmap bitmap = Helpers.BitmapSourceToBitmap(SourceImage);
+            Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(bitmap, token), token);
             Bitmap result = await converterTask;
+            bitmap.Dispose();
+#pragma warning restore CS8600, CS8602, CS8604
 
             ProcessedImageFull = Helpers.BitmapToBitmapSourceFast(result, true);
 
             while (processImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {
+#pragma warning disable CS8604
                 processImageCallbackQueue.Dequeue().Invoke(ProcessedImageFull);
+#pragma warning restore CS8604
             }
 
             return converterTask.IsCompletedSuccessfully;
@@ -415,12 +419,12 @@ namespace ImageConverterPlus.ImageConverter
             };
 
             Converter converter = new Converter(options);
-#pragma warning disable CS8604
+#pragma warning disable CS8600, CS8604, CS8602
             Bitmap bitmap = Helpers.BitmapSourceToBitmap(ProcessedImageFull);
-#pragma warning restore CS8604
             Task<string> convertTask = Task.Run(() => converter.ConvertSafe(bitmap, token), token);
             ConvertedImageString = await convertTask;
             bitmap.Dispose();
+#pragma warning restore CS8600, CS8604, CS8602
 
             while (convertImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {

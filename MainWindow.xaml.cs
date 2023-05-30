@@ -23,6 +23,7 @@ using ImageConverterPlus.ViewModels;
 using System.Collections.Specialized;
 using Bitmap = System.Drawing.Bitmap;
 using RotateFlipType = System.Drawing.RotateFlipType;
+using System.Drawing;
 
 namespace ImageConverterPlus
 {
@@ -64,7 +65,7 @@ namespace ImageConverterPlus
             {
                 if (TryGetImageInfo(dialog.FileName, out Bitmap? result) && result is not null)
                 {
-                    convMgr.SourceImage = result;
+                    convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
                     UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
                     if (convMgr.SourceImage != null)
                     {
@@ -206,8 +207,7 @@ namespace ImageConverterPlus
         {
             if (Clipboard.ContainsImage())
             {
-                Bitmap image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
-                convMgr.SourceImage = image;
+                convMgr.SourceImage = Clipboard.GetImage();
                 if (convMgr.SourceImage != null)
                 {
                     convMgr.ProcessImage(bitmap =>
@@ -232,7 +232,7 @@ namespace ImageConverterPlus
                     string? file = filedroplist[i];
                     if (file != null && TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        convMgr.SourceImage = result;
+                        convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
                         convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(bitmap =>
                         {
@@ -293,10 +293,7 @@ namespace ImageConverterPlus
         {
             if (convMgr.SourceImage != null && convMgr.SourceImageSize is Int32Size imgSize)
             {
-                lock(convMgr.SourceImage)
-                {
-                    convMgr.SourceImage.RotateFlip(type);
-                }
+                convMgr.SourceImage = ApplyTransform(type, convMgr.SourceImage);
 
                 convMgr.OnSourceImageChanged();
 
@@ -315,6 +312,24 @@ namespace ImageConverterPlus
 
                 App.Instance.Log.Log($"Image Transformed ({type.ToString()})");
             }
+        }
+
+        BitmapSource ApplyTransform(RotateFlipType type, BitmapSource bitmap)
+        {
+            Transform transform;
+            switch (type)
+            {
+                case RotateFlipType.Rotate90FlipNone:
+                    transform = new RotateTransform(90);
+                    return new TransformedBitmap(bitmap, transform);
+                case RotateFlipType.RotateNoneFlipX:
+                    transform = new ScaleTransform(-1, 1, 0, 0);
+                    return new TransformedBitmap(bitmap, transform);
+                case RotateFlipType.RotateNoneFlipY:
+                    transform = new ScaleTransform(1, -1, 0, 0);
+                    return new TransformedBitmap(bitmap, transform);
+            }
+            return bitmap;
         }
 
         public void LCDSizeChanged(object? sender, int newWidth, int newHeight)
@@ -350,9 +365,14 @@ namespace ImageConverterPlus
 
         public static void ConversionFailedDialog() => ShowAcrylDialog(new System.Diagnostics.StackTrace(1).ToString());
 
-        private void ConvMgr_SourceImageChanged(System.Drawing.Image? obj)
+        private void ConvMgr_SourceImageChanged(BitmapSource? sourceImg)
         {
-            ResetZoomAndPanOnPreviewNewImageSizeChanged();
+            if (viewModel.PreviewImageSource == null)
+            {
+                ResetZoomAndPanOnPreviewNewImageSizeChanged();
+            }
+            viewModel.PreviewImageSource = null;
+            //ResetZoomAndPanOnPreviewNewImageSizeChanged();
         }
 
         private void ResetZoomAndPanOnPreviewNewSizeChanged()

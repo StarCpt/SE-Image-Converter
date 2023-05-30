@@ -22,7 +22,7 @@ namespace ImageConverterPlus
                 string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                ConvertManager.Instance.SourceImage = image;
+                ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 if (image != null)
                 {
                     ConvertManager.Instance.ConvertImage(lcdStr =>
@@ -51,7 +51,7 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    ConvertManager.Instance.SourceImage = image;
+                    ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                     if (image != null)
                     {
                         ConvertManager.Instance.ConvertImage(lcdStr =>
