@@ -220,7 +220,7 @@ namespace ImageConverterPlus.ViewModels
                 case nameof(ConvertManager.ProcessedImageFull):
                     if (mgr.ProcessedImageFull != null)
                     {
-                        this.PreviewImageSource = Helpers.BitmapToBitmapImage(mgr.ProcessedImageFull, false);
+                        this.PreviewImageSource = Helpers.BitmapToBitmapSourceFast(mgr.ProcessedImageFull, false);
                     }
                     break;
             }

@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using System.Runtime.InteropServices;
+using System.Windows;
 
 namespace ImageConverterPlus
 {
@@ -68,5 +70,31 @@ namespace ImageConverterPlus
                 return bitmapimage;
             }
         }
+
+        public static BitmapSource BitmapToBitmapSourceFast(Bitmap bitmap, bool disposeBitmap)
+        {
+            IntPtr hBitmap = bitmap.GetHbitmap();
+
+            try
+            {
+                BitmapSource bitmapSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+                    hBitmap,
+                    IntPtr.Zero,
+                    Int32Rect.Empty,
+                    BitmapSizeOptions.FromEmptyOptions());
+
+                return bitmapSource;
+            }
+            finally
+            {
+                DeleteObject(hBitmap);
+                
+                if (disposeBitmap)
+                    bitmap.Dispose();
+            }
+        }
+
+        [DllImport("gdi32.dll")]
+        static extern bool DeleteObject(IntPtr hBitmap);
     }
 }
