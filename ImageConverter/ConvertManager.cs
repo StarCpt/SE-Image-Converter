@@ -2,13 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Bitmap = System.Drawing.Bitmap;
+using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 
 namespace ImageConverterPlus.ImageConverter
 {
@@ -52,7 +53,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size ConvertedSize
+        public Int32Size ConvertedSize
         {
             get => convertedSize;
             set
@@ -64,7 +65,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Size ImageSplitSize
+        public Int32Size ImageSplitSize
         {
             get => imageSplitSize;
             set
@@ -76,7 +77,7 @@ namespace ImageConverterPlus.ImageConverter
                 }
             }
         }
-        public Point SelectedSplitPos
+        public Int32Point SelectedSplitPos
         {
             get => selectedSplitPos;
             set
@@ -112,53 +113,49 @@ namespace ImageConverterPlus.ImageConverter
             }
         }
 
-        public Image? SourceImage
+        public BitmapSource? SourceImage
         {
             get => _sourceImage;
             set
             {
-                Image? old = _sourceImage;
+                BitmapSource? old = _sourceImage;
                 if (SetValue(ref _sourceImage, value))
                 {
-                    if (value == null)
-                        old?.Dispose();
                     OnSourceImageChanged();
                 }
             }
         }
-        public Size? SourceImageSize
+        public Int32Size? SourceImageSize
         {
             get
             {
                 if (_sourceImage != null)
                     lock (_sourceImage)
-                        return _sourceImage.Size;
+                        return new Int32Size(_sourceImage.PixelWidth, _sourceImage.PixelHeight);
                 else
                     return null;
             }
         }
-        public Bitmap? ProcessedImageFull
+        public BitmapSource? ProcessedImageFull
         {
             get => _processedImageFull;
             private set
             {
-                Bitmap? old = _processedImageFull;
+                BitmapSource? old = _processedImageFull;
                 if (SetValue(ref _processedImageFull, value))
                 {
-                    if (value == null)
-                        old?.Dispose();
                     ProcessedImageFullChanged.Invoke(value);
                     ConvertedImageString = null;
                 }
             }
         }
-        public Size? ProcessedImageFullSize
+        public Int32Size? ProcessedImageFullSize
         {
             get
             {
                 if (_processedImageFull != null)
                     lock (_processedImageFull)
-                        return _processedImageFull.Size;
+                        return new Int32Size(_processedImageFull.PixelWidth, _processedImageFull.PixelHeight);
                 else
                     return null;
             }
@@ -181,24 +178,24 @@ namespace ImageConverterPlus.ImageConverter
             set => SetValue(ref _delay, value);
         }
 
-        public event Action<Image?> SourceImageChanged = delegate { };
-        public event Action<Bitmap?> ProcessedImageFullChanged = delegate { };
+        public event Action<BitmapSource?> SourceImageChanged = delegate { };
+        public event Action<BitmapSource?> ProcessedImageFullChanged = delegate { };
         public event Action<string?> ConvertedImageStringChanged = delegate { };
 
         private BitDepth bitDepth;
         private bool enableDithering;
         private InterpolationMode interpolation;
-        private Size convertedSize;
-        private Size imageSplitSize;
-        private Point selectedSplitPos;
+        private Int32Size convertedSize;
+        private Int32Size imageSplitSize;
+        private Int32Point selectedSplitPos;
         private double scale;
         private System.Windows.Point topLeftRatio;
 
-        private Image? _sourceImage;
+        private BitmapSource? _sourceImage;
         /// <summary>
         /// Non-cropped version of the converted (dithered, rescaled, etc) image
         /// </summary>
-        private Bitmap? _processedImageFull;
+        private BitmapSource? _processedImageFull;
         /// <summary>
         /// Converted and cropped lcd image string
         /// </summary>
@@ -209,7 +206,7 @@ namespace ImageConverterPlus.ImageConverter
         private CancellationTokenSource? processImageTaskTokenSource;
         private CancellationTokenSource? convertImageTaskTokenSource;
 
-        private Queue<Action<Bitmap>> processImageCallbackQueue = new Queue<Action<Bitmap>>();
+        private Queue<Action<BitmapSource>> processImageCallbackQueue = new Queue<Action<BitmapSource>>();
         private Queue<Action<string>> convertImageCallbackQueue = new Queue<Action<string>>();
 
         private readonly DispatcherTimer _periodicTimer;
@@ -221,7 +218,8 @@ namespace ImageConverterPlus.ImageConverter
             bitDepth = BitDepth.Color3;
             enableDithering = true;
             interpolation = InterpolationMode.HighQualityBicubic;
-            convertedSize = new Size(178, 178);
+            convertedSize = new Int32Size(178, 178);
+            imageSplitSize = new Int32Size(1, 1);
             scale = 1.0;
             topLeftRatio = new System.Windows.Point(0, 0);
             
@@ -266,7 +264,7 @@ namespace ImageConverterPlus.ImageConverter
 
         public void ProcessImage(bool noDelay = false) => ProcessImage(null, noDelay);
 
-        public void ProcessImage(Action<Bitmap>? callback, bool noDelay = false)
+        public void ProcessImage(Action<BitmapSource>? callback, bool noDelay = false)
         {
             if (ProcessedImageFull != null)
             {
@@ -311,7 +309,7 @@ namespace ImageConverterPlus.ImageConverter
                 return false;
             }
 
-            Size sourceSize = SourceImageSize.Value;
+            Int32Size sourceSize = SourceImageSize.Value;
 
             double imageToLcdWidthRatio = (double)sourceSize.Width / ConvertedSize.Width;
             double imageToLcdHeightRatio = (double)sourceSize.Height / ConvertedSize.Height;
@@ -330,21 +328,27 @@ namespace ImageConverterPlus.ImageConverter
                 BitsPerChannel = (int)BitDepth,
                 Dithering = EnableDithering,
                 Interpolation = Interpolation,
-                ConvertedSize = new Size(
+                ConvertedSize = new Int32Size(
                     Convert.ToInt32(scaledImageWidth),
                     Convert.ToInt32(scaledImageHeight)),
                 Scale = 1.0,
-                TopLeft = Point.Empty,
+                TopLeft = new Int32Point(0, 0),
             };
             Converter converter = new Converter(options);
-            Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(SourceImage, token), token);
+#pragma warning disable CS8600, CS8602, CS8604
+            Bitmap bitmap = Helpers.BitmapSourceToBitmap(SourceImage);
+            Task<Bitmap> converterTask = Task.Run(() => converter.ConvertToBitmapSafe(bitmap, token), token);
             Bitmap result = await converterTask;
+            bitmap.Dispose();
+#pragma warning restore CS8600, CS8602, CS8604
 
-            ProcessedImageFull = result;
+            ProcessedImageFull = Helpers.BitmapToBitmapSourceFast(result, true);
 
             while (processImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {
+#pragma warning disable CS8604
                 processImageCallbackQueue.Dequeue().Invoke(ProcessedImageFull);
+#pragma warning restore CS8604
             }
 
             return converterTask.IsCompletedSuccessfully;
@@ -410,16 +414,18 @@ namespace ImageConverterPlus.ImageConverter
                 ConvertedSize = ConvertedSize,
                 Interpolation = Interpolation,
                 Scale = Scale,
-                TopLeft = new Point(
+                TopLeft = new Int32Point(
                     Convert.ToInt32(ConvertedSize.Width * TopLeftRatio.X + ConvertedSize.Width * SelectedSplitPos.X),
                     Convert.ToInt32(ConvertedSize.Height * TopLeftRatio.Y + ConvertedSize.Height * SelectedSplitPos.Y)),
             };
 
             Converter converter = new Converter(options);
-#pragma warning disable CS8604
-            Task<string> convertTask = Task.Run(() => converter.ConvertSafe(ProcessedImageFull, token), token);
-#pragma warning restore CS8604
+#pragma warning disable CS8600, CS8604, CS8602
+            Bitmap bitmap = Helpers.BitmapSourceToBitmap(ProcessedImageFull);
+            Task<string> convertTask = Task.Run(() => converter.ConvertSafe(bitmap, token), token);
             ConvertedImageString = await convertTask;
+            bitmap.Dispose();
+#pragma warning restore CS8600, CS8604, CS8602
 
             while (convertImageCallbackQueue.Count > 0 && !token.IsCancellationRequested)
             {

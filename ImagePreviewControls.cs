@@ -9,8 +9,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Bitmap = System.Drawing.Bitmap;
-using Size = System.Drawing.Size;
-using Point = System.Windows.Point;
 using System.Windows.Controls.Primitives;
 
 namespace ImageConverterPlus
@@ -18,55 +16,6 @@ namespace ImageConverterPlus
     partial class MainWindow
     {
         private double PreviewContainerGridSize => Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight);
-
-        private ContextMenu PreviewGridMenu;
-
-        //private void UpdatePreview(System.Drawing.Image imageToConvert, Size convertedSize, Action<Bitmap> callback)
-        //{
-        //    if (PreviewConvertTask != null && !PreviewConvertTask.IsCompleted)
-        //    {
-        //        PreviewConvertCancellationTokenSource?.Cancel();
-        //    }
-        //
-        //    //scale the bitmap size to the lcd size
-        //
-        //    Monitor.Enter(imageToConvert);
-        //
-        //    double imageToLcdWidthRatio = (double)imageToConvert.Width / convertedSize.Width;
-        //    double imageToLcdHeightRatio = (double)imageToConvert.Height / convertedSize.Height;
-        //
-        //    //get the bigger ratio taking into account the image split
-        //    double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / ImageSplitSize.Width, imageToLcdHeightRatio / ImageSplitSize.Height);
-        //
-        //    double scaledImageWidth = imageToConvert.Width / biggerImageToLcdRatio;
-        //    double scaledImageHeight = imageToConvert.Height / biggerImageToLcdRatio;
-        //
-        //    Monitor.Exit(imageToConvert);
-        //
-        //    //apply preview scale (zoom)
-        //    scaledImageWidth *= previewNew.Scale;
-        //    scaledImageHeight *= previewNew.Scale;
-        //
-        //    //turn the size from above into lcd width/height % ratio
-        //    double scaledImageToLcdWidthRatio = scaledImageWidth / convertedSize.Width;
-        //    double scaledImageToLcdHeightRatio = scaledImageHeight / convertedSize.Height;
-        //
-        //    double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
-        //
-        //    ConvertOptions options = new ConvertOptions
-        //    {
-        //        Dithering = ConvertManager.Instance.EnableDithering,
-        //        Interpolation = ConvertManager.Instance.Interpolation,
-        //        BitsPerChannel = (int)ConvertManager.Instance.BitDepth,
-        //        ConvertedSize = new Size(
-        //            Convert.ToInt32(scaledImageWidth),
-        //            Convert.ToInt32(scaledImageHeight)),
-        //        Scale = 1,
-        //        TopLeft = System.Drawing.Point.Empty,
-        //    };
-        //    PreviewConvertCancellationTokenSource = new CancellationTokenSource();
-        //    PreviewConvertTask = Task.Run(() => ConvertManager.ProcessImageOld(imageToConvert, options, callback, PreviewConvertCancellationTokenSource.Token));
-        //}
 
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
         {
@@ -77,13 +26,13 @@ namespace ImageConverterPlus
                 {
                     if (TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        convMgr.SourceImage = result;
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
                             UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                            Logging.Log("Image Drag & Dropped (FileDrop)");
+                            App.Instance.Log.Log("Image Drag & Dropped (FileDrop)");
                         });
                         return;
                     }
@@ -95,12 +44,12 @@ namespace ImageConverterPlus
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
                 Bitmap image = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                convMgr.SourceImage = image;
+                convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 convMgr.ProcessImage(delegate
                 {
                     ResetZoomAndPan(false);
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
-                    Logging.Log("Image Drag & Dropped (Bitmap)");
+                    App.Instance.Log.Log("Image Drag & Dropped (Bitmap)");
                 });
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
@@ -115,7 +64,7 @@ namespace ImageConverterPlus
 
         public void ZoomToFit()
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 double scaleOld = previewNew.Scale;
                 double scaleChange = -scaleOld + 1;
@@ -142,13 +91,13 @@ namespace ImageConverterPlus
 
         public void ZoomToFill()
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 double imageToLCDWidthRatio = (double)imgSize.Width / convMgr.ConvertedSize.Width * convMgr.ImageSplitSize.Width;
                 double imageToLCDHeightRatio = (double)imgSize.Height / convMgr.ConvertedSize.Height * convMgr.ImageSplitSize.Height;
                 double minRatio = Math.Min(imageToLCDWidthRatio, imageToLCDHeightRatio);
 
-                var convertedImageSize = new System.Windows.Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
+                var convertedImageSize = new Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
                 convertedImageSize = convertedImageSize.Round();
 
                 double imageToContainerWidthRatio = convertedImageSize.Width / previewNew.ActualWidth;
@@ -175,7 +124,7 @@ namespace ImageConverterPlus
 
         public void ResetZoomAndPan(bool animate)
         {
-            if (convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImageSize is Int32Size imgSize)
             {
                 if (animate)
                     previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
@@ -208,32 +157,27 @@ namespace ImageConverterPlus
 
             PreviewGrid.Children.Clear();
 
-            convMgr.SelectedSplitPos = System.Drawing.Point.Empty;
+            convMgr.SelectedSplitPos = new Int32Point(0, 0);
 
-            if (PreviewGridMenu == null)
+            ContextMenu imgSplitMenu = new ContextMenu();
+            MenuItem menuItemCopyToClip = new MenuItem
             {
-                ContextMenu imgSplitMenu = new ContextMenu();
-                MenuItem menuItemCopyToClip = new MenuItem
-                {
-                    Header = "Copy to Clipboard",
-                };
-                menuItemCopyToClip.Click += PreviewGridCopyToClip;
-                imgSplitMenu.Items.Add(menuItemCopyToClip);
-                MenuItem menuItemConvertFromClip = new MenuItem
-                {
-                    Header = "Convert From Clipboard",
-                };
-                menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
-                imgSplitMenu.Items.Add(menuItemConvertFromClip);
-                MenuItem menuItemResetSplit = new MenuItem
-                {
-                    Header = "Reset Image Split",
-                };
-                menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Size(1, 1); };
-                imgSplitMenu.Items.Add(menuItemResetSplit);
-
-                PreviewGridMenu = imgSplitMenu;
-            }
+                Header = "Copy to Clipboard",
+            };
+            menuItemCopyToClip.Click += PreviewGridCopyToClip;
+            imgSplitMenu.Items.Add(menuItemCopyToClip);
+            MenuItem menuItemConvertFromClip = new MenuItem
+            {
+                Header = "Convert From Clipboard",
+            };
+            menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
+            imgSplitMenu.Items.Add(menuItemConvertFromClip);
+            MenuItem menuItemResetSplit = new MenuItem
+            {
+                Header = "Reset Image Split",
+            };
+            menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Int32Size(1, 1); };
+            imgSplitMenu.Items.Add(menuItemResetSplit);
 
             for (int x = 0; x < convMgr.ImageSplitSize.Width; x++)
             {
@@ -242,9 +186,9 @@ namespace ImageConverterPlus
                     ToggleButton btn = new ToggleButton
                     {
                         Style = (Style)FindResource("PreviewSplitBtn"),
-                        Tag = new System.Drawing.Point(x, y),
+                        Tag = new Int32Point(x, y),
                         IsChecked = x == 0 && y == 0,
-                        ContextMenu = PreviewGridMenu,
+                        ContextMenu = imgSplitMenu,
                     };
                     Grid.SetColumn(btn, x);
                     Grid.SetRow(btn, y);
@@ -261,7 +205,7 @@ namespace ImageConverterPlus
             {
                 tb.IsChecked = tb == btn;
             }
-            convMgr.SelectedSplitPos = (System.Drawing.Point)btn.Tag;
+            convMgr.SelectedSplitPos = (Int32Point)btn.Tag;
         }
 
         private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
@@ -273,7 +217,7 @@ namespace ImageConverterPlus
                 {
                     tb.IsChecked = tb == openedOver;
                 }
-                convMgr.SelectedSplitPos = (System.Drawing.Point)openedOver.Tag;
+                convMgr.SelectedSplitPos = (Int32Point)openedOver.Tag;
                 convMgr.ConvertImage(lcdStr =>
                 {
                     if (lcdStr != null)

@@ -3,13 +3,13 @@ using ImageConverterPlus.ImageConverter;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
+using RotateFlipType = System.Drawing.RotateFlipType;
+using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -67,7 +67,7 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdWidth, value))
                 {
-                    ConvertManager.Instance.ConvertedSize = new Size(value, LCDHeight);
+                    ConvertManager.Instance.ConvertedSize = new Int32Size(value, LCDHeight);
                     view.LCDSizeChanged(this, value, LCDHeight);
                 }
             }
@@ -79,12 +79,12 @@ namespace ImageConverterPlus.ViewModels
             {
                 if (SetValue(ref lcdHeight, value))
                 {
-                    ConvertManager.Instance.ConvertedSize = new Size(LCDWidth, value);
+                    ConvertManager.Instance.ConvertedSize = new Int32Size(LCDWidth, value);
                     view.LCDSizeChanged(this, LCDWidth, value);
                 }
             }
         }
-        public Size ImageSplitSize
+        public Int32Size ImageSplitSize
         {
             get => imageSplitSize;
             set
@@ -108,12 +108,12 @@ namespace ImageConverterPlus.ViewModels
         public int ImageSplitWidth
         {
             get => ImageSplitSize.Width;
-            set => ImageSplitSize = new Size(value, ImageSplitHeight);
+            set => ImageSplitSize = new Int32Size(value, ImageSplitHeight);
         }
         public int ImageSplitHeight
         {
             get => ImageSplitSize.Height;
-            set => ImageSplitSize = new Size(ImageSplitWidth, value);
+            set => ImageSplitSize = new Int32Size(ImageSplitWidth, value);
         }
         public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
         public bool IsMouseOverScrollableTextBox { get => isMouseOverScrollableTextBox; set => SetValue(ref isMouseOverScrollableTextBox, value); }
@@ -149,6 +149,11 @@ namespace ImageConverterPlus.ViewModels
                 }
             }
         }
+        public bool Debug
+        {
+            get => App.Instance.Debug;
+            set => App.Instance.Debug = value;
+        }
 
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
@@ -165,7 +170,7 @@ namespace ImageConverterPlus.ViewModels
         private int lcdWidth;
         private int lcdHeight;
         private bool showPreviewGrid;
-        private Size imageSplitSize;
+        private Int32Size imageSplitSize;
         private bool isMouseOverScrollableTextBox;
         private ImageSource previewImageSource;
         private double previewScale;
@@ -188,13 +193,14 @@ namespace ImageConverterPlus.ViewModels
             lcdWidth = 178;
             lcdHeight = 178;
             showPreviewGrid = false;
-            imageSplitSize = new Size(1, 1);
+            imageSplitSize = new Int32Size(1, 1);
             isMouseOverScrollableTextBox = false;
 
-            ConvertManager.Instance.PropertyChanged += Instance_PropertyChanged;
+            ConvertManager.Instance.PropertyChanged += ConvertManager_PropertyChanged;
+            App.DebugStateChanged += (sender, e) => RaisePropertyChanged(nameof(Debug));
         }
 
-        private void Instance_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        private void ConvertManager_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (sender is not ConvertManager mgr)
                 return;
@@ -220,7 +226,7 @@ namespace ImageConverterPlus.ViewModels
                 case nameof(ConvertManager.ProcessedImageFull):
                     if (mgr.ProcessedImageFull != null)
                     {
-                        this.PreviewImageSource = Helpers.BitmapToBitmapImage(mgr.ProcessedImageFull, false);
+                        this.PreviewImageSource = mgr.ProcessedImageFull;
                     }
                     break;
             }

@@ -22,16 +22,16 @@ namespace ImageConverterPlus
                 string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                ConvertManager.Instance.SourceImage = image;
+                ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 if (image != null)
                 {
-                    ConvertManager.Instance.ConvertImage(lcdStr =>
+                    ConvertManager.Instance.ProcessImage(bitmap =>
                     {
                         MainWindow.Static.ResetZoomAndPan(false);
-                        if (lcdStr != null)
+                        if (bitmap != null)
                         {
                             MainWindow.Static.UpdateBrowseImagesBtn("Loaded from URL", url);
-                            MainWindow.Logging.Log($"Image loaded from image URL ({url})");
+                            App.Instance.Log.Log($"Image loaded from image URL ({url})");
                         }
                         else
                         {
@@ -51,16 +51,16 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    ConvertManager.Instance.SourceImage = image;
+                    ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                     if (image != null)
                     {
-                        ConvertManager.Instance.ConvertImage(lcdStr =>
+                        ConvertManager.Instance.ProcessImage(lcdStr =>
                         {
                             MainWindow.Static.ResetZoomAndPan(false);
                             if (lcdStr != null)
                             {
                                 MainWindow.Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
-                                MainWindow.Logging.Log($"Image loaded from HTML ({src})");
+                                App.Instance.Log.Log($"Image loaded from HTML ({src})");
                             }
                             else
                             {
@@ -138,7 +138,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                MainWindow.Logging.Log(e.ToString());
+                App.Instance.Log.Log(e.ToString());
                 ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
                 return null;
             }

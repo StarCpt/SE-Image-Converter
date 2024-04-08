@@ -98,6 +98,10 @@
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <!--DEBUG Garbage Collection-->
+            <Button Style="{DynamicResource WindowControlButtonStyle}"
+                    Content="GC" ToolTip="Garbage Collectioin" FontFamily="Segoe UI"
+                    Click="GC_Click" Visibility="{Binding Debug,Converter={StaticResource BooleanToVisibilityConverter}}" />
             <!--Minimize-->
             <Button Style="{DynamicResource WindowControlButtonStyle}"
                     Content="&#xE108;" ToolTip="Minimize"

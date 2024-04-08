@@ -25,7 +25,7 @@ namespace ImageConverterPlus
             InitializeComponent();
             this.Owner = parent;
             DialogMessage.Text = message;
-            MainWindow.Logging.Log($"AcrylicDialog: {message}");
+            App.Instance.Log.Log($"AcrylicDialog: {message}");
         }
 
         private void DialogCloseBtn_Click(object sender, RoutedEventArgs e)

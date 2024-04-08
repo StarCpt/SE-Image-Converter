@@ -14,15 +14,14 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
-using Brushes = System.Windows.Media.Brushes;
-using Size = System.Drawing.Size;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using ImageSharp = SixLabors.ImageSharp;
 using System.Threading;
 using ImageConverterPlus.ViewModels;
 using System.Collections.Specialized;
-using System.Drawing;
+using Bitmap = System.Drawing.Bitmap;
+using RotateFlipType = System.Drawing.RotateFlipType;
 
 namespace ImageConverterPlus
 {
@@ -31,10 +30,7 @@ namespace ImageConverterPlus
     /// </summary>
     public partial class MainWindow : Window
     {
-        public const string version = "1.0 Beta";
-
         public static MainWindow Static { get; private set; }
-        public static Logging Logging { get; private set; }
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
         private MainWindowViewModel viewModel;
@@ -42,20 +38,18 @@ namespace ImageConverterPlus
 
         public MainWindow()
         {
-            Logging = new Logging(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log", 1000, true);
-
             Static = this;
             InitializeComponent();
             viewModel = (MainWindowViewModel)this.DataContext;
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
-            this.Title = $"SE Image Converter+ v{version}";
-            AppBigTitle.Content = "SE Image Converter+";
+            this.Title = $"{App.AppName} v{App.AppVersion}";
+            AppBigTitle.Content = App.AppName;
 
             UpdatePreviewGrid();
 
-            Logging.Log("MainWindow initialized");
+            App.Instance.Log.Log("MainWindow initialized");
         }
 
         public void BrowseImageFiles()
@@ -69,11 +63,11 @@ namespace ImageConverterPlus
             {
                 if (TryGetImageInfo(dialog.FileName, out Bitmap? result) && result is not null)
                 {
-                    convMgr.SourceImage = result;
+                    convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
                     UpdateBrowseImagesBtn(dialog.SafeFileName, dialog.FileName);
                     if (convMgr.SourceImage != null)
                     {
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
@@ -110,7 +104,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                Logging.Log(e.ToString());
+                App.Instance.Log.Log(e.ToString());
                 result = null;
                 return false;
             }
@@ -150,8 +144,8 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                Logging.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
-                Logging.Log(e.ToString());
+                App.Instance.Log.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
+                App.Instance.Log.Log(e.ToString());
                 return IsFileSupportedEnum.NotSupported;
             }
         }
@@ -169,79 +163,6 @@ namespace ImageConverterPlus
                 return new Bitmap(stream);
             }
         }
-
-        /// <summary>
-        /// Gets the settings, converts, and updates the preview and ConvertedImageStr. Diaplays error dialogs automagically
-        /// </summary>
-        /// <param name="image"></param>
-        /// <returns>whether or not the operation succeeded</returns>
-        //public bool TryConvertImageThreadedOld(System.Drawing.Image image, Action<string> convertCallback)
-        //{
-        //    try
-        //    {
-        //        if (image != null)
-        //        {
-        //            //if (ConvertTask != null && !ConvertTask.IsCompleted)
-        //            //{
-        //            //    ConvertCancellationTokenSource.Cancel();
-        //            //}
-        //
-        //            //scale the bitmap size to the lcd size
-        //
-        //            var lcdSize = convMgr.ConvertedSize;
-        //
-        //            double imageToLcdWidthRatio = (double)image.Width / lcdSize.Width;
-        //            double imageToLcdHeightRatio = (double)image.Height / lcdSize.Height;
-        //
-        //            //get the bigger ratio taking into account the image split
-        //            double biggerImageToLcdRatio = Math.Max(imageToLcdWidthRatio / convMgr.ImageSplitSize.Width, imageToLcdHeightRatio / convMgr.ImageSplitSize.Height);
-        //
-        //            double scaledImageWidth = image.Width / biggerImageToLcdRatio;
-        //            double scaledImageHeight = image.Height / biggerImageToLcdRatio;
-        //
-        //            //apply preview scale (zoom)
-        //            scaledImageWidth *= previewNew.Scale;
-        //            scaledImageHeight *= previewNew.Scale;
-        //
-        //            //turn the size from above into lcd width/height % ratio
-        //            double scaledImageToLcdWidthRatio = scaledImageWidth / lcdSize.Width;
-        //            double scaledImageToLcdHeightRatio = scaledImageHeight / lcdSize.Height;
-        //
-        //            double biggerScaledImageToLcdRatio = Math.Max(scaledImageToLcdWidthRatio, scaledImageToLcdHeightRatio);
-        //
-        //            int xOffset = Convert.ToInt32(previewNew.Offset.X / (previewNew.ActualWidth / lcdSize.Width) * convMgr.ImageSplitSize.Width - (lcdSize.Width * convMgr.SelectedSplitPos.X));
-        //            int yOffset = Convert.ToInt32(previewNew.Offset.Y / (previewNew.ActualHeight / lcdSize.Height) * convMgr.ImageSplitSize.Height - (lcdSize.Height * convMgr.SelectedSplitPos.Y));
-        //            
-        //            ConvertManager.Instance.ProcessImage();
-        //
-        //            var options = new ConvertOptions
-        //            {
-        //                Dithering = convMgr.EnableDithering,
-        //                BitsPerChannel = (int)convMgr.BitDepth,
-        //                ConvertedSize = convMgr.ConvertedSize,
-        //                Interpolation = convMgr.Interpolation,
-        //                Scale = biggerScaledImageToLcdRatio,
-        //                TopLeft = new System.Drawing.Point(xOffset, yOffset),
-        //            };
-        //            ConvertCancellationTokenSource = new CancellationTokenSource();
-        //            //ConvertManager.ConvertImageOld(image, options, convertCallback, ConvertCancellationTokenSource.Token);
-        //
-        //            return true;
-        //        }
-        //        else
-        //        {
-        //            Logging.Log($"Image is null {new StackTrace()}");
-        //            ShowAcrylDialog("Error occurred during image conversion! (image.Image is null)");
-        //            return false;
-        //        }
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Logging.Log(e.ToString());
-        //        ShowAcrylDialog($"Exception occurred during image conversion! {e}");
-        //        return false;
-        //    }
-        //}
 
         public void CopyToClipClicked(object? param)
         {
@@ -284,8 +205,7 @@ namespace ImageConverterPlus
         {
             if (Clipboard.ContainsImage())
             {
-                Bitmap image = Helpers.BitmapSourceToBitmap(Clipboard.GetImage());
-                convMgr.SourceImage = image;
+                convMgr.SourceImage = Clipboard.GetImage();
                 if (convMgr.SourceImage != null)
                 {
                     convMgr.ProcessImage(bitmap =>
@@ -293,7 +213,7 @@ namespace ImageConverterPlus
                         ResetZoomAndPan(false);
                         if (bitmap != null)
                         {
-                            Logging.Log("Image loaded from Clipboard (Bitmap)");
+                            App.Instance.Log.Log("Image loaded from Clipboard (Bitmap)");
                         }
                         else
                         {
@@ -310,15 +230,15 @@ namespace ImageConverterPlus
                     string? file = filedroplist[i];
                     if (file != null && TryGetImageInfo(file, out Bitmap? result) && result is not null)
                     {
-                        convMgr.SourceImage = result;
-                        convMgr.ImageSplitSize = new Size(1, 1);
+                        convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
+                        convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(bitmap =>
                         {
                             ResetZoomAndPan(false);
                             if (bitmap != null)
                             {
                                 UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                                Logging.Log("Loaded from Clipboard (FileDrop)");
+                                App.Instance.Log.Log("Loaded from Clipboard (FileDrop)");
                             }
                             else
                             {
@@ -336,7 +256,7 @@ namespace ImageConverterPlus
             }
         }
 
-        public static void ShowAcrylDialog(string message) => new AcrylicDialog(Static, message).ShowDialog();
+        public static void ShowAcrylDialog(string message) => new AcrylicDialog(App.Current.MainWindow, message).ShowDialog();
 
         public void UpdateBrowseImagesBtn(string text, string fullpath)
         {
@@ -369,12 +289,9 @@ namespace ImageConverterPlus
 
         public void TransformImage(RotateFlipType type)
         {
-            if (convMgr.SourceImage != null && convMgr.SourceImageSize is Size imgSize)
+            if (convMgr.SourceImage != null && convMgr.SourceImageSize is Int32Size imgSize)
             {
-                lock(convMgr.SourceImage)
-                {
-                    convMgr.SourceImage.RotateFlip(type);
-                }
+                convMgr.SourceImage = ApplyTransform(type, convMgr.SourceImage);
 
                 convMgr.OnSourceImageChanged();
 
@@ -391,19 +308,37 @@ namespace ImageConverterPlus
                     convMgr.ProcessImage();
                 }
 
-                Logging.Log($"Image Transformed ({type.ToString()})");
+                App.Instance.Log.Log($"Image Transformed ({type.ToString()})");
             }
+        }
+
+        BitmapSource ApplyTransform(RotateFlipType type, BitmapSource bitmap)
+        {
+            Transform transform;
+            switch (type)
+            {
+                case RotateFlipType.Rotate90FlipNone:
+                    transform = new RotateTransform(90);
+                    return new TransformedBitmap(bitmap, transform);
+                case RotateFlipType.RotateNoneFlipX:
+                    transform = new ScaleTransform(-1, 1, 0, 0);
+                    return new TransformedBitmap(bitmap, transform);
+                case RotateFlipType.RotateNoneFlipY:
+                    transform = new ScaleTransform(1, -1, 0, 0);
+                    return new TransformedBitmap(bitmap, transform);
+            }
+            return bitmap;
         }
 
         public void LCDSizeChanged(object? sender, int newWidth, int newHeight)
         {
-            convMgr.ImageSplitSize = new Size(1, 1);
+            convMgr.ImageSplitSize = new Int32Size(1, 1);
             UpdatePreviewContainerSize();
             ResetZoomAndPanOnPreviewNewSizeChanged(); //so jank
             //ResetZoomAndPan(false);
         }
 
-        public void ImageSplitSizeChanged(object? sender, Size newSize)
+        public void ImageSplitSizeChanged(object? sender, Int32Size newSize)
         {
             UpdatePreviewGrid();
             ResetZoomAndPanOnPreviewNewSizeChanged();
@@ -412,8 +347,8 @@ namespace ImageConverterPlus
 
         public void UpdatePreviewContainerSize()
         {
-            Size lcd = convMgr.ConvertedSize;
-            Size split = convMgr.ImageSplitSize;
+            Int32Size lcd = convMgr.ConvertedSize;
+            Int32Size split = convMgr.ImageSplitSize;
             if (lcd.Width * split.Width > lcd.Height * split.Height)
             {
                 previewNew.Width = PreviewContainerGridSize;
@@ -428,9 +363,14 @@ namespace ImageConverterPlus
 
         public static void ConversionFailedDialog() => ShowAcrylDialog(new System.Diagnostics.StackTrace(1).ToString());
 
-        private void ConvMgr_SourceImageChanged(System.Drawing.Image? obj)
+        private void ConvMgr_SourceImageChanged(BitmapSource? sourceImg)
         {
-            ResetZoomAndPanOnPreviewNewImageSizeChanged();
+            if (viewModel.PreviewImageSource == null)
+            {
+                ResetZoomAndPanOnPreviewNewImageSizeChanged();
+            }
+            viewModel.PreviewImageSource = null;
+            //ResetZoomAndPanOnPreviewNewImageSizeChanged();
         }
 
         private void ResetZoomAndPanOnPreviewNewSizeChanged()
