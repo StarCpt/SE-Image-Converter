@@ -4,7 +4,6 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
@@ -85,29 +84,20 @@ namespace ImageConverterPlus.Services
         [Reactive]
         public double Delay { get; set; } = 0;
 
-        public event Action<BitmapSource?> SourceImageChanged = delegate { };
-        public event Action<BitmapSource?> ProcessedImageFullChanged = delegate { };
-        public event Action<string?> ConvertedImageStringChanged = delegate { };
-
         private CancellationTokenSource? processImageTaskTokenSource;
         private CancellationTokenSource? convertImageTaskTokenSource;
 
         private Queue<Action<BitmapSource>> processImageCallbackQueue = new Queue<Action<BitmapSource>>();
         private Queue<Action<string>> convertImageCallbackQueue = new Queue<Action<string>>();
 
-        private readonly DispatcherTimer _periodicTimer;
         private bool _processImageNextInterval = false;
         private bool _convertImageNextInterval = false;
 
         public ConvertManagerService()
         {
-            _periodicTimer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = TimeSpan.FromMilliseconds(5),
-                IsEnabled = true,
-            };
-            _periodicTimer.Tick += PeriodicTimer_Tick;
-            _periodicTimer.Start();
+            Observable.Timer(TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(50))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(i => PeriodicTimer_Tick());
 
             this.WhenAnyValue(
                     x => x.BitDepth,
@@ -138,7 +128,6 @@ namespace ImageConverterPlus.Services
                 .Subscribe(i =>
                 {
                     this.RaisePropertyChanged(nameof(SourceImageSize));
-                    SourceImageChanged.Invoke(i);
                     ProcessedImageFull = null;
                     if (i != null)
                         ProcessImageNextInterval();
@@ -148,15 +137,11 @@ namespace ImageConverterPlus.Services
                 .Subscribe(i =>
                 {
                     this.RaisePropertyChanged(nameof(ProcessedImageFullSize));
-                    ProcessedImageFullChanged.Invoke(i);
                     ConvertedImageString = null;
                 });
-            this.WhenAnyValue(x => x.ConvertedImageString)
-                .Skip(1)
-                .Subscribe(i => ConvertedImageStringChanged.Invoke(i));
         }
 
-        private void PeriodicTimer_Tick(object? sender, EventArgs e)
+        private void PeriodicTimer_Tick()
         {
             if (_processImageNextInterval)
             {
@@ -202,18 +187,9 @@ namespace ImageConverterPlus.Services
             }
             else
             {
-                DispatcherTimer timer = new DispatcherTimer();
-                timer.Tick += delegate
-                {
-                    timer.Stop();
-                    if (token.IsCancellationRequested)
-                        return;
-
-                    Dispatcher.CurrentDispatcher.BeginInvoke(ProcessImageDelayedInternal, DispatcherPriority.Normal, token);
-
-                };
-                timer.Interval = TimeSpan.FromMilliseconds(Delay);
-                timer.Start();
+                Observable.Timer(TimeSpan.FromMilliseconds(Delay))
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(i => _ = ProcessImageDelayedInternal(token), token);
             }
         }
 
@@ -301,17 +277,9 @@ namespace ImageConverterPlus.Services
             }
             else
             {
-                DispatcherTimer timer = new DispatcherTimer();
-                timer.Tick += delegate
-                {
-                    timer.Stop();
-                    if (token.IsCancellationRequested)
-                        return;
-
-                    Dispatcher.CurrentDispatcher.BeginInvoke(ConvertImageDelayedInternal, DispatcherPriority.Normal, token);
-                };
-                timer.Interval = TimeSpan.FromMilliseconds(Delay);
-                timer.Start();
+                Observable.Timer(TimeSpan.FromMilliseconds(Delay))
+                    .ObserveOn(RxApp.MainThreadScheduler)
+                    .Subscribe(i => _ = ConvertImageDelayedInternal(token), token);
             }
         }
 

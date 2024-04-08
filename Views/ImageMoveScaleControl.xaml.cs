@@ -18,7 +18,6 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace ImageConverterPlus.Views
 {

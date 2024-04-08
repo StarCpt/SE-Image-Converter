@@ -28,6 +28,8 @@ using ImageConverterPlus.Data;
 using ImageConverterPlus.Data.Interfaces;
 using ImageConverterPlus.Views;
 using ImageConverterPlus.Services.interfaces;
+using ReactiveUI;
+using System.Reactive.Linq;
 
 namespace ImageConverterPlus
 {
@@ -48,8 +50,11 @@ namespace ImageConverterPlus
         {
             Static = this;
             InitializeComponent();
+
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
-            convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
+            convMgr.WhenAnyValue(x => x.SourceImage)
+                .Skip(1)
+                .Subscribe(ConvMgr_SourceImageChanged);
 
             UpdatePreviewGrid();
 
