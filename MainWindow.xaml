@@ -42,10 +42,11 @@
     </WindowChrome.WindowChrome>
 
     <DockPanel>
-        <views:WindowTitleBar DockPanel.Dock="Top" Height="32" Foreground="White">
+        <views:WindowTitleBar DockPanel.Dock="Top" DataContext="{Binding TitleBarContext}" Height="32" Foreground="White">
             <views:WindowTitleBar.Style>
                 <Style TargetType="views:WindowTitleBar">
                     <Setter Property="Background" Value="#e6444444" />
+                    
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                             <Setter Property="Background" Value="#cd444444" />

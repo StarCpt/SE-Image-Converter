@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Data
 {
     public struct Int32Point
     {
@@ -14,8 +14,8 @@ namespace ImageConverterPlus
 
         public Int32Point(int x, int y)
         {
-            this.X = x;
-            this.Y = y;
+            X = x;
+            Y = y;
         }
 
         public static bool Equals(Int32Point point, Int32Point point2)
@@ -27,7 +27,7 @@ namespace ImageConverterPlus
         {
             if (obj is not Int32Point point)
                 return false;
-            return Int32Point.Equals(this, point);
+            return Equals(this, point);
         }
 
         public static bool operator ==(Int32Point point1, Int32Point point2)

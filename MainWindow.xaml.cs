@@ -24,6 +24,7 @@ using Bitmap = System.Drawing.Bitmap;
 using RotateFlipType = System.Drawing.RotateFlipType;
 using ImageConverterPlus.Services;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using ImageConverterPlus.Data;
 
 namespace ImageConverterPlus
 {
@@ -35,14 +36,14 @@ namespace ImageConverterPlus
         public static MainWindow Static { get; private set; }
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
-        private MainWindowViewModel viewModel;
+        private MainWindowViewModel viewModel; // TEMP!!
         private ConvertManagerService convMgr => Ioc.Default.GetRequiredService<ConvertManagerService>(); // TEMP!!
 
         public MainWindow()
         {
             Static = this;
             InitializeComponent();
-            this.DataContext = viewModel = Ioc.Default.GetRequiredService<MainWindowViewModel>(); // TEMP!!
+            viewModel = (MainWindowViewModel)this.DataContext;
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 

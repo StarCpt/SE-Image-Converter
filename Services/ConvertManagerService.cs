@@ -1,4 +1,5 @@
-﻿using ImageConverterPlus.ImageConverter;
+﻿using ImageConverterPlus.Data;
+using ImageConverterPlus.ImageConverter;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;

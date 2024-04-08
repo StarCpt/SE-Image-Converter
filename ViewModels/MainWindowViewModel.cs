@@ -14,6 +14,7 @@ using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System.Reactive.Linq;
 using ImageConverterPlus.Services;
+using ImageConverterPlus.Data;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -89,6 +90,7 @@ namespace ImageConverterPlus.ViewModels
             get => _convertManager.TopLeftRatio;
             set => _convertManager.TopLeftRatio = value;
         }
+        public WindowTitleBarViewModel TitleBarContext { get; }
 
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
@@ -100,9 +102,10 @@ namespace ImageConverterPlus.ViewModels
 
         private readonly ConvertManagerService _convertManager;
 
-        public MainWindowViewModel(ConvertManagerService convertManager)
+        public MainWindowViewModel(ConvertManagerService convertManager, WindowTitleBarViewModel titleBarViewModel)
         {
             _convertManager = convertManager;
+            TitleBarContext = titleBarViewModel;
 
             BrowseFilesCommand = new RelayCommand(ExecuteBrowseFiles);
             ZoomToFitCommand = new RelayCommand(ExecuteZoomToFit);

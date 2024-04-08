@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Bitmap = System.Drawing.Bitmap;
 using System.Windows.Controls.Primitives;
+using ImageConverterPlus.Data;
 
 namespace ImageConverterPlus
 {

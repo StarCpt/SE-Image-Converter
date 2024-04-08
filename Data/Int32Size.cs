@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Data
 {
     public struct Int32Size
     {
@@ -14,8 +14,8 @@ namespace ImageConverterPlus
 
         public Int32Size(int width, int height)
         {
-            this.Width = width;
-            this.Height = height;
+            Width = width;
+            Height = height;
         }
 
         public static bool Equals(Int32Size size1, Int32Size size2)
@@ -27,7 +27,7 @@ namespace ImageConverterPlus
         {
             if (obj is not Int32Size size)
                 return false;
-            return Int32Size.Equals(this, size);
+            return Equals(this, size);
         }
 
         public static bool operator ==(Int32Size size1, Int32Size size2)

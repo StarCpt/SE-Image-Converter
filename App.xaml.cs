@@ -29,6 +29,18 @@ namespace ImageConverterPlus
             ConfigureServices();
         }
 
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            MainWindow = new MainWindow
+            {
+                DataContext = Ioc.Default.GetRequiredService<MainWindowViewModel>(),
+            };
+
+            MainWindow.Show();
+        }
+
         private static void ConfigureServices()
         {
             ServiceCollection services = new ServiceCollection();
@@ -47,6 +59,7 @@ namespace ImageConverterPlus
             container.AddSingleton<ConvertManagerService>();
 
             container.AddSingleton<MainWindowViewModel>();
+            container.AddSingleton<WindowTitleBarViewModel>();
         }
 
         protected override void OnExit(ExitEventArgs e)
