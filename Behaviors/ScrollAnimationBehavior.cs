@@ -1,4 +1,5 @@
 ﻿
+using ImageConverterPlus.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -251,6 +252,22 @@ namespace ImageConverterPlus.Behaviors
             }
         }
 
+        public static class FindVisualParentHelper
+        {
+            public static T? FindParentOfType<T>(DependencyObject dependencyObject) where T : DependencyObject
+            {
+                while (dependencyObject != null)
+                {
+                    if ((dependencyObject = VisualTreeHelper.GetParent(dependencyObject)) is T)
+                    {
+                        return (T)dependencyObject;
+                    }
+                }
+
+                return null;
+            }
+        }
+
         private static void listboxLoaded(object sender, RoutedEventArgs e)
         {
             if (sender is ListBox listbox)
@@ -273,7 +290,8 @@ namespace ImageConverterPlus.Behaviors
 
         private static void ScrollViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (MainWindow.isMouseOverSizeTextbox)
+            if (Mouse.DirectlyOver is DependencyObject dp &&
+                FindVisualParentHelper.FindParentOfType<ScrollablePositiveIntegerTextBox>(dp) is not null)
             {
                 return;
             }

@@ -30,12 +30,32 @@
         RenderOptions.BitmapScalingMode="HighQuality"
         d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
 
+    <i:Interaction.Triggers>
+        <i:DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+            <i:ControlStoryboardAction>
+                <i:ControlStoryboardAction.Storyboard>
+                    <Storyboard Storyboard.Target="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Storyboard.TargetProperty="BorderThickness">
+                        <ThicknessAnimation Duration="0" To="0" />
+                    </Storyboard>
+                </i:ControlStoryboardAction.Storyboard>
+            </i:ControlStoryboardAction>
+        </i:DataTrigger>
+    </i:Interaction.Triggers>
+
     <Window.Title>
         <MultiBinding StringFormat="{}{0} v{1}">
             <Binding Source="{x:Static local:App.AppName}" />
             <Binding Source="{x:Static local:App.AppVersion}" />
         </MultiBinding>
     </Window.Title>
+
+    <Window.Resources>
+        <ContextMenu x:Key="SplitGridMenu" x:Name="cm">
+            <MenuItem Header="Copy to Clipboard" Command="{Binding CopySplitImagePieceToClipboardCommand}" CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+            <MenuItem Header="Convert from Clipboard" Command="{Binding ConvertFromClipboardCommand}" />
+            <MenuItem Header="Reset Image Split" Command="{Binding ResetImageSplitCommand}" />
+        </ContextMenu>
+    </Window.Resources>
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" />
@@ -104,16 +124,33 @@
                     </UniformGrid>
                 </ScrollViewer>
 
-                <UniformGrid Grid.Row="2" Margin="0,5,0,0"
-                             VerticalAlignment="Top"
-                             Columns="2">
-                    <Button Style="{StaticResource TransparentRoundedButton}"
-                            x:Name="BrowseFilesBtn" Content="Browse Files"
-                            Width="145" Height="40" FontSize="15"
-                            Command="{Binding BrowseFilesCommand}">
+                <UniformGrid Grid.Row="2" Margin="0,5,0,0" VerticalAlignment="Top" Columns="2">
+                    <Button Width="145" Height="40" Command="{Binding BrowseFilesCommand}">
                         <Button.ToolTip>
-                            <ToolTip x:Name="BrowseFilesToolTip" Content="Browse local Files" FontSize="12" />
+                            <ToolTip x:Name="BrowseFilesToolTip" Content="{Binding CurrentImagePathLong, TargetNullValue=Browse Local Files}" FontSize="12" />
                         </Button.ToolTip>
+
+                        <Button.ContentTemplate>
+                            <DataTemplate DataType="Button">
+                                <TextBlock Text="{Binding Content}" Foreground="{Binding Foreground}" FontSize="{Binding FontSize}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource TransparentRoundedButton}">
+                                <Setter Property="Content" Value="{Binding CurrentImagePath}" />
+                                <Setter Property="FontSize" Value="12" />
+                                <Setter Property="Foreground" Value="DarkGray" />
+                                
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentImagePath}" Value="{x:Null}">
+                                        <Setter Property="Content" Value="Browse Files" />
+                                        <Setter Property="FontSize" Value="15" />
+                                        <Setter Property="Foreground" Value="White" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                     </Button>
                     <Button Style="{StaticResource TransparentRoundedButton}"
                             Content="Copy to Clipboard" IsEnabled="{Binding PreviewImageLoaded}"
@@ -154,8 +191,8 @@
                     </views:ImageMoveScaleControl>
                     <UniformGrid
                         x:Name="PreviewGrid"
-                        Columns="{Binding ImageSplitWidth}"
-                        Rows="{Binding ImageSplitHeight}"
+                        Columns="{Binding ImageSplitSize.Width, Mode=OneWay}"
+                        Rows="{Binding ImageSplitSize.Height, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
                         Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}"

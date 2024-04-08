@@ -5,9 +5,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:local="clr-namespace:ImageConverterPlus.Views"
+             xmlns:vm="clr-namespace:ImageConverterPlus.ViewModels"
              xmlns:controls="clr-namespace:ImageConverterPlus.Controls"
              mc:Ignorable="d" 
-             d:DesignHeight="95" d:DesignWidth="135">
+             d:DesignHeight="95" d:DesignWidth="135"
+             d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
+    
     <UserControl.Resources>
         <Style TargetType="controls:ScrollablePositiveIntegerTextBox">
             <Setter Property="Foreground" Value="#ffffff" />
@@ -29,33 +32,28 @@
     
     <Border Background="#05ffffff" Padding="5" CornerRadius="4">
         <StackPanel>
-            <TextBlock Text="Split Image" Foreground="#ffffff"
-                       TextAlignment="Center" Margin="0,2,0,0" />
+            <TextBlock Text="Split Image" Foreground="#ffffff" TextAlignment="Center" Margin="0,2,0,0" />
+            
             <StackPanel Orientation="Horizontal" Margin="0,9,0,0" HorizontalAlignment="Center">
-                <controls:ScrollablePositiveIntegerTextBox
-                    Value="{Binding ImageSplitWidth}" ToolTip="Width" ContextMenu="{x:Null}">
+                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitSize.Width, Mode=OneWay}" ToolTip="Width" ContextMenu="{x:Null}">
                     <i:Interaction.Triggers>
-                        <i:EventTrigger EventName="MouseEnter">
-                            <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
-                        </i:EventTrigger>
-                        <i:EventTrigger EventName="MouseLeave">
-                            <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
-                        </i:EventTrigger>
+                        <i:DataStoreChangedTrigger Binding="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}">
+                            <i:InvokeCommandAction Command="{Binding SetImageSplitWidthCommand}" CommandParameter="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}" />
+                        </i:DataStoreChangedTrigger>
                     </i:Interaction.Triggers>
                 </controls:ScrollablePositiveIntegerTextBox>
+                
                 <TextBlock Text="by" Margin="10,2,10,0" Foreground="DarkGray" />
-                <controls:ScrollablePositiveIntegerTextBox
-                    Value="{Binding ImageSplitHeight}" ToolTip="Height" ContextMenu="{x:Null}">
+
+                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitSize.Height, Mode=OneWay}" ToolTip="Height" ContextMenu="{x:Null}" >
                     <i:Interaction.Triggers>
-                        <i:EventTrigger EventName="MouseEnter">
-                            <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
-                        </i:EventTrigger>
-                        <i:EventTrigger EventName="MouseLeave">
-                            <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
-                        </i:EventTrigger>
+                        <i:DataStoreChangedTrigger Binding="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}">
+                            <i:InvokeCommandAction Command="{Binding SetImageSplitHeightCommand}" CommandParameter="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}" />
+                        </i:DataStoreChangedTrigger>
                     </i:Interaction.Triggers>
                 </controls:ScrollablePositiveIntegerTextBox>
             </StackPanel>
+                
             <ToggleButton Style="{StaticResource ShowGridToggleButton}"
                           Content="Show Grid" Margin="0,8,0,0"
                           IsChecked="{Binding ShowPreviewGrid}"

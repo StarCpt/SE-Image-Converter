@@ -29,12 +29,15 @@
             <UniformGrid Columns="3" Margin="5,5,5,0">
                 <Button Style="{StaticResource SmallTransformButton}"
                         Content="⮁"
+                        ToolTip="Mirror Vertically"
                         CommandParameter="{x:Static drawing:RotateFlipType.RotateNoneFlipY}" />
                 <Button Style="{StaticResource SmallTransformButton}"
                         Content="⮂"
+                        ToolTip="Mirror Horizontally"
                         CommandParameter="{x:Static drawing:RotateFlipType.RotateNoneFlipX}" />
                 <Button Style="{StaticResource SmallTransformButton}"
                         Content="⭮"
+                        ToolTip="Rotate Clockwise"
                         CommandParameter="{x:Static drawing:RotateFlipType.Rotate90FlipNone}" />
             </UniformGrid>
             <Button Style="{StaticResource BigTransformButton}"

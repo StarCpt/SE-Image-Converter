@@ -12,12 +12,15 @@ using Bitmap = System.Drawing.Bitmap;
 using System.Windows.Controls.Primitives;
 using ImageConverterPlus.Data;
 using ImageConverterPlus.ViewModels;
+using System.Windows.Data;
+using ImageConverterPlus.Services;
+using ImageConverterPlus.Converters;
 
 namespace ImageConverterPlus
 {
     partial class MainWindow
     {
-        private double PreviewContainerGridSize => Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight);
+        private double PreviewContainerGridSize => PreviewContainerGrid != null ? Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight) : 0d;
 
         private void Preview_PreviewDrop(object sender, DragEventArgs e)
         {
@@ -26,15 +29,16 @@ namespace ImageConverterPlus
                 string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
                 foreach (string file in files)
                 {
-                    if (TryGetImageInfo(file, out Bitmap? result) && result is not null)
+                    if (Helpers.TryLoadImage(file, out Bitmap? result) && result is not null)
                     {
                         convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
                         convMgr.ImageSplitSize = new Int32Size(1, 1);
                         convMgr.ProcessImage(delegate
                         {
                             ResetZoomAndPan(false);
-                            UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                            App.Log.Log("Image Drag & Dropped (FileDrop)");
+                            DataContext.CurrentImagePath = System.IO.Path.GetFileName(file);
+                            DataContext.CurrentImagePathLong = file;
+                            _logger.Log("Image Drag & Dropped (FileDrop)");
                         });
                         return;
                     }
@@ -50,8 +54,8 @@ namespace ImageConverterPlus
                 convMgr.ProcessImage(delegate
                 {
                     ResetZoomAndPan(false);
-                    UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
-                    App.Log.Log("Image Drag & Dropped (Bitmap)");
+                    DataContext.CurrentImagePath = DataContext.CurrentImagePathLong = "Drag & Droped Image";
+                    _logger.Log("Image Drag & Dropped (Bitmap)");
                 });
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
@@ -161,26 +165,6 @@ namespace ImageConverterPlus
 
             convMgr.SelectedSplitPos = new Int32Point(0, 0);
 
-            ContextMenu imgSplitMenu = new ContextMenu();
-            MenuItem menuItemCopyToClip = new MenuItem
-            {
-                Header = "Copy to Clipboard",
-            };
-            menuItemCopyToClip.Click += PreviewGridCopyToClip;
-            imgSplitMenu.Items.Add(menuItemCopyToClip);
-            MenuItem menuItemConvertFromClip = new MenuItem
-            {
-                Header = "Convert From Clipboard",
-            };
-            menuItemConvertFromClip.Click += (sender, e) => PasteFromClipboard();
-            imgSplitMenu.Items.Add(menuItemConvertFromClip);
-            MenuItem menuItemResetSplit = new MenuItem
-            {
-                Header = "Reset Image Split",
-            };
-            menuItemResetSplit.Click += delegate { convMgr.ImageSplitSize = new Int32Size(1, 1); };
-            imgSplitMenu.Items.Add(menuItemResetSplit);
-
             for (int x = 0; x < convMgr.ImageSplitSize.Width; x++)
             {
                 for (int y = 0; y < convMgr.ImageSplitSize.Height; y++)
@@ -189,48 +173,24 @@ namespace ImageConverterPlus
                     {
                         Style = (Style)FindResource("PreviewSplitBtn"),
                         Tag = new Int32Point(x, y),
-                        IsChecked = x == 0 && y == 0,
-                        ContextMenu = imgSplitMenu,
+                        IsChecked = new Int32Point(x, y) == convMgr.SelectedSplitPos, // not strictly necessary since the property is databound
+                        ContextMenu = (ContextMenu)FindResource("SplitGridMenu"),
                     };
+
+                    Binding binding = new Binding(nameof(ConvertManagerService.SelectedSplitPos))
+                    {
+                        Source = convMgr,
+                        Mode = BindingMode.OneWay,
+                        Converter = new EqualityConverter(),
+                        ConverterParameter = btn.Tag,
+                    };
+                    btn.SetBinding(ToggleButton.IsCheckedProperty, binding);
+
                     Grid.SetColumn(btn, x);
                     Grid.SetRow(btn, y);
-                    btn.Click += SplitCtrlBtn_Click;
+                    btn.Click += (sender, e) => convMgr.SelectedSplitPos = (Int32Point)btn.Tag;
                     PreviewGrid.Children.Add(btn);
                 }
-            }
-        }
-
-        private void SplitCtrlBtn_Click(object sender, RoutedEventArgs e)
-        {
-            ToggleButton btn = (ToggleButton)sender;
-            foreach (var tb in PreviewGrid.Children.OfType<ToggleButton>())
-            {
-                tb.IsChecked = tb == btn;
-            }
-            convMgr.SelectedSplitPos = (Int32Point)btn.Tag;
-        }
-
-        private void PreviewGridCopyToClip(object sender, RoutedEventArgs e)
-        {
-            ToggleButton openedOver = (ToggleButton)((ContextMenu)((MenuItem)sender).Parent).PlacementTarget;
-            if (openedOver != null && PreviewGrid.Children.Contains(openedOver))
-            {
-                foreach (var tb in PreviewGrid.Children.OfType<ToggleButton>())
-                {
-                    tb.IsChecked = tb == openedOver;
-                }
-                convMgr.SelectedSplitPos = (Int32Point)openedOver.Tag;
-                convMgr.ConvertImage(lcdStr =>
-                {
-                    if (lcdStr != null)
-                        SetClipboardDelayed(lcdStr, 150);
-                    else
-                        ConversionFailedDialog();
-                });
-            }
-            else
-            {
-                dialogService.ShowAsync(new MessageDialogViewModel("Error", "Could not find square menu was opened over!"));
             }
         }
 

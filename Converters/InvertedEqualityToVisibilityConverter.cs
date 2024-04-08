@@ -9,7 +9,7 @@ using System.Windows.Data;
 
 namespace ImageConverterPlus.Converters
 {
-    public class InequalityToVisibilityConverter : IValueConverter
+    public class InvertedEqualityToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

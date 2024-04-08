@@ -2,17 +2,20 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
+    <SolidColorBrush x:Key="TransparentRoundedButton.Foreground">#ffffff</SolidColorBrush>
+
     <!-- TransparentRoundedButton -->
     <Style x:Key="TransparentRoundedButton" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="3">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                               Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -35,13 +38,14 @@
     <Style x:Key="TransparentRoundedButtonSmall" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                               Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -64,13 +68,14 @@
     <Style x:Key="TransparentLeftRoundedButtonSmall" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="4,0,0,4">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                               Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -93,13 +98,14 @@
     <Style x:Key="TransparentRightRoundedButtonSmall" TargetType="Button">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Background="{TemplateBinding Background}" CornerRadius="0,4,4,0">
                         <Label VerticalAlignment="Center" HorizontalAlignment="Center" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                               Content="{TemplateBinding Content}" Foreground="White" Padding="{TemplateBinding Padding}" />
+                               Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -122,8 +128,8 @@
     <Style x:Key="TransparentRoundedToggleButtonSmall" TargetType="ToggleButton">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
-        <Setter Property="Foreground" Value="#ffffff" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -152,6 +158,7 @@
     <Style x:Key="PreviewSplitBtn" TargetType="ToggleButton">
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource TransparentRoundedButton.Foreground}" />
         <Setter Property="Background" Value="#00000000" />
         <Setter Property="BorderBrush" Value="#303030" />
         <Setter Property="BorderThickness" Value="0.5" />
@@ -169,7 +176,7 @@
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Background" Value="#15BBBBBB"/>
-                            <Setter Property="BorderBrush" Value="#707070"/>
+                            <Setter Property="BorderBrush" Value="#808080"/>
                             <Setter Property="BorderThickness" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

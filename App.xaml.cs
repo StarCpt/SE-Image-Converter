@@ -35,11 +35,7 @@ namespace ImageConverterPlus
         {
             base.OnStartup(e);
 
-            MainWindow = new MainWindow
-            {
-                DataContext = Ioc.Default.GetRequiredService<MainWindowViewModel>(),
-            };
-
+            MainWindow = Ioc.Default.GetRequiredService<MainWindow>();
             MainWindow.Show();
         }
 
@@ -60,12 +56,15 @@ namespace ImageConverterPlus
                     true));
             container.AddSingleton<ConvertManagerService>();
             container.AddSingleton<IDialogService, AcrylicDialogService>();
+            container.AddSingleton<ClipboardService>();
 
             container.AddSingleton<MainWindowViewModel>();
             container.AddSingleton<WindowTitleBarViewModel>();
 
             container.AddTransient<IDialogPresenter, MainWindow>(
                 provider => (MainWindow)App.Current.MainWindow);
+
+            container.AddTransient<MainWindow>(); // temp?
         }
 
         protected override void OnExit(ExitEventArgs e)

@@ -20,6 +20,7 @@ namespace ImageConverterPlus
     {
         public static async Task HandleHtmlDropThreadAsync(IDataObject data, ConvertManagerService convMgr)
         {
+            var mainVm = Ioc.Default.GetRequiredService<MainWindowViewModel>();
             if (await UrlContainsImageAsync(WebUtility.HtmlDecode((string)data.GetData(DataFormats.Text))))
             {
                 string url = WebUtility.HtmlDecode((string)data.GetData(DataFormats.Text));
@@ -30,15 +31,16 @@ namespace ImageConverterPlus
                 {
                     convMgr.ProcessImage(bitmap =>
                     {
-                        MainWindow.Static.ResetZoomAndPan(false);
+                        mainVm.ResetImageZoomAndPanNoAnim();
                         if (bitmap != null)
                         {
-                            MainWindow.Static.UpdateBrowseImagesBtn("Loaded from URL", url);
+                            mainVm.CurrentImagePath = "Loaded from URL";
+                            mainVm.CurrentImagePathLong = url;
                             App.Log.Log($"Image loaded from image URL ({url})");
                         }
                         else
                         {
-                            MainWindow.ConversionFailedDialog();
+                            Ioc.Default.GetService<IDialogService>()?.ShowAsync(new MessageDialogViewModel("Error", new System.Diagnostics.StackTrace().ToString()));
                         }
                     });
                 }
@@ -59,15 +61,16 @@ namespace ImageConverterPlus
                     {
                         convMgr.ProcessImage(lcdStr =>
                         {
-                            MainWindow.Static.ResetZoomAndPan(false);
+                            mainVm.ResetImageZoomAndPanNoAnim();
                             if (lcdStr != null)
                             {
-                                MainWindow.Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
+                                mainVm.CurrentImagePath = "Loaded from HTML";
+                                mainVm.CurrentImagePathLong = src;
                                 App.Log.Log($"Image loaded from HTML ({src})");
                             }
                             else
                             {
-                                MainWindow.ConversionFailedDialog();
+                                Ioc.Default.GetService<IDialogService>()?.ShowAsync(new MessageDialogViewModel("Error", new System.Diagnostics.StackTrace().ToString()));
                             }
                         });
                     }
@@ -114,7 +117,7 @@ namespace ImageConverterPlus
                 response.EnsureSuccessStatusCode();
                 var contentTypes = response.Headers.GetValues("Content-Type").Select(i => i.ToLowerInvariant().Replace("image/", ""));
 
-                if (MainWindow.SupportedFileTypes.Any(t => t.EqualsAny(contentTypes)))
+                if (Helpers.SupportedImageFileTypes.Any(t => t.EqualsAny(contentTypes)))
                 {
                     using Stream stream = await response.Content.ReadAsStreamAsync();
                     

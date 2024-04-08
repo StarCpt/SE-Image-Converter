@@ -44,12 +44,6 @@
                             <i:EventTrigger EventName="ValueChanged">
                                 <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />
                             </i:EventTrigger>
-                            <i:EventTrigger EventName="MouseEnter">
-                                <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
-                            </i:EventTrigger>
-                            <i:EventTrigger EventName="MouseLeave">
-                                <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
-                            </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </controls:ScrollablePositiveIntegerTextBox>
                     <TextBlock Text="x" Foreground="DarkGray" Padding="8.5,1.5,8.5,0" />
@@ -58,12 +52,6 @@
                         <i:Interaction.Triggers>
                             <i:EventTrigger EventName="ValueChanged">
                                 <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="SelectedLCD" Value="Custom" />
-                            </i:EventTrigger>
-                            <i:EventTrigger EventName="MouseEnter">
-                                <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="True" />
-                            </i:EventTrigger>
-                            <i:EventTrigger EventName="MouseLeave">
-                                <i:ChangePropertyAction TargetObject="{Binding}" PropertyName="IsMouseOverScrollableTextBox" Value="False" />
                             </i:EventTrigger>
                         </i:Interaction.Triggers>
                     </controls:ScrollablePositiveIntegerTextBox>

@@ -113,8 +113,7 @@
                     ToolTip="Minimize"
                     Click="MinimizeButton_Click" />
             <!--Maximize/Restore-->
-            <Button IsEnabled="{Binding CanMaximize}"
-                    Click="MaximizeRestoreButton_Click">
+            <Button Click="MaximizeRestoreButton_Click">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
                         <Setter Property="Content" Value="&#xE922;" />
