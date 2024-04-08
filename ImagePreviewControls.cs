@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using Bitmap = System.Drawing.Bitmap;
 using System.Windows.Controls.Primitives;
 using ImageConverterPlus.Data;
+using ImageConverterPlus.ViewModels;
 
 namespace ImageConverterPlus
 {
@@ -40,7 +41,7 @@ namespace ImageConverterPlus
                 }
 
                 //when file type doesnt match
-                ShowAcrylDialog("This file type is not supported!");
+                dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
             }
             else if (e.Data.GetDataPresent(DataFormats.Bitmap))
             {
@@ -59,7 +60,7 @@ namespace ImageConverterPlus
             }
             else
             {
-                ShowAcrylDialog("Clipboard does not contain any images");
+                dialogService.ShowAsync(new MessageDialogViewModel("Error", "Clipboard does not contain any images"));
             }
         }
 
@@ -229,7 +230,7 @@ namespace ImageConverterPlus
             }
             else
             {
-                ShowAcrylDialog("Could not find square menu was opened over!");
+                dialogService.ShowAsync(new MessageDialogViewModel("Error", "Could not find square menu was opened over!"));
             }
         }
 

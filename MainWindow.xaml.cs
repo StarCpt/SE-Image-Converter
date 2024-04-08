@@ -25,25 +25,29 @@ using RotateFlipType = System.Drawing.RotateFlipType;
 using ImageConverterPlus.Services;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using ImageConverterPlus.Data;
+using ImageConverterPlus.Data.Interfaces;
+using ImageConverterPlus.Views;
+using ImageConverterPlus.Services.interfaces;
 
 namespace ImageConverterPlus
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IDialogPresenter
     {
         public static MainWindow Static { get; private set; }
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
-        private MainWindowViewModel viewModel; // TEMP!!
-        private ConvertManagerService convMgr => Ioc.Default.GetRequiredService<ConvertManagerService>(); // TEMP!!
+        // temporary properties
+        private MainWindowViewModel viewModel => (MainWindowViewModel)this.DataContext;
+        private static ConvertManagerService convMgr => Ioc.Default.GetRequiredService<ConvertManagerService>();
+        private static IDialogService dialogService => Ioc.Default.GetRequiredService<IDialogService>();
 
         public MainWindow()
         {
             Static = this;
             InitializeComponent();
-            viewModel = (MainWindowViewModel)this.DataContext;
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
@@ -76,7 +80,7 @@ namespace ImageConverterPlus
                 }
                 else
                 {
-                    ShowAcrylDialog("This file type is not supported!");
+                    dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
                 }
             }
         }
@@ -197,7 +201,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                ShowAcrylDialog($"Clipboard error, try again! {e}");
+                _ = dialogService.ShowAsync(new MessageDialogViewModel("Error", $"Clipboard error, try again! {e}"));
             }
         }
 
@@ -248,15 +252,14 @@ namespace ImageConverterPlus
                         return;
                     }
                 }
-                ShowAcrylDialog("This file type is not supported!");
+
+                dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
             }
             else
             {
-                ShowAcrylDialog("Unsupported File");
+                dialogService.ShowAsync(new MessageDialogViewModel("Error", "Unsupported File"));
             }
         }
-
-        public static void ShowAcrylDialog(string message) => new AcrylicDialog(App.Current.MainWindow, message).ShowDialog();
 
         public void UpdateBrowseImagesBtn(string text, string fullpath)
         {
@@ -359,7 +362,7 @@ namespace ImageConverterPlus
             }
         }
 
-        public static void ConversionFailedDialog() => ShowAcrylDialog(new System.Diagnostics.StackTrace(1).ToString());
+        public static void ConversionFailedDialog() => dialogService.ShowAsync(new MessageDialogViewModel("Error", new System.Diagnostics.StackTrace(1).ToString()));
 
         private void ConvMgr_SourceImageChanged(BitmapSource? sourceImg)
         {
@@ -390,6 +393,19 @@ namespace ImageConverterPlus
             ResetZoomAndPan(false);
             previewNew.SizeChanged -= SizeChangedOTEHandler;
             previewNew.image.SizeChanged -= SizeChangedOTEHandler;
+        }
+
+        public Task ShowAsync(IDialog dialog)
+        {
+            ArgumentNullException.ThrowIfNull(dialog);
+            if (dialog.ResultTask.IsCompleted)
+            {
+                throw new InvalidOperationException("Dialogs cannot be shown more than once");
+            }
+
+            new AcrylicDialog(this, dialog).ShowDialog();
+
+            return dialog.ResultTask;
         }
     }
 }

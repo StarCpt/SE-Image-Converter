@@ -7,10 +7,12 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using static ImageConverterPlus.MainWindow;
 using System.Windows;
 using ImageConverterPlus.Services;
 using System.Net.Http;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using ImageConverterPlus.Services.interfaces;
+using ImageConverterPlus.ViewModels;
 
 namespace ImageConverterPlus
 {
@@ -72,7 +74,7 @@ namespace ImageConverterPlus
                 }
                 else
                 {
-                    ShowAcrylDialog("Dropped html does not contain any image links!");
+                    Ioc.Default.GetService<IDialogService>()?.ShowAsync(new MessageDialogViewModel("Error", "Dropped html does not contain any image links!"));
                 }
             }
         }
@@ -112,7 +114,7 @@ namespace ImageConverterPlus
                 response.EnsureSuccessStatusCode();
                 var contentTypes = response.Headers.GetValues("Content-Type").Select(i => i.ToLowerInvariant().Replace("image/", ""));
 
-                if (SupportedFileTypes.Any(t => t.EqualsAny(contentTypes)))
+                if (MainWindow.SupportedFileTypes.Any(t => t.EqualsAny(contentTypes)))
                 {
                     using Stream stream = await response.Content.ReadAsStreamAsync();
                     
@@ -138,13 +140,13 @@ namespace ImageConverterPlus
             catch (HttpRequestException e)
             {
                 App.Log.Log(e.ToString());
-                ShowAcrylDialog($"Http request error, code {(int?)e.StatusCode} {e.StatusCode}");
+                Ioc.Default.GetService<IDialogService>()?.ShowAsync(new MessageDialogViewModel("Error", $"Http request error, code {(int?)e.StatusCode} {e.StatusCode}"));
                 return null;
             }
             catch (Exception e)
             {
                 App.Log.Log(e.ToString());
-                ShowAcrylDialog("Error occurred while decoding the image! (It might be a video)");
+                Ioc.Default.GetService<IDialogService>()?.ShowAsync(new MessageDialogViewModel("Error", "Error occurred while decoding the image! (It might be a video)"));
                 return null;
             }
         }

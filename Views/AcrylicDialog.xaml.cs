@@ -12,26 +12,33 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Threading;
+using ImageConverterPlus.Data.Interfaces;
+using System.Reactive.Linq;
+using ReactiveUI;
 
-namespace ImageConverterPlus
+namespace ImageConverterPlus.Views
 {
     /// <summary>
     /// Interaction logic for Window1.xaml
     /// </summary>
     public partial class AcrylicDialog : Window
     {
-        public AcrylicDialog(Window parent, string message)
+        public AcrylicDialog(Window parent, IDialog dataContext)
         {
-            InitializeComponent();
-            this.Owner = parent;
-            DialogMessage.Text = message;
-            App.Log.Log($"AcrylicDialog: {message}");
-        }
+            this.DataContext = dataContext;
 
-        private void DialogCloseBtn_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-            this.Owner.Focus();
+            InitializeComponent();
+
+            this.Owner = parent;
+            App.Log.Log($"AcrylicDialog Shown");
+
+            Observable.FromAsync(() => dataContext.ResultTask)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Finally(() =>
+                {
+                    this.Close();
+                    this.Owner.Focus();
+                }).Subscribe();
         }
     }
 }

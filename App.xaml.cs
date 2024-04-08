@@ -1,5 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using ImageConverterPlus.Data.Interfaces;
 using ImageConverterPlus.Services;
+using ImageConverterPlus.Services.interfaces;
 using ImageConverterPlus.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -57,9 +59,13 @@ namespace ImageConverterPlus
                     TimeZoneInfo.Local,
                     true));
             container.AddSingleton<ConvertManagerService>();
+            container.AddSingleton<IDialogService, AcrylicDialogService>();
 
             container.AddSingleton<MainWindowViewModel>();
             container.AddSingleton<WindowTitleBarViewModel>();
+
+            container.AddTransient<IDialogPresenter, MainWindow>(
+                provider => (MainWindow)App.Current.MainWindow);
         }
 
         protected override void OnExit(ExitEventArgs e)
