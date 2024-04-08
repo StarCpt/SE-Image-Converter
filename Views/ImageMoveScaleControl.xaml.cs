@@ -221,9 +221,13 @@ namespace ImageConverterPlus.Views
         public void SetScaleAnimated(double scaleTo, TimeSpan duration)
         {
             this.Scale = scaleTo;
-            DoubleAnimation scaleAni = new DoubleAnimation(ScaleAnim, scaleTo, duration);
-            scaleAni.AccelerationRatio = 0.5;
-            scaleAni.DecelerationRatio = 0.5;
+            DoubleAnimation scaleAni = new DoubleAnimation(ScaleAnim, scaleTo, duration)
+            {
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = EasingMode.EaseOut,
+                }
+            };
             this.BeginAnimation(ScaleAnimProperty, scaleAni);
             animatingScale = true;
 
@@ -254,9 +258,13 @@ namespace ImageConverterPlus.Views
         public void SetOffsetAnimated(Point offsetTo, TimeSpan duration)
         {
             this.Offset = offsetTo;
-            PointAnimation pointAni = new PointAnimation(OffsetAnim, offsetTo, duration);
-            pointAni.AccelerationRatio = 0.5;
-            pointAni.DecelerationRatio = 0.5;
+            PointAnimation pointAni = new PointAnimation(OffsetAnim, offsetTo, duration)
+            {
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = EasingMode.EaseOut,
+                }
+            };
             this.BeginAnimation(OffsetAnimProperty, pointAni);
             animatingOffset = true;
         }
