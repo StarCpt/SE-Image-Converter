@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using static ImageConverterPlus.MainWindow;
 using System.Windows;
 using ImageConverterPlus.Services;
+using System.Net.Http;
 
 namespace ImageConverterPlus
 {
@@ -21,7 +22,7 @@ namespace ImageConverterPlus
             {
                 string url = WebUtility.HtmlDecode((string)data.GetData(DataFormats.Text));
 
-                Bitmap? image = await DownloadImageFromUrlAsync(url);
+                Bitmap? image = await DownloadImageAsync(url);
                 convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 if (image != null)
                 {
@@ -50,7 +51,7 @@ namespace ImageConverterPlus
                 {
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
-                    Bitmap? image = await DownloadImageFromUrlAsync(src);
+                    Bitmap? image = await DownloadImageAsync(src);
                     convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                     if (image != null)
                     {
@@ -78,13 +79,22 @@ namespace ImageConverterPlus
 
         public static async Task<bool> UrlContainsImageAsync(string url)
         {
-            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
-            request.Method = "HEAD";
-            using (var response = await request.GetResponseAsync())
+            try
             {
-                return response.ContentType
-                    .ToLowerInvariant()
-                    .StartsWith("image/");
+                using HttpClient client = new HttpClient();
+                using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, url);
+                using HttpResponseMessage response = await client.SendAsync(request);
+
+                response.EnsureSuccessStatusCode();
+
+                return response.Headers.GetValues("Content-Type")
+                    .Select(i => i.ToLowerInvariant())
+                    .Any(i => i.StartsWith("image/"));
+            }
+            catch (Exception e)
+            {
+                App.Log.Log(e);
+                return false;
             }
         }
 
@@ -93,53 +103,48 @@ namespace ImageConverterPlus
         /// </summary>
         /// <param name="url">Returns null if anything fails for whatever reason</param>
         /// <returns></returns>
-        public static async Task<Bitmap?> DownloadImageFromUrlAsync(string url)
+        public static async Task<Bitmap?> DownloadImageAsync(string url)
         {
             try
             {
-                HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
-                request.Method = "GET";
-                using (var response = await request.GetResponseAsync())
+                using HttpClient client = new HttpClient();
+                using HttpResponseMessage response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                var contentTypes = response.Headers.GetValues("Content-Type").Select(i => i.ToLowerInvariant().Replace("image/", ""));
+
+                if (SupportedFileTypes.Any(t => t.EqualsAny(contentTypes)))
                 {
-                    string imageType = response.ContentType
-                        .ToLowerInvariant()
-                        .Replace("image/", "");
-                    if (SupportedFileTypes.Any(t => t.Equals(imageType)))
+                    using Stream stream = await response.Content.ReadAsStreamAsync();
+                    
+                    if (contentTypes.Any(i => i.Equals("webp")))
                     {
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            await response.GetResponseStream().CopyToAsync(ms);
-                            ms.Position = 0;
+                        SixLabors.ImageSharp.Formats.Webp.WebpDecoder webpDecoder = new SixLabors.ImageSharp.Formats.Webp.WebpDecoder();
+                        using SixLabors.ImageSharp.Image webpImg = webpDecoder.Decode(SixLabors.ImageSharp.Configuration.Default, stream, System.Threading.CancellationToken.None);
+                        SixLabors.ImageSharp.Formats.Bmp.BmpEncoder enc = new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder();
 
-                            if (imageType == "webp")
-                            {
-                                SixLabors.ImageSharp.Formats.Webp.WebpDecoder webpDecoder = new SixLabors.ImageSharp.Formats.Webp.WebpDecoder();
-                                SixLabors.ImageSharp.Image webpImg = webpDecoder.Decode(SixLabors.ImageSharp.Configuration.Default, ms, System.Threading.CancellationToken.None);
-
-                                SixLabors.ImageSharp.Formats.Bmp.BmpEncoder enc = new SixLabors.ImageSharp.Formats.Bmp.BmpEncoder();
-
-                                using (MemoryStream stream = new MemoryStream())
-                                {
-                                    await webpImg.SaveAsync(stream, enc);
-                                    return new Bitmap(stream);
-                                }
-                            }
-                            else
-                            {
-                                return new Bitmap(ms);
-                            }
-                        }
+                        using MemoryStream ms = new MemoryStream();
+                        await webpImg.SaveAsync(ms, enc);
+                        return new Bitmap(stream);
                     }
                     else
                     {
-                        return null;
+                        return new Bitmap(stream);
                     }
                 }
+
+                return null;
+
+            }
+            catch (HttpRequestException e)
+            {
+                App.Log.Log(e.ToString());
+                ShowAcrylDialog($"Http request error, code {(int?)e.StatusCode} {e.StatusCode}");
+                return null;
             }
             catch (Exception e)
             {
                 App.Log.Log(e.ToString());
-                ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
+                ShowAcrylDialog("Error occurred while decoding the image! (It might be a video)");
                 return null;
             }
         }
