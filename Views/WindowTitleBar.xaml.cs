@@ -24,5 +24,29 @@ namespace ImageConverterPlus.Views
         {
             InitializeComponent();
         }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Window.GetWindow(this) is Window win)
+            {
+                win.WindowState = WindowState.Minimized;
+            }
+        }
+
+        private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Window.GetWindow(this) is Window win)
+            {
+                win.WindowState = win.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+        }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Window.GetWindow(this) is Window win)
+            {
+                win.Close();
+            }
+        }
     }
 }

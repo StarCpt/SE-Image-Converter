@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 
-namespace ImageConverterPlus.ValueConverters
+namespace ImageConverterPlus.Converters
 {
-    public class BooleanToVisibilityInverter : IValueConverter
+    public class InvertedBooleanToVisibility : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

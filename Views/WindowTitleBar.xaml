@@ -9,8 +9,6 @@
              mc:Ignorable="d" 
              d:DesignHeight="32" d:DesignWidth="750" d:Foreground="White"
              TextOptions.TextFormattingMode="Display"
-             behaviors:LoadedBehavior.Command="{Binding LoadedCommand}"
-             behaviors:LoadedBehavior.CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
              SnapsToDevicePixels="True">
     
     <UserControl.Resources>
@@ -92,33 +90,61 @@
                 </Image.ContextMenu>
             </Image>
             <!--App Title-->
-            <TextBlock d:Text="SE Image Converter+" VerticalAlignment="Center"
-                       WindowChrome.IsHitTestVisibleInChrome="False"
+            <TextBlock d:Text="SE Image Converter+"
                        Text="{Binding Title,RelativeSource={RelativeSource AncestorType=Window}}"
-                       Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                       VerticalAlignment="Center"
+                       WindowChrome.IsHitTestVisibleInChrome="False"
+                       Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=UserControl}}">
+                <TextBlock.Style>
+                    <Style TargetType="{x:Type TextBlock}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsActive,RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                <Setter Property="Opacity" Value="0.6" />
+                            </DataTrigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.25" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <!--Minimize-->
             <Button Style="{DynamicResource WindowControlButtonStyle}"
-                    Content="&#xE108;" ToolTip="Minimize"
-                    Command="{Binding MinimizeCommand}" />
-            <!--Maximize-->
-            <Button Style="{DynamicResource WindowControlButtonStyle}"
-                    Visibility="{Binding IsMaximized,Converter={StaticResource BooleanToVisibilityInverter}}"
-                    IsEnabled="{Binding CanMaximize}"
-                    Content="&#xE922;" ToolTip="Maximize"
-                    Command="{Binding MaximizeCommand}" />
-            <!--Restore-->
-            <Button Style="{DynamicResource WindowControlButtonStyle}"
-                    Visibility="{Binding IsMaximized,Converter={StaticResource BooleanToVisibilityConverter}}"
-                    IsEnabled="{Binding CanMaximize}"
-                    Content="&#xE923;" ToolTip="Restore"
-                    Command="{Binding RestoreCommand}" />
+                    Content="&#xE108;"
+                    ToolTip="Minimize"
+                    Click="MinimizeButton_Click" />
+            <!--Maximize/Restore-->
+            <Button IsEnabled="{Binding CanMaximize}"
+                    Click="MaximizeRestoreButton_Click">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
+                        <Setter Property="Content" Value="&#xE922;" />
+                        <Setter Property="ToolTip" Value="Maximize" />
+                        
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                                <Setter Property="Content" Value="&#xE923;" />
+                                <Setter Property="ToolTip" Value="Restore" />
+                            </DataTrigger>
+                            
+                            <DataTrigger Binding="{Binding ResizeMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="NoResize">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ResizeMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="CanMinimize">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <!--Close-->
             <Button Style="{DynamicResource CloseButtonStyle}"
-                    Content="&#xE106;" ToolTip="Close"
-                    Command="{Binding CloseCommand}" />
+                    Content="&#xE106;"
+                    ToolTip="Close"
+                    Click="CloseButton_Click" />
         </StackPanel>
     </Grid>
 </UserControl>

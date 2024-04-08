@@ -9,7 +9,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="\CustomControlsDictionary.xaml" />
                 <ResourceDictionary Source="\Themes\Generic.xaml" />
-                <ResourceDictionary Source="\Converters.xaml" />
+                <ResourceDictionary Source="\Converters\Converters.xaml" />
                 <!--  FluentWPF Controls  -->
                 <ResourceDictionary Source="pack://application:,,,/FluentWPF;component/Styles/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
