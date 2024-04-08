@@ -70,7 +70,7 @@ namespace ImageConverterPlus.ImageConverter
                 Options.ConvertedSize = new Int32Size(
                     Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Width),
                     Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Width));
-                App.Instance.Log.Log($"Converter.ctor: Width too large. Resizing to 10000");
+                App.Log.Log($"Converter.ctor: Width too large. Resizing to 10000");
             }
 
             if (Options.ConvertedSize.Height > 10000)
@@ -78,7 +78,7 @@ namespace ImageConverterPlus.ImageConverter
                 Options.ConvertedSize = new Int32Size(
                     Convert.ToInt32(Options.ConvertedSize.Width * 10000.0 / Options.ConvertedSize.Height),
                     Convert.ToInt32(Options.ConvertedSize.Height * 10000.0 / Options.ConvertedSize.Height));
-                App.Instance.Log.Log($"Converter.ctor: Height too large. Resizing to 10000");
+                App.Log.Log($"Converter.ctor: Height too large. Resizing to 10000");
             }
 
             Precalc = new byte[256];
@@ -374,7 +374,7 @@ namespace ImageConverterPlus.ImageConverter
             Monitor.Exit(image);
 
             double c1 = sw.Elapsed.TotalMilliseconds;
-            App.Instance.Log.Log($"ConvertToBitmapSafe ApplyScaleOffset {c1} ms");
+            App.Log.Log($"ConvertToBitmapSafe ApplyScaleOffset {c1} ms");
             sw.Restart();
 
             try
@@ -395,7 +395,7 @@ namespace ImageConverterPlus.ImageConverter
                 ChangeBitDepth(bitmapBytes, data, token);
 
                 double c2 = sw.Elapsed.TotalMilliseconds;
-                App.Instance.Log.Log($"ConvertToBitmapSafe ChangeBitDepth {c2} ms");
+                App.Log.Log($"ConvertToBitmapSafe ChangeBitDepth {c2} ms");
                 sw.Restart();
 
                 token.ThrowIfCancellationRequested();

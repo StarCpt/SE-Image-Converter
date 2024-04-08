@@ -13,6 +13,7 @@ using CommunityToolkit.Mvvm.Input;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System.Reactive.Linq;
+using ImageConverterPlus.Services;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -31,35 +32,35 @@ namespace ImageConverterPlus.ViewModels
 
         public bool EnableDithering
         {
-            get => ConvertManager.Instance.EnableDithering;
-            set => ConvertManager.Instance.EnableDithering = value;
+            get => _convertManager.EnableDithering;
+            set => _convertManager.EnableDithering = value;
         }
         public BitDepth ColorDepth
         {
-            get => ConvertManager.Instance.BitDepth;
-            set => ConvertManager.Instance.BitDepth = value;
+            get => _convertManager.BitDepth;
+            set => _convertManager.BitDepth = value;
         }
         public InterpolationMode InterpolationMode
         {
-            get => ConvertManager.Instance.Interpolation;
-            set => ConvertManager.Instance.Interpolation = value;
+            get => _convertManager.Interpolation;
+            set => _convertManager.Interpolation = value;
         }
         [Reactive]
         public LCDPresetType SelectedLCD { get; set; } = LCDPresetType.LCDPanel;
         public int LCDWidth
         {
-            get => ConvertManager.Instance.ConvertedSize.Width;
-            set => ConvertManager.Instance.ConvertedSize = new Int32Size(value, LCDHeight);
+            get => _convertManager.ConvertedSize.Width;
+            set => _convertManager.ConvertedSize = new Int32Size(value, LCDHeight);
         }
         public int LCDHeight
         {
-            get => ConvertManager.Instance.ConvertedSize.Height;
-            set => ConvertManager.Instance.ConvertedSize = new Int32Size(LCDWidth, value);
+            get => _convertManager.ConvertedSize.Height;
+            set => _convertManager.ConvertedSize = new Int32Size(LCDWidth, value);
         }
         public Int32Size ImageSplitSize
         {
-            get => ConvertManager.Instance.ImageSplitSize;
-            set => ConvertManager.Instance.ImageSplitSize = value;
+            get => _convertManager.ImageSplitSize;
+            set => _convertManager.ImageSplitSize = value;
         }
         public int ImageSplitWidth
         {
@@ -80,18 +81,18 @@ namespace ImageConverterPlus.ViewModels
         public bool PreviewImageLoaded => PreviewImageSource != null;
         public double PreviewScale
         {
-            get => ConvertManager.Instance.Scale;
-            set => ConvertManager.Instance.Scale = value;
+            get => _convertManager.Scale;
+            set => _convertManager.Scale = value;
         }
         public System.Windows.Point PreviewOffsetRatio
         {
-            get => ConvertManager.Instance.TopLeftRatio;
-            set => ConvertManager.Instance.TopLeftRatio = value;
+            get => _convertManager.TopLeftRatio;
+            set => _convertManager.TopLeftRatio = value;
         }
         public bool Debug
         {
-            get => App.Instance.Debug;
-            set => App.Instance.Debug = value;
+            get => ((App)App.Current).Debug;
+            set => ((App)App.Current).Debug = value;
         }
 
         public ICommand BrowseFilesCommand { get; }
@@ -102,8 +103,12 @@ namespace ImageConverterPlus.ViewModels
         public ICommand CopyImageToClipboardCommand { get; }
         public ICommand ConvertFromClipboardCommand { get; }
 
-        public MainWindowViewModel()
+        private readonly ConvertManagerService _convertManager;
+
+        public MainWindowViewModel(ConvertManagerService convertManager)
         {
+            _convertManager = convertManager;
+
             BrowseFilesCommand = new RelayCommand(ExecuteBrowseFiles);
             ZoomToFitCommand = new RelayCommand(ExecuteZoomToFit);
             ZoomToFillCommand = new RelayCommand(ExecuteZoomToFill);
@@ -125,16 +130,16 @@ namespace ImageConverterPlus.ViewModels
                     this.RaisePropertyChanged(nameof(ImageSplitHeight));
                 });
 
-            ConvertManager.Instance.WhenAnyValue(x => x.EnableDithering)
+            _convertManager.WhenAnyValue(x => x.EnableDithering)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(EnableDithering)));
-            ConvertManager.Instance.WhenAnyValue(x => x.BitDepth)
+            _convertManager.WhenAnyValue(x => x.BitDepth)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(ColorDepth)));
-            ConvertManager.Instance.WhenAnyValue(x => x.Interpolation)
+            _convertManager.WhenAnyValue(x => x.Interpolation)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(InterpolationMode)));
-            ConvertManager.Instance.WhenAnyValue(x => x.ConvertedSize)
+            _convertManager.WhenAnyValue(x => x.ConvertedSize)
                 .Skip(1)
                 .Subscribe(i =>
                 {
@@ -142,14 +147,14 @@ namespace ImageConverterPlus.ViewModels
                     this.RaisePropertyChanged(nameof(LCDHeight));
                     _view.LCDSizeChanged(this, i.Width, i.Height);
                 });
-            ConvertManager.Instance.WhenAnyValue(x => x.ImageSplitSize)
+            _convertManager.WhenAnyValue(x => x.ImageSplitSize)
                 .Skip(1)
                 .Subscribe(i =>
                 {
                     _view.ImageSplitSizeChanged(this, i);
                     this.RaisePropertyChanged(nameof(ImageSplitSize));
                 });
-            ConvertManager.Instance.WhenAnyValue(x => x.ProcessedImageFull)
+            _convertManager.WhenAnyValue(x => x.ProcessedImageFull)
                 .Skip(1)
                 .Subscribe(i =>
                 {
@@ -158,10 +163,10 @@ namespace ImageConverterPlus.ViewModels
                         this.PreviewImageSource = i;
                     }
                 });
-            ConvertManager.Instance.WhenAnyValue(x => x.Scale)
+            _convertManager.WhenAnyValue(x => x.Scale)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewScale)));
-            ConvertManager.Instance.WhenAnyValue(x => x.TopLeftRatio)
+            _convertManager.WhenAnyValue(x => x.TopLeftRatio)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewOffsetRatio)));
         }

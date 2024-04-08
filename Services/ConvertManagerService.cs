@@ -1,4 +1,5 @@
-﻿using ReactiveUI;
+﻿using ImageConverterPlus.ImageConverter;
+using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,10 @@ using System.Windows.Threading;
 using Bitmap = System.Drawing.Bitmap;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 
-namespace ImageConverterPlus.ImageConverter
+namespace ImageConverterPlus.Services
 {
-    public class ConvertManager : ReactiveObject
+    public class ConvertManagerService : ReactiveObject
     {
-        public static ConvertManager Instance { get; } = new ConvertManager();
-
         [Reactive]
         public BitDepth BitDepth { get; set; } = BitDepth.Color3;
         [Reactive]
@@ -99,7 +98,7 @@ namespace ImageConverterPlus.ImageConverter
         private bool _processImageNextInterval = false;
         private bool _convertImageNextInterval = false;
 
-        public ConvertManager()
+        public ConvertManagerService()
         {
             _periodicTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -314,7 +313,7 @@ namespace ImageConverterPlus.ImageConverter
                 timer.Start();
             }
         }
-        
+
         private async Task<bool> ConvertImageDelayedInternal(CancellationToken token)
         {
             if (ProcessedImageFull == null && !await ProcessImageDelayedInternal(token))

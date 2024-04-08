@@ -22,6 +22,8 @@ using ImageConverterPlus.ViewModels;
 using System.Collections.Specialized;
 using Bitmap = System.Drawing.Bitmap;
 using RotateFlipType = System.Drawing.RotateFlipType;
+using ImageConverterPlus.Services;
+using CommunityToolkit.Mvvm.DependencyInjection;
 
 namespace ImageConverterPlus
 {
@@ -34,13 +36,13 @@ namespace ImageConverterPlus
         public static bool isMouseOverSizeTextbox => Static.viewModel.IsMouseOverScrollableTextBox;
 
         private MainWindowViewModel viewModel;
-        ImageConverter.ConvertManager convMgr => ImageConverter.ConvertManager.Instance;
+        private ConvertManagerService convMgr => Ioc.Default.GetRequiredService<ConvertManagerService>(); // TEMP!!
 
         public MainWindow()
         {
             Static = this;
             InitializeComponent();
-            viewModel = (MainWindowViewModel)this.DataContext;
+            this.DataContext = viewModel = Ioc.Default.GetRequiredService<MainWindowViewModel>(); // TEMP!!
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
@@ -49,7 +51,7 @@ namespace ImageConverterPlus
 
             UpdatePreviewGrid();
 
-            App.Instance.Log.Log("MainWindow initialized");
+            App.Log.Log("MainWindow initialized");
         }
 
         public void BrowseImageFiles()
@@ -104,7 +106,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                App.Instance.Log.Log(e.ToString());
+                App.Log.Log(e.ToString());
                 result = null;
                 return false;
             }
@@ -144,8 +146,8 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                App.Instance.Log.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
-                App.Instance.Log.Log(e.ToString());
+                App.Log.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
+                App.Log.Log(e.ToString());
                 return IsFileSupportedEnum.NotSupported;
             }
         }
@@ -213,7 +215,7 @@ namespace ImageConverterPlus
                         ResetZoomAndPan(false);
                         if (bitmap != null)
                         {
-                            App.Instance.Log.Log("Image loaded from Clipboard (Bitmap)");
+                            App.Log.Log("Image loaded from Clipboard (Bitmap)");
                         }
                         else
                         {
@@ -238,7 +240,7 @@ namespace ImageConverterPlus
                             if (bitmap != null)
                             {
                                 UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                                App.Instance.Log.Log("Loaded from Clipboard (FileDrop)");
+                                App.Log.Log("Loaded from Clipboard (FileDrop)");
                             }
                             else
                             {
@@ -306,7 +308,7 @@ namespace ImageConverterPlus
                     convMgr.ProcessImage();
                 }
 
-                App.Instance.Log.Log($"Image Transformed ({type.ToString()})");
+                App.Log.Log($"Image Transformed ({type.ToString()})");
             }
         }
 

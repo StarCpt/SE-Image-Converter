@@ -28,19 +28,12 @@
         AllowsTransparency="True"
         WindowStyle="None"
         ContextMenuService.IsEnabled="False"
-        RenderOptions.BitmapScalingMode="HighQuality">
+        RenderOptions.BitmapScalingMode="HighQuality"
+        d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" />
     </WindowChrome.WindowChrome>
-
-    <Window.Resources>
-        
-    </Window.Resources>
-
-    <Window.DataContext>
-        <vm:MainWindowViewModel />
-    </Window.DataContext>
 
     <DockPanel>
         <views:WindowTitleBar DockPanel.Dock="Top" Height="32" Foreground="White">

@@ -38,6 +38,7 @@ namespace ImageConverterPlus.Services
 
             Log("Log Started");
             Log(timeZone.ToString());
+            Log($"Version {App.AppVersion}");
         }
 
         public T Log<T>(T e, bool dialog = false) where T : Exception

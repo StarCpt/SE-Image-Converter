@@ -19,7 +19,7 @@ namespace ImageConverterPlus.ViewModels
         public bool IsMaximized { get; set; }
         [Reactive]
         public bool CanMaximize { get; set; }
-        public bool Debug => App.Instance.Debug;
+        public bool Debug => ((App)App.Current).Debug;
 
         public ICommand LoadedCommand { get; }
         public ICommand MinimizeCommand { get; }
@@ -92,7 +92,7 @@ namespace ImageConverterPlus.ViewModels
 
         private void ExecuteOpenLogs()
         {
-            App.Instance.Log.OpenLogFile();
+            App.Log.OpenLogFile();
         }
 
         private void ExecuteOpenAppDirectory()

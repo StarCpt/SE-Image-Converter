@@ -1,5 +1,6 @@
-﻿using ImageConverterPlus.Controls;
-using ImageConverterPlus.ImageConverter;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using ImageConverterPlus.Controls;
+using ImageConverterPlus.Services;
 using ImageConverterPlus.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -117,6 +118,8 @@ namespace ImageConverterPlus.Views
             get => (Point)GetValue(OffsetRatioProperty);
             set => SetValue(OffsetRatioProperty, value);
         }
+
+        private ConvertManagerService convMgr => Ioc.Default.GetRequiredService<ConvertManagerService>(); // TEMP!!
 
         private bool animatingScale = false;
         private bool animatingOffset = false;
@@ -370,8 +373,8 @@ namespace ImageConverterPlus.Views
         private void image_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             SetOffsetNoAnim(ClampOffset(Offset, Scale));
-            if (ConvertManager.Instance.ConvertedSize.Width * ConvertManager.Instance.ImageSplitSize.Width <= this.ActualWidth &&
-                ConvertManager.Instance.ConvertedSize.Height * ConvertManager.Instance.ImageSplitSize.Height <= this.ActualHeight)
+            if (convMgr.ConvertedSize.Width * convMgr.ImageSplitSize.Width <= this.ActualWidth &&
+                convMgr.ConvertedSize.Height * convMgr.ImageSplitSize.Height <= this.ActualHeight)
             {
                 RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);
             }

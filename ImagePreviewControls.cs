@@ -32,7 +32,7 @@ namespace ImageConverterPlus
                         {
                             ResetZoomAndPan(false);
                             UpdateBrowseImagesBtn(System.IO.Path.GetFileName(file), file);
-                            App.Instance.Log.Log("Image Drag & Dropped (FileDrop)");
+                            App.Log.Log("Image Drag & Dropped (FileDrop)");
                         });
                         return;
                     }
@@ -49,12 +49,12 @@ namespace ImageConverterPlus
                 {
                     ResetZoomAndPan(false);
                     UpdateBrowseImagesBtn("Drag & Droped Image", string.Empty);
-                    App.Instance.Log.Log("Image Drag & Dropped (Bitmap)");
+                    App.Log.Log("Image Drag & Dropped (Bitmap)");
                 });
             }
             else if (e.Data.GetDataPresent(DataFormats.Html))
             {
-                WebHelpers.HandleHtmlDropThreadAsync(e.Data);
+                _ = WebHelpers.HandleHtmlDropThreadAsync(e.Data, convMgr);
             }
             else
             {

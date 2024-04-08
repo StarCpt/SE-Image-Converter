@@ -9,29 +9,29 @@ using System.Text;
 using System.Threading.Tasks;
 using static ImageConverterPlus.MainWindow;
 using System.Windows;
-using ImageConverterPlus.ImageConverter;
+using ImageConverterPlus.Services;
 
 namespace ImageConverterPlus
 {
     public static class WebHelpers
     {
-        public static async Task HandleHtmlDropThreadAsync(IDataObject Data)
+        public static async Task HandleHtmlDropThreadAsync(IDataObject data, ConvertManagerService convMgr)
         {
-            if (await UrlContainsImageAsync(WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text))))
+            if (await UrlContainsImageAsync(WebUtility.HtmlDecode((string)data.GetData(DataFormats.Text))))
             {
-                string url = WebUtility.HtmlDecode((string)Data.GetData(DataFormats.Text));
+                string url = WebUtility.HtmlDecode((string)data.GetData(DataFormats.Text));
 
                 Bitmap? image = await DownloadImageFromUrlAsync(url);
-                ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
+                convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                 if (image != null)
                 {
-                    ConvertManager.Instance.ProcessImage(bitmap =>
+                    convMgr.ProcessImage(bitmap =>
                     {
                         MainWindow.Static.ResetZoomAndPan(false);
                         if (bitmap != null)
                         {
                             MainWindow.Static.UpdateBrowseImagesBtn("Loaded from URL", url);
-                            App.Instance.Log.Log($"Image loaded from image URL ({url})");
+                            App.Log.Log($"Image loaded from image URL ({url})");
                         }
                         else
                         {
@@ -43,7 +43,7 @@ namespace ImageConverterPlus
             else
             {
                 HtmlDocument doc = new HtmlDocument();
-                doc.LoadHtml((string)Data.GetData(DataFormats.Html));
+                doc.LoadHtml((string)data.GetData(DataFormats.Html));
                 HtmlNodeCollection imgNodes = doc.DocumentNode.SelectNodes("//img");
 
                 if (imgNodes != null && imgNodes.Count > 0)
@@ -51,16 +51,16 @@ namespace ImageConverterPlus
                     string src = imgNodes[0].GetAttributeValue("src", null);
                     src = WebUtility.HtmlDecode(src);
                     Bitmap? image = await DownloadImageFromUrlAsync(src);
-                    ConvertManager.Instance.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
+                    convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
                     if (image != null)
                     {
-                        ConvertManager.Instance.ProcessImage(lcdStr =>
+                        convMgr.ProcessImage(lcdStr =>
                         {
                             MainWindow.Static.ResetZoomAndPan(false);
                             if (lcdStr != null)
                             {
                                 MainWindow.Static.UpdateBrowseImagesBtn("Loaded from HTML", src);
-                                App.Instance.Log.Log($"Image loaded from HTML ({src})");
+                                App.Log.Log($"Image loaded from HTML ({src})");
                             }
                             else
                             {
@@ -138,7 +138,7 @@ namespace ImageConverterPlus
             }
             catch (Exception e)
             {
-                App.Instance.Log.Log(e.ToString());
+                App.Log.Log(e.ToString());
                 ShowAcrylDialog("Error occurred while decoding the image! (It might be a video?)");
                 return null;
             }

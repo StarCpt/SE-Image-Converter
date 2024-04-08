@@ -1,4 +1,7 @@
-﻿using ImageConverterPlus.Services;
+﻿using CommunityToolkit.Mvvm.DependencyInjection;
+using ImageConverterPlus.Services;
+using ImageConverterPlus.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,15 +19,12 @@ namespace ImageConverterPlus
     /// </summary>
     public partial class App : Application
     {
-        public const string AppVersion = "1.0 Beta2";
-        public const string AppName = "SE Image Converter+";
+        public static string AppVersion { get; } = "1.0 Beta2";
+        public static string AppName { get; } = "SE Image Converter+";
 
         public static event RoutedPropertyChangedEventHandler<bool>? DebugStateChanged;
 
-#pragma warning disable CS8618
-        public static App Instance { get; private set; }
-#pragma warning restore CS8618
-        public LogService Log { get; }
+        public static LogService Log => Ioc.Default.GetRequiredService<LogService>();
         public bool Debug
         {
             get => debug;
@@ -42,16 +42,27 @@ namespace ImageConverterPlus
 
         public App()
         {
-            Instance = this;
+            ConfigureServices();
+        }
 
-            string logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log");
-            TimeSpan logFlushInterval = TimeSpan.FromMilliseconds(500);
-            string logDateTimeFormat = "yyyy-MM-dd H:mm:ss.fff";
-            TimeZoneInfo timeZone = TimeZoneInfo.Local;
-            bool overwriteExisting = true;
+        private static void ConfigureServices()
+        {
+            ServiceCollection services = new ServiceCollection();
+            AddServices(services);
+            Ioc.Default.ConfigureServices(services.BuildServiceProvider());
+        }
 
-            Log = new LogService(logPath, logDateTimeFormat, timeZone, overwriteExisting);
-            Log.Log($"Version {AppVersion}");
+        private static void AddServices(IServiceCollection container)
+        {
+            container.AddSingleton<LogService>(
+                provider => new LogService(
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, AppDomain.CurrentDomain.FriendlyName + ".log"),
+                    "yyyy-MM-dd H:mm:ss.fff",
+                    TimeZoneInfo.Local,
+                    true));
+            container.AddSingleton<ConvertManagerService>();
+
+            container.AddSingleton<MainWindowViewModel>();
         }
 
         protected override void OnExit(ExitEventArgs e)
