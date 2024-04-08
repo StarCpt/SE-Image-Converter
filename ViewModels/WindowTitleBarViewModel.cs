@@ -1,4 +1,6 @@
-﻿using ImageConverterPlus.Base;
+﻿using CommunityToolkit.Mvvm.Input;
+using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,10 +13,12 @@ using System.Windows.Input;
 
 namespace ImageConverterPlus.ViewModels
 {
-    public class WindowTitleBarViewModel : NotifyPropertyChangedBase
+    public class WindowTitleBarViewModel : ReactiveObject
     {
-        public bool IsMaximized { get => isMaximized; set { SetValue(ref isMaximized, value); } }
-        public bool CanMaximize { get => canMaximize; set => SetValue(ref canMaximize, value); }
+        [Reactive]
+        public bool IsMaximized { get; set; }
+        [Reactive]
+        public bool CanMaximize { get; set; }
         public bool Debug => App.Instance.Debug;
 
         public ICommand LoadedCommand { get; }
@@ -26,33 +30,28 @@ namespace ImageConverterPlus.ViewModels
         public ICommand OpenAppDirectoryCommand { get; }
 
         private Window parentWindow = App.Current.MainWindow;
-        private bool isMaximized = false;
-        private bool canMaximize = false;
 
         public WindowTitleBarViewModel()
         {
-            LoadedCommand = new ButtonCommand(ExecuteLoadedCommand);
-            MinimizeCommand = new ButtonCommand(ExecuteMinimizeCommand);
-            MaximizeCommand = new ButtonCommand(ExecuteMaximizeCommand);
-            RestoreCommand = new ButtonCommand(ExecuteRestoreCommand);
-            CloseCommand = new ButtonCommand(ExecuteCloseCommand);
-            OpenLogsCommand = new ButtonCommand(ExecuteOpenLogsCommand);
-            OpenAppDirectoryCommand = new ButtonCommand(ExecuteOpenAppDirectoryCommand);
+            LoadedCommand = new RelayCommand<Window>(ExecuteLoaded!, win => win != null);
+            MinimizeCommand = new RelayCommand(ExecuteMinimize);
+            MaximizeCommand = new RelayCommand(ExecuteMaximize);
+            RestoreCommand = new RelayCommand(ExecuteRestore);
+            CloseCommand = new RelayCommand(ExecuteClose);
+            OpenLogsCommand = new RelayCommand(ExecuteOpenLogs);
+            OpenAppDirectoryCommand = new RelayCommand(ExecuteOpenAppDirectory);
 
-            App.DebugStateChanged += (sender, e) => RaisePropertyChanged(nameof(Debug));
+            App.DebugStateChanged += (sender, e) => this.RaisePropertyChanged(nameof(Debug));
         }
 
-        private void ExecuteLoadedCommand(object? param)
+        private void ExecuteLoaded(Window win)
         {
-            if (param is Window win)
-            {
-                parentWindow = win;
-                win.StateChanged += ParentWindow_StateChanged;
-                CanMaximize = win.ResizeMode is ResizeMode.CanResize or ResizeMode.CanResizeWithGrip;
+            parentWindow = win;
+            win.StateChanged += ParentWindow_StateChanged;
+            CanMaximize = win.ResizeMode is ResizeMode.CanResize or ResizeMode.CanResizeWithGrip;
 
-                DependencyPropertyDescriptor.FromProperty(Window.ResizeModeProperty, typeof(Window))
-                    .AddValueChanged(win, ParentWindow_ResizeModeChanged);
-            }
+            DependencyPropertyDescriptor.FromProperty(Window.ResizeModeProperty, typeof(Window))
+                .AddValueChanged(win, ParentWindow_ResizeModeChanged);
         }
 
         private void ParentWindow_ResizeModeChanged(object? sender, EventArgs e)
@@ -71,32 +70,32 @@ namespace ImageConverterPlus.ViewModels
             }
         }
 
-        private void ExecuteMinimizeCommand(object? param)
+        private void ExecuteMinimize()
         {
             parentWindow.WindowState = WindowState.Minimized;
         }
 
-        private void ExecuteMaximizeCommand(object? param)
+        private void ExecuteMaximize()
         {
             parentWindow.WindowState = WindowState.Maximized;
         }
 
-        private void ExecuteRestoreCommand(object? param)
+        private void ExecuteRestore()
         {
             parentWindow.WindowState = WindowState.Normal;
         }
 
-        private void ExecuteCloseCommand(object? param)
+        private void ExecuteClose()
         {
             parentWindow.Close();
         }
 
-        private void ExecuteOpenLogsCommand(object? param)
+        private void ExecuteOpenLogs()
         {
             App.Instance.Log.OpenLogFile();
         }
 
-        private void ExecuteOpenAppDirectoryCommand(object? param)
+        private void ExecuteOpenAppDirectory()
         {
             Process.Start("explorer.exe", AppDomain.CurrentDomain.BaseDirectory);
         }

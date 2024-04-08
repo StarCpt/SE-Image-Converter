@@ -1,8 +1,10 @@
-﻿using ImageConverterPlus.Base;
+﻿using ReactiveUI;
+using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,195 +15,79 @@ using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 
 namespace ImageConverterPlus.ImageConverter
 {
-    public class ConvertManager : NotifyPropertyChangedBase
+    public class ConvertManager : ReactiveObject
     {
         public static ConvertManager Instance { get; } = new ConvertManager();
 
-        public BitDepth BitDepth
-        {
-            get => bitDepth;
-            set
-            {
-                if (SetValue(ref bitDepth, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImageNextInterval();
-                }
-            }
-        }
-        public bool EnableDithering
-        {
-            get => enableDithering;
-            set
-            {
-                if (SetValue(ref enableDithering, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImageNextInterval();
-                }
-            }
-        }
-        public InterpolationMode Interpolation
-        {
-            get => interpolation;
-            set
-            {
-                if (SetValue(ref interpolation, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImageNextInterval();
-                }
-            }
-        }
-        public Int32Size ConvertedSize
-        {
-            get => convertedSize;
-            set
-            {
-                if (SetValue(ref convertedSize, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImageNextInterval();
-                }
-            }
-        }
-        public Int32Size ImageSplitSize
-        {
-            get => imageSplitSize;
-            set
-            {
-                if (SetValue(ref imageSplitSize, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImageNextInterval();
-                }
-            }
-        }
-        public Int32Point SelectedSplitPos
-        {
-            get => selectedSplitPos;
-            set
-            {
-                if (SetValue(ref selectedSplitPos, value))
-                {
-                    ConvertedImageString = null;
-                }
-            }
-        }
+        [Reactive]
+        public BitDepth BitDepth { get; set; } = BitDepth.Color3;
+        [Reactive]
+        public bool EnableDithering { get; set; } = true;
+        [Reactive]
+        public InterpolationMode Interpolation { get; set; } = InterpolationMode.HighQualityBicubic;
+        [Reactive]
+        public Int32Size ConvertedSize { get; set; } = new Int32Size(178, 178);
+        [Reactive]
+        public Int32Size ImageSplitSize { get; set; } = new Int32Size(1, 1);
+        [Reactive]
+        public Int32Point SelectedSplitPos { get; set; } = new Int32Point(0, 0);
         /// <summary>zoom</summary>
-        public double Scale
-        {
-            get => scale;
-            set
-            {
-                if (SetValue(ref scale, value))
-                {
-                    ProcessedImageFull = null;
-                    ProcessImage();
-                }
-            }
-        }
-        public System.Windows.Point TopLeftRatio
-        {
-            get => topLeftRatio;
-            set
-            {
-                if (SetValue(ref topLeftRatio, value))
-                {
-                    ConvertedImageString = null;
-                }
-            }
-        }
-
-        public BitmapSource? SourceImage
-        {
-            get => _sourceImage;
-            set
-            {
-                BitmapSource? old = _sourceImage;
-                if (SetValue(ref _sourceImage, value))
-                {
-                    OnSourceImageChanged();
-                }
-            }
-        }
+        [Reactive]
+        public double Scale { get; set; } = 1.0;
+        [Reactive]
+        public System.Windows.Point TopLeftRatio { get; set; } = new System.Windows.Point(0, 0);
+        [Reactive]
+        public BitmapSource? SourceImage { get; set; }
         public Int32Size? SourceImageSize
         {
             get
             {
-                if (_sourceImage != null)
-                    lock (_sourceImage)
-                        return new Int32Size(_sourceImage.PixelWidth, _sourceImage.PixelHeight);
-                else
-                    return null;
-            }
-        }
-        public BitmapSource? ProcessedImageFull
-        {
-            get => _processedImageFull;
-            private set
-            {
-                BitmapSource? old = _processedImageFull;
-                if (SetValue(ref _processedImageFull, value))
+                if (SourceImage is BitmapSource img)
                 {
-                    ProcessedImageFullChanged.Invoke(value);
-                    ConvertedImageString = null;
+                    lock (img)
+                    {
+                        return new Int32Size(img.PixelWidth, img.PixelHeight);
+                    }
+                }
+                else
+                {
+                    return null;
                 }
             }
         }
+        /// <summary>
+        /// Non-cropped version of the converted (dithered, rescaled, etc) image
+        /// </summary>
+        [Reactive]
+        public BitmapSource? ProcessedImageFull { get; set; }
         public Int32Size? ProcessedImageFullSize
         {
             get
             {
-                if (_processedImageFull != null)
-                    lock (_processedImageFull)
-                        return new Int32Size(_processedImageFull.PixelWidth, _processedImageFull.PixelHeight);
-                else
-                    return null;
-            }
-        }
-        public string? ConvertedImageString
-        {
-            get => _convertedImageString;
-            private set
-            {
-                if (SetValue(ref _convertedImageString, value))
+                if (ProcessedImageFull is BitmapSource img)
                 {
-                    ConvertedImageStringChanged.Invoke(value);
+                    lock (img)
+                    {
+                        return new Int32Size(img.PixelWidth, img.PixelHeight);
+                    }
+                }
+                else
+                {
+                    return null;
                 }
             }
         }
-
-        public double Delay
-        {
-            get => _delay;
-            set => SetValue(ref _delay, value);
-        }
+        /// <summary>
+        /// Converted and cropped lcd image string
+        /// </summary>
+        [Reactive]
+        public string? ConvertedImageString { get; set; }
+        [Reactive]
+        public double Delay { get; set; } = 0;
 
         public event Action<BitmapSource?> SourceImageChanged = delegate { };
         public event Action<BitmapSource?> ProcessedImageFullChanged = delegate { };
         public event Action<string?> ConvertedImageStringChanged = delegate { };
-
-        private BitDepth bitDepth;
-        private bool enableDithering;
-        private InterpolationMode interpolation;
-        private Int32Size convertedSize;
-        private Int32Size imageSplitSize;
-        private Int32Point selectedSplitPos;
-        private double scale;
-        private System.Windows.Point topLeftRatio;
-
-        private BitmapSource? _sourceImage;
-        /// <summary>
-        /// Non-cropped version of the converted (dithered, rescaled, etc) image
-        /// </summary>
-        private BitmapSource? _processedImageFull;
-        /// <summary>
-        /// Converted and cropped lcd image string
-        /// </summary>
-        private string? _convertedImageString;
-
-        private double _delay = 0;
 
         private CancellationTokenSource? processImageTaskTokenSource;
         private CancellationTokenSource? convertImageTaskTokenSource;
@@ -215,14 +101,6 @@ namespace ImageConverterPlus.ImageConverter
 
         public ConvertManager()
         {
-            bitDepth = BitDepth.Color3;
-            enableDithering = true;
-            interpolation = InterpolationMode.HighQualityBicubic;
-            convertedSize = new Int32Size(178, 178);
-            imageSplitSize = new Int32Size(1, 1);
-            scale = 1.0;
-            topLeftRatio = new System.Windows.Point(0, 0);
-            
             _periodicTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(5),
@@ -230,6 +108,52 @@ namespace ImageConverterPlus.ImageConverter
             };
             _periodicTimer.Tick += PeriodicTimer_Tick;
             _periodicTimer.Start();
+
+            this.WhenAnyValue(
+                    x => x.BitDepth,
+                    x => x.EnableDithering,
+                    x => x.Interpolation,
+                    x => x.ConvertedSize,
+                    x => x.ImageSplitSize)
+                .Skip(1)
+                .Subscribe(i =>
+                {
+                    ProcessedImageFull = null;
+                    ProcessImageNextInterval();
+                });
+            this.WhenAnyValue(
+                x => x.SelectedSplitPos,
+                x => x.TopLeftRatio)
+                .Skip(1)
+                .Subscribe(i => ConvertedImageString = null);
+            this.WhenAnyValue(x => x.Scale)
+                .Skip(1)
+                .Subscribe(i =>
+                {
+                    ProcessedImageFull = null;
+                    ProcessImage();
+                });
+            this.WhenAnyValue(x => x.SourceImage)
+                .Skip(1)
+                .Subscribe(i =>
+                {
+                    this.RaisePropertyChanged(nameof(SourceImageSize));
+                    SourceImageChanged.Invoke(i);
+                    ProcessedImageFull = null;
+                    if (i != null)
+                        ProcessImageNextInterval();
+                });
+            this.WhenAnyValue(x => x.ProcessedImageFull)
+                .Skip(1)
+                .Subscribe(i =>
+                {
+                    this.RaisePropertyChanged(nameof(ProcessedImageFullSize));
+                    ProcessedImageFullChanged.Invoke(i);
+                    ConvertedImageString = null;
+                });
+            this.WhenAnyValue(x => x.ConvertedImageString)
+                .Skip(1)
+                .Subscribe(i => ConvertedImageStringChanged.Invoke(i));
         }
 
         private void PeriodicTimer_Tick(object? sender, EventArgs e)
@@ -251,15 +175,6 @@ namespace ImageConverterPlus.ImageConverter
             _processImageNextInterval = true;
 
             processImageTaskTokenSource?.Cancel();
-        }
-
-        public void OnSourceImageChanged()
-        {
-            RaisePropertyChanged(nameof(SourceImage));
-            SourceImageChanged.Invoke(SourceImage);
-            ProcessedImageFull = null;
-            if (SourceImage != null)
-                ProcessImageNextInterval();
         }
 
         public void ProcessImage(bool noDelay = false) => ProcessImage(null, noDelay);

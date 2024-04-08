@@ -293,8 +293,6 @@ namespace ImageConverterPlus
             {
                 convMgr.SourceImage = ApplyTransform(type, convMgr.SourceImage);
 
-                convMgr.OnSourceImageChanged();
-
                 if (type == RotateFlipType.Rotate90FlipNone && imgSize.Width != imgSize.Height)
                 {
                     convMgr.ProcessImage(lcdStr =>
