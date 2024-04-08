@@ -1,10 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.DependencyInjection;
-using ImageConverterPlus.Controls;
 using ImageConverterPlus.Services;
-using ImageConverterPlus.ViewModels;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,8 +29,7 @@ namespace ImageConverterPlus.Views
                 typeof(double),
                 typeof(ImageMoveScaleControl),
                 new PropertyMetadata(
-                    1.0,
-                    ScalePropertyChanged));
+                    1.0));
 
         public static readonly DependencyProperty ScaleAnimProperty =
             DependencyProperty.Register(
@@ -59,8 +55,7 @@ namespace ImageConverterPlus.Views
                 typeof(Point),
                 typeof(ImageMoveScaleControl),
                 new PropertyMetadata(
-                    new Point(0, 0),
-                    null));
+                    new Point(0, 0)));
 
         public static readonly DependencyProperty OffsetAnimProperty =
             DependencyProperty.Register(
@@ -70,32 +65,6 @@ namespace ImageConverterPlus.Views
                 new PropertyMetadata(
                     new Point(0, 0),
                     OffsetAnimPropertyChanged));
-
-        public static readonly RoutedEvent ScaleChangedEvent =
-            EventManager.RegisterRoutedEvent(
-                nameof(ScaleChanged),
-                RoutingStrategy.Bubble,
-                typeof(RoutedPropertyChangedEventHandler<double>),
-                typeof(ImageMoveScaleControl));
-
-        public static readonly RoutedEvent OffsetChangedEvent =
-            EventManager.RegisterRoutedEvent(
-                nameof(OffsetChanged),
-                RoutingStrategy.Bubble,
-                typeof(RoutedPropertyChangedEventHandler<Point>),
-                typeof(ImageMoveScaleControl));
-
-        public event RoutedPropertyChangedEventHandler<double> ScaleChanged
-        {
-            add => AddHandler(ScaleChangedEvent, value);
-            remove => RemoveHandler(ScaleChangedEvent, value);
-        }
-
-        public event RoutedPropertyChangedEventHandler<Point> OffsetChanged
-        {
-            add => AddHandler(OffsetChangedEvent, value);
-            remove => RemoveHandler(OffsetChangedEvent, value);
-        }
 
         public double Scale
         {
@@ -131,8 +100,6 @@ namespace ImageConverterPlus.Views
         public ImageMoveScaleControl()
         {
             InitializeComponent();
-            ScaleChanged += OnScaleChanged;
-            OffsetChanged += OnOffsetChanged;
         }
 
         private static void ScaleAnimPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -147,19 +114,6 @@ namespace ImageConverterPlus.Views
             mat.M22 = newScale;
             mt.Matrix = mat;
         }
-
-        private static void ScalePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            RoutedPropertyChangedEventArgs<double> args = new RoutedPropertyChangedEventArgs<double>((double)e.OldValue, (double)e.NewValue)
-            {
-                RoutedEvent = ScaleChangedEvent,
-                Source = d,
-            };
-
-            ((ImageMoveScaleControl)d).RaiseEvent(args);
-        }
-
-        protected virtual void OnScaleChanged(object sender, RoutedPropertyChangedEventArgs<double> e) { }
 
         private static void OffsetAnimPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
@@ -177,17 +131,8 @@ namespace ImageConverterPlus.Views
         private static void OffsetPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             ImageMoveScaleControl source = (ImageMoveScaleControl)d;
-            RoutedPropertyChangedEventArgs<Point> args = new RoutedPropertyChangedEventArgs<Point>((Point)e.OldValue, (Point)e.NewValue)
-            {
-                RoutedEvent = OffsetChangedEvent,
-                Source = d,
-            };
-
-            source.RaiseEvent(args);
             source.OffsetRatio = new Point(source.Offset.X / source.ActualWidth, source.Offset.Y / source.ActualHeight);
         }
-
-        protected virtual void OnOffsetChanged(object sender, RoutedPropertyChangedEventArgs<Point> e) { }
 
         public Point ClampOffset(Point offset, double scale)
         {
