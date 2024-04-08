@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using RotateFlipType = System.Drawing.RotateFlipType;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
+using CommunityToolkit.Mvvm.Input;
 
 namespace ImageConverterPlus.ViewModels
 {
@@ -178,13 +179,13 @@ namespace ImageConverterPlus.ViewModels
 
         public MainWindowViewModel()
         {
-            BrowseFilesCommand = new ButtonCommand(ExecuteBrowseFilesCommand);
-            ZoomToFitCommand = new ButtonCommand(ExecuteZoomToFitCommand);
-            ZoomToFillCommand = new ButtonCommand(ExecuteZoomToFillCommand);
-            ResetZoomAndPanCommand = new ButtonCommand(ExecuteResetZoomAndPanCommand);
-            ImageTransformCommand = new ButtonCommand(ExecuteImageTransformCommand);
-            CopyImageToClipboardCommand = new ButtonCommand(ExecuteCopyImageToClipboardCommand);
-            ConvertFromClipboardCommand = new ButtonCommand(ExecuteConvertFromClipboardCommand);
+            BrowseFilesCommand = new RelayCommand(ExecuteBrowseFiles);
+            ZoomToFitCommand = new RelayCommand(ExecuteZoomToFit);
+            ZoomToFillCommand = new RelayCommand(ExecuteZoomToFill);
+            ResetZoomAndPanCommand = new RelayCommand(ExecuteResetZoomAndPan);
+            ImageTransformCommand = new RelayCommand<RotateFlipType>(ExecuteImageTransform, i => i is not RotateFlipType.RotateNoneFlipNone);
+            CopyImageToClipboardCommand = new RelayCommand<object>(ExecuteCopyImageToClipboard);
+            ConvertFromClipboardCommand = new RelayCommand(ExecuteConvertFromClipboard);
 
             colorDepth = BitDepth.Color3;
             enableDithering = true;
@@ -232,40 +233,37 @@ namespace ImageConverterPlus.ViewModels
             }
         }
 
-        private void ExecuteBrowseFilesCommand(object? param)
+        private void ExecuteBrowseFiles()
         {
             view.BrowseImageFiles();
         }
 
-        private void ExecuteZoomToFitCommand(object? param)
+        private void ExecuteZoomToFit()
         {
             view.ZoomToFit();
         }
 
-        private void ExecuteZoomToFillCommand(object? param)
+        private void ExecuteZoomToFill()
         {
             view.ZoomToFill();
         }
 
-        private void ExecuteResetZoomAndPanCommand(object? param)
+        private void ExecuteResetZoomAndPan()
         {
             view.ResetZoomAndPan(true);
         }
 
-        private void ExecuteImageTransformCommand(object? param)
+        private void ExecuteImageTransform(RotateFlipType type)
         {
-            if (param is RotateFlipType type)
-            {
-                view.TransformImage(type);
-            }
+            view.TransformImage(type);
         }
 
-        private void ExecuteCopyImageToClipboardCommand(object? param)
+        private void ExecuteCopyImageToClipboard(object? param)
         {
             view.CopyToClipClicked(param);
         }
 
-        private void ExecuteConvertFromClipboardCommand(object? param)
+        private void ExecuteConvertFromClipboard()
         {
             view.PasteFromClipboard();
         }
