@@ -11,7 +11,6 @@
         xmlns:behaviors="clr-namespace:ImageConverterPlus.Behaviors"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
-        Title="SE Image Converter+"
         Height="450"
         Width="750"
         MinHeight="450"
@@ -30,6 +29,13 @@
         ContextMenuService.IsEnabled="False"
         RenderOptions.BitmapScalingMode="HighQuality"
         d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
+
+    <Window.Title>
+        <MultiBinding StringFormat="{}{0} v{1}">
+            <Binding Source="{x:Static local:App.AppName}" />
+            <Binding Source="{x:Static local:App.AppVersion}" />
+        </MultiBinding>
+    </Window.Title>
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" />
@@ -70,7 +76,7 @@
                 </Grid.RowDefinitions>
 
                 <!--big title-->
-                <Label Grid.Row="0" x:Name="AppBigTitle" Content="SE Image Converter+" FontSize="23"
+                <Label Grid.Row="0" x:Name="AppBigTitle" Content="{x:Static local:App.AppName}" FontSize="23"
                        HorizontalAlignment="Center" VerticalAlignment="Bottom" Foreground="White" />
 
                 <!--Menu-->
@@ -131,7 +137,7 @@
                     </Rectangle.ContextMenu>
                 </Rectangle>
                 <!--"Image Preview" text-->
-                <TextBlock Text="Preview" Foreground="White" Visibility="{Binding PreviewImageLoaded,Converter={StaticResource BooleanToVisibilityInverter}}"
+                <TextBlock Text="Preview" Foreground="White" Visibility="{Binding PreviewImageLoaded,Converter={StaticResource InvertedBooleanToVisibility}}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
                 <Grid Visibility="{Binding PreviewImageLoaded,Converter={StaticResource BooleanToVisibilityConverter}}">
                     <views:ImageMoveScaleControl x:Name="previewNew" Background="#000000"

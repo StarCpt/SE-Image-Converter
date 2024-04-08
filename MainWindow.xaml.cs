@@ -46,9 +46,6 @@ namespace ImageConverterPlus
             convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
             convMgr.SourceImageChanged += ConvMgr_SourceImageChanged;
 
-            this.Title = $"{App.AppName} v{App.AppVersion}";
-            AppBigTitle.Content = App.AppName;
-
             UpdatePreviewGrid();
 
             App.Log.Log("MainWindow initialized");
