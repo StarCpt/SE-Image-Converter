@@ -25,14 +25,14 @@ namespace ImageConverterPlus.ViewModels
             WideLCDPanelTall = 4,
         }
 
-        private static MainWindow view => MainWindow.Static; //temp
+        private static MainWindow _view => MainWindow.Static; //temp
 
         public bool EnableDithering
         {
-            get => enableDithering;
+            get => _enableDithering;
             set
             {
-                if (SetValue(ref enableDithering, value))
+                if (SetValue(ref _enableDithering, value))
                 {
                     ConvertManager.Instance.EnableDithering = value;
                 }
@@ -40,10 +40,10 @@ namespace ImageConverterPlus.ViewModels
         }
         public BitDepth ColorDepth
         {
-            get => colorDepth;
+            get => _colorDepth;
             set
             {
-                if (SetValue(ref colorDepth, value))
+                if (SetValue(ref _colorDepth, value))
                 {
                     ConvertManager.Instance.BitDepth = value;
                 }
@@ -51,52 +51,52 @@ namespace ImageConverterPlus.ViewModels
         }
         public InterpolationMode InterpolationMode
         {
-            get => interpolationMode;
+            get => _interpolationMode;
             set
             {
-                if (SetValue(ref interpolationMode, value))
+                if (SetValue(ref _interpolationMode, value))
                 {
                     ConvertManager.Instance.Interpolation = value;
                 }
             }
         }
-        public LCDPresetType SelectedLCD { get => selectedLCD; set => SetValue(ref selectedLCD, value); }
+        public LCDPresetType SelectedLCD { get => _selectedLCD; set => SetValue(ref _selectedLCD, value); }
         public int LCDWidth
         {
-            get => lcdWidth;
+            get => _lcdWidth;
             set
             {
-                if (SetValue(ref lcdWidth, value))
+                if (SetValue(ref _lcdWidth, value))
                 {
                     ConvertManager.Instance.ConvertedSize = new Int32Size(value, LCDHeight);
-                    view.LCDSizeChanged(this, value, LCDHeight);
+                    _view.LCDSizeChanged(this, value, LCDHeight);
                 }
             }
         }
         public int LCDHeight
         {
-            get => lcdHeight;
+            get => _lcdHeight;
             set
             {
-                if (SetValue(ref lcdHeight, value))
+                if (SetValue(ref _lcdHeight, value))
                 {
                     ConvertManager.Instance.ConvertedSize = new Int32Size(LCDWidth, value);
-                    view.LCDSizeChanged(this, LCDWidth, value);
+                    _view.LCDSizeChanged(this, LCDWidth, value);
                 }
             }
         }
         public Int32Size ImageSplitSize
         {
-            get => imageSplitSize;
+            get => _imageSplitSize;
             set
             {
-                bool widthChanged = imageSplitSize.Width != value.Width;
-                bool heightChanged = imageSplitSize.Height != value.Height;
+                bool widthChanged = _imageSplitSize.Width != value.Width;
+                bool heightChanged = _imageSplitSize.Height != value.Height;
 
-                if (SetValue(ref imageSplitSize, value))
+                if (SetValue(ref _imageSplitSize, value))
                 {
                     ConvertManager.Instance.ImageSplitSize = value;
-                    view.ImageSplitSizeChanged(this, value);
+                    _view.ImageSplitSizeChanged(this, value);
                 }
 
                 if (widthChanged)
@@ -116,25 +116,25 @@ namespace ImageConverterPlus.ViewModels
             get => ImageSplitSize.Height;
             set => ImageSplitSize = new Int32Size(ImageSplitWidth, value);
         }
-        public bool ShowPreviewGrid { get => showPreviewGrid; set => SetValue(ref showPreviewGrid, value); }
-        public bool IsMouseOverScrollableTextBox { get => isMouseOverScrollableTextBox; set => SetValue(ref isMouseOverScrollableTextBox, value); }
+        public bool ShowPreviewGrid { get => _showPreviewGrid; set => SetValue(ref _showPreviewGrid, value); }
+        public bool IsMouseOverScrollableTextBox { get => _isMouseOverScrollableTextBox; set => SetValue(ref _isMouseOverScrollableTextBox, value); }
         public ImageSource PreviewImageSource
         {
-            get => previewImageSource;
+            get => _previewImageSource;
             set
             {
-                if (SetValue(ref previewImageSource, value))
+                if (SetValue(ref _previewImageSource, value))
                 {
                     RaisePropertyChanged(nameof(PreviewImageLoaded));
                 }
             }
         }
-        public bool PreviewImageLoaded => previewImageSource != null;
+        public bool PreviewImageLoaded => _previewImageSource != null;
         public double PreviewScale
         {
             set
             {
-                if (SetValue(ref previewScale, value))
+                if (SetValue(ref _previewScale, value))
                 {
                     ConvertManager.Instance.Scale = value;
                 }
@@ -144,7 +144,7 @@ namespace ImageConverterPlus.ViewModels
         {
             set
             {
-                if (SetValue(ref previewOffset, value))
+                if (SetValue(ref _previewOffset, value))
                 {
                     ConvertManager.Instance.TopLeftRatio = value;
                 }
@@ -164,18 +164,18 @@ namespace ImageConverterPlus.ViewModels
         public ICommand CopyImageToClipboardCommand { get; }
         public ICommand ConvertFromClipboardCommand { get; }
 
-        private bool enableDithering;
-        private BitDepth colorDepth;
-        private InterpolationMode interpolationMode;
-        private LCDPresetType selectedLCD;
-        private int lcdWidth;
-        private int lcdHeight;
-        private bool showPreviewGrid;
-        private Int32Size imageSplitSize;
-        private bool isMouseOverScrollableTextBox;
-        private ImageSource previewImageSource;
-        private double previewScale;
-        private System.Windows.Point previewOffset;
+        private bool _enableDithering;
+        private BitDepth _colorDepth;
+        private InterpolationMode _interpolationMode;
+        private LCDPresetType _selectedLCD;
+        private int _lcdWidth;
+        private int _lcdHeight;
+        private bool _showPreviewGrid;
+        private Int32Size _imageSplitSize;
+        private bool _isMouseOverScrollableTextBox;
+        private ImageSource _previewImageSource;
+        private double _previewScale;
+        private System.Windows.Point _previewOffset;
 
         public MainWindowViewModel()
         {
@@ -187,15 +187,15 @@ namespace ImageConverterPlus.ViewModels
             CopyImageToClipboardCommand = new RelayCommand<object>(ExecuteCopyImageToClipboard);
             ConvertFromClipboardCommand = new RelayCommand(ExecuteConvertFromClipboard);
 
-            colorDepth = BitDepth.Color3;
-            enableDithering = true;
-            interpolationMode = InterpolationMode.HighQualityBicubic;
-            selectedLCD = LCDPresetType.LCDPanel;
-            lcdWidth = 178;
-            lcdHeight = 178;
-            showPreviewGrid = false;
-            imageSplitSize = new Int32Size(1, 1);
-            isMouseOverScrollableTextBox = false;
+            _colorDepth = BitDepth.Color3;
+            _enableDithering = true;
+            _interpolationMode = InterpolationMode.HighQualityBicubic;
+            _selectedLCD = LCDPresetType.LCDPanel;
+            _lcdWidth = 178;
+            _lcdHeight = 178;
+            _showPreviewGrid = false;
+            _imageSplitSize = new Int32Size(1, 1);
+            _isMouseOverScrollableTextBox = false;
 
             ConvertManager.Instance.PropertyChanged += ConvertManager_PropertyChanged;
             App.DebugStateChanged += (sender, e) => RaisePropertyChanged(nameof(Debug));
@@ -235,37 +235,37 @@ namespace ImageConverterPlus.ViewModels
 
         private void ExecuteBrowseFiles()
         {
-            view.BrowseImageFiles();
+            _view.BrowseImageFiles();
         }
 
         private void ExecuteZoomToFit()
         {
-            view.ZoomToFit();
+            _view.ZoomToFit();
         }
 
         private void ExecuteZoomToFill()
         {
-            view.ZoomToFill();
+            _view.ZoomToFill();
         }
 
         private void ExecuteResetZoomAndPan()
         {
-            view.ResetZoomAndPan(true);
+            _view.ResetZoomAndPan(true);
         }
 
         private void ExecuteImageTransform(RotateFlipType type)
         {
-            view.TransformImage(type);
+            _view.TransformImage(type);
         }
 
         private void ExecuteCopyImageToClipboard(object? param)
         {
-            view.CopyToClipClicked(param);
+            _view.CopyToClipClicked(param);
         }
 
         private void ExecuteConvertFromClipboard()
         {
-            view.PasteFromClipboard();
+            _view.PasteFromClipboard();
         }
     }
 }
