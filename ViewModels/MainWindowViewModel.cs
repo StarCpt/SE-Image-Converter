@@ -89,11 +89,6 @@ namespace ImageConverterPlus.ViewModels
             get => _convertManager.TopLeftRatio;
             set => _convertManager.TopLeftRatio = value;
         }
-        public bool Debug
-        {
-            get => ((App)App.Current).Debug;
-            set => ((App)App.Current).Debug = value;
-        }
 
         public ICommand BrowseFilesCommand { get; }
         public ICommand ZoomToFitCommand { get; }
@@ -116,8 +111,6 @@ namespace ImageConverterPlus.ViewModels
             ImageTransformCommand = new RelayCommand<RotateFlipType>(ExecuteImageTransform, i => i is not RotateFlipType.RotateNoneFlipNone);
             CopyImageToClipboardCommand = new RelayCommand<object>(ExecuteCopyImageToClipboard);
             ConvertFromClipboardCommand = new RelayCommand(ExecuteConvertFromClipboard);
-
-            App.DebugStateChanged += (sender, e) => this.RaisePropertyChanged(nameof(Debug));
 
             this.WhenAnyValue(x => x.PreviewImageSource)
                 .Skip(1)

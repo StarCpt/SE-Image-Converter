@@ -19,7 +19,6 @@ namespace ImageConverterPlus.ViewModels
         public bool IsMaximized { get; set; }
         [Reactive]
         public bool CanMaximize { get; set; }
-        public bool Debug => ((App)App.Current).Debug;
 
         public ICommand LoadedCommand { get; }
         public ICommand MinimizeCommand { get; }
@@ -40,8 +39,6 @@ namespace ImageConverterPlus.ViewModels
             CloseCommand = new RelayCommand(ExecuteClose);
             OpenLogsCommand = new RelayCommand(ExecuteOpenLogs);
             OpenAppDirectoryCommand = new RelayCommand(ExecuteOpenAppDirectory);
-
-            App.DebugStateChanged += (sender, e) => this.RaisePropertyChanged(nameof(Debug));
         }
 
         private void ExecuteLoaded(Window win)

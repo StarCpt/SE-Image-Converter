@@ -81,7 +81,6 @@ namespace ImageConverterPlus.Controls
 
         private void OnPasting(object sender, DataObjectPastingEventArgs e)
         {
-            //var debug = e.SourceDataObject.GetFormats(true);
             if (e.SourceDataObject.GetData(DataFormats.StringFormat, true) is not string data || !Helpers.IsNumeric(data))
             {
                 e.CancelCommand();

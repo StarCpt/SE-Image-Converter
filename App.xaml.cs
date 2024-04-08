@@ -22,23 +22,7 @@ namespace ImageConverterPlus
         public static string AppVersion { get; } = "1.0 Beta2";
         public static string AppName { get; } = "SE Image Converter+";
 
-        public static event RoutedPropertyChangedEventHandler<bool>? DebugStateChanged;
-
         public static LogService Log => Ioc.Default.GetRequiredService<LogService>();
-        public bool Debug
-        {
-            get => debug;
-            set
-            {
-                if (debug != value)
-                {
-                    debug = value;
-                    DebugStateChanged?.Invoke(this, new RoutedPropertyChangedEventArgs<bool>(!value, value));
-                }
-            }
-        }
-
-        private bool debug = false;
 
         public App()
         {

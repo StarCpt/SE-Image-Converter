@@ -147,8 +147,6 @@ namespace ImageConverterPlus.Views
             mat.M11 = newScale;
             mat.M22 = newScale;
             mt.Matrix = mat;
-
-            MainWindow.Static.debug1.Text = newScale.ToString("0.0000");
         }
 
         private static void ScalePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -175,9 +173,6 @@ namespace ImageConverterPlus.Views
             mat.OffsetX = newOffset.X;
             mat.OffsetY = newOffset.Y;
             mt.Matrix = mat;
-
-            if (MainWindow.Static?.debug2?.Text != null)
-                MainWindow.Static.debug2.Text = $"{newOffset.X:0.0000}, {newOffset.Y:0.0000}";
         }
 
         private static void OffsetPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -247,7 +242,6 @@ namespace ImageConverterPlus.Views
                     SetMoveOrigin();
                 }
                 SetOffsetNoAnim(ClampOffset(new Point(diff.X + imageMoveOrigin.X, diff.Y + imageMoveOrigin.Y), Scale));
-                //MainWindow.Static.debug3.Text = $"{diff.X:0.0000}, {diff.Y:0.0000}";
             }
         }
 
