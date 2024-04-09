@@ -6,14 +6,14 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- FluentWPF Controls -->
+                <ResourceDictionary Source="pack://application:,,,/FluentWPF;component/Styles/Controls.xaml" />
+                
                 <ResourceDictionary Source="\Themes\Generic.xaml" />
                 <ResourceDictionary Source="\Converters\Converters.xaml" />
                 
                 <ResourceDictionary Source="\Styles\TransparentButtons.xaml" />
                 <ResourceDictionary Source="\Styles\ScrollViewer.xaml" />
-                
-                <!-- FluentWPF Controls -->
-                <ResourceDictionary Source="pack://application:,,,/FluentWPF;component/Styles/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
