@@ -3,12 +3,17 @@
                     xmlns:local="clr-namespace:ImageConverterPlus.Converters">
 
     <local:BooleanInverter x:Key="BooleanInverter" />
+    
     <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
     <local:InvertedBooleanToVisibility x:Key="InvertedBooleanToVisibility" />
+
+    <local:EqualityConverter x:Key="EqualityConverter" />
+    <local:InequalityConverter x:Key="InequalityConverter" />
     
-    <local:EqualityToVisibilityConverter x:Key="EqualityToVisibility" />
-    <local:InvertedEqualityToVisibilityConverter x:Key="InequalityToVisibility" />
-    
-    <local:EqualityConverter x:Key="EqualityToBoolean" />
-    <local:InvertedEqualityConverter x:Key="InvertedEqualityToBoolean" />
+    <local:IsNullConverter x:Key="IsNullConverter" />
+    <local:IsNotNullConverter x:Key="IsNotNullConverter" />
+
+    <local:MaxValueConverter x:Key="MaxValueConverter" />
+    <local:MinValueConverter x:Key="MinValueConverter" />
+
 </ResourceDictionary>

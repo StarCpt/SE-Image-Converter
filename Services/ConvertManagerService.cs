@@ -27,7 +27,11 @@ namespace ImageConverterPlus.Services
         [Reactive]
         public Int32Size ConvertedSize { get; set; } = new Int32Size(178, 178);
         [Reactive]
-        public Int32Size ImageSplitSize { get; set; } = new Int32Size(1, 1);
+        public Int32Size ImageSplitSize
+        {
+            get => _imageSplitSize;
+            set => this.RaiseAndSetIfChanged(ref _imageSplitSize, new Int32Size(Math.Max(value.Width, 1), Math.Max(value.Height, 1)));
+        }
         [Reactive]
         public Int32Point SelectedSplitPos { get; set; } = new Int32Point(0, 0);
         /// <summary>zoom</summary>
@@ -84,6 +88,8 @@ namespace ImageConverterPlus.Services
         [Reactive]
         public double Delay { get; set; } = 0;
 
+        private Int32Size _imageSplitSize = new Int32Size(1, 1);
+
         private CancellationTokenSource? processImageTaskTokenSource;
         private CancellationTokenSource? convertImageTaskTokenSource;
 
@@ -103,11 +109,18 @@ namespace ImageConverterPlus.Services
                     x => x.BitDepth,
                     x => x.EnableDithering,
                     x => x.Interpolation,
-                    x => x.ConvertedSize,
-                    x => x.ImageSplitSize)
+                    x => x.ConvertedSize)
                 .Skip(1)
                 .Subscribe(i =>
                 {
+                    ProcessedImageFull = null;
+                    ProcessImageNextInterval();
+                });
+            this.WhenAnyValue(x => x.ImageSplitSize)
+                .Skip(1)
+                .Subscribe(i =>
+                {
+                    SelectedSplitPos = new Int32Point(Math.Min(SelectedSplitPos.X, i.Width - 1), Math.Min(SelectedSplitPos.Y, i.Height - 1));
                     ProcessedImageFull = null;
                     ProcessImageNextInterval();
                 });

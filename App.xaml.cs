@@ -36,6 +36,7 @@ namespace ImageConverterPlus
             base.OnStartup(e);
 
             MainWindow = Ioc.Default.GetRequiredService<MainWindow>();
+            MainWindow.DataContext = Ioc.Default.GetRequiredService<MainWindowViewModel>();
             MainWindow.Show();
         }
 

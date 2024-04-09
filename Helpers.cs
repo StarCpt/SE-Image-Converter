@@ -96,7 +96,7 @@ namespace ImageConverterPlus
             }
             finally
             {
-                DeleteObject(hBitmap);
+                ExternalMethods.DeleteObject(hBitmap);
                 
                 if (disposeBitmap)
                     bitmap.Dispose();
@@ -145,36 +145,34 @@ namespace ImageConverterPlus
         }
 
         public static readonly ImmutableArray<string> SupportedImageFileTypes =
-            ImmutableArray.Create("png", "jpg", "jpeg", "jfif", "tiff", "bmp", "gif", "ico", "webp");
+            [ "png", "jpg", "jpeg", "jfif", "tiff", "bmp", "gif", "ico", "webp" ];
 
         public static IsFileSupportedEnum IsImageFileSupported(string file)
         {
             try
             {
-                string fileExtension = file.Split('.').Last();
+                string? fileExtension = Path.GetExtension(file)?[1..];
 
-                if (SupportedImageFileTypes.Any(i => i.Equals(fileExtension, StringComparison.OrdinalIgnoreCase)))
-                {
-                    if (fileExtension.Equals("webp", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return IsFileSupportedEnum.Webp;
-                    }
-                    else
-                    {
-                        return IsFileSupportedEnum.Supported;
-                    }
-                }
-                else
+                if (string.IsNullOrWhiteSpace(fileExtension))
                 {
                     return IsFileSupportedEnum.NotSupported;
+                }
+                else if (fileExtension.Equals("webp", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    return IsFileSupportedEnum.Webp;
+                }
+                else if (fileExtension.EqualsAny(StringComparison.CurrentCultureIgnoreCase, SupportedImageFileTypes))
+                {
+                    return IsFileSupportedEnum.Supported;
                 }
             }
             catch (Exception e)
             {
                 App.Log.Log($"Caught exception at MainWindow.IsFileTypeSupported(string) ({file})");
                 App.Log.Log(e.ToString());
-                return IsFileSupportedEnum.NotSupported;
             }
+
+            return IsFileSupportedEnum.NotSupported;
         }
 
         public static BitmapSource TransformBitmap(RotateFlipType type, BitmapSource bitmap)
@@ -194,8 +192,5 @@ namespace ImageConverterPlus
             }
             return bitmap;
         }
-
-        [DllImport("gdi32.dll")]
-        static extern bool DeleteObject(IntPtr hBitmap);
     }
 }

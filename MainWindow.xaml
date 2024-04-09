@@ -8,7 +8,7 @@
         xmlns:vm="clr-namespace:ImageConverterPlus.ViewModels"
         xmlns:controls="clr-namespace:ImageConverterPlus.Controls"
         xmlns:fw="clr-namespace:SourceChord.FluentWPF;assembly=FluentWPF"
-        xmlns:behaviors="clr-namespace:ImageConverterPlus.Behaviors"
+        xmlns:bv="clr-namespace:ImageConverterPlus.Behaviors"
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
         Height="450"
@@ -28,17 +28,27 @@
         WindowStyle="None"
         ContextMenuService.IsEnabled="False"
         RenderOptions.BitmapScalingMode="HighQuality"
-        d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}">
+        d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
+        x:Name="win">
 
     <i:Interaction.Triggers>
-        <i:DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
-            <i:ControlStoryboardAction>
-                <i:ControlStoryboardAction.Storyboard>
-                    <Storyboard Storyboard.Target="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Storyboard.TargetProperty="BorderThickness">
-                        <ThicknessAnimation Duration="0" To="0" />
-                    </Storyboard>
-                </i:ControlStoryboardAction.Storyboard>
-            </i:ControlStoryboardAction>
+        <i:DataTrigger
+            Binding="{
+                Binding WindowState,
+                RelativeSource={RelativeSource AncestorType=Window},
+                Converter={StaticResource EqualityConverter},
+                ConverterParameter={x:Static WindowState.Maximized}}"
+            Value="True">
+            <i:ChangePropertyAction PropertyName="BorderThickness" TargetName="win" Value="0" />
+        </i:DataTrigger>
+        <i:DataTrigger
+            Binding="{
+                Binding WindowState,
+                RelativeSource={RelativeSource AncestorType=Window},
+                Converter={StaticResource EqualityConverter},
+                ConverterParameter={x:Static WindowState.Maximized}}"
+            Value="False">
+            <i:ChangePropertyAction PropertyName="BorderThickness" TargetName="win" Value="0.5" />
         </i:DataTrigger>
     </i:Interaction.Triggers>
 
@@ -58,7 +68,7 @@
     </Window.Resources>
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="32" />
+        <WindowChrome CaptionHeight="29" />
     </WindowChrome.WindowChrome>
 
     <DockPanel>
@@ -66,7 +76,6 @@
             <views:WindowTitleBar.Style>
                 <Style TargetType="views:WindowTitleBar">
                     <Setter Property="Background" Value="#e6444444" />
-                    
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                             <Setter Property="Background" Value="#cd444444" />
@@ -88,8 +97,7 @@
                 </Style>
             </DockPanel.Style>
 
-            <Grid DockPanel.Dock="Left" Width="330"
-                  Margin="10,0,0,0" HorizontalAlignment="Center">
+            <Grid DockPanel.Dock="Left" Width="330" Margin="10,0,0,0" HorizontalAlignment="Center">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="54" />
                     <RowDefinition Height="*" />
@@ -102,9 +110,9 @@
 
                 <!--Menu-->
                 <ScrollViewer Grid.Row="1"
-                              behaviors:ScrollAnimationBehavior.IsEnabled="True"
-                              behaviors:ScrollAnimationBehavior.TimeDuration="00:00:00.10"
-                              behaviors:ScrollAnimationBehavior.PointsToScroll="40" 
+                              bv:ScrollAnimationBehavior.IsEnabled="True"
+                              bv:ScrollAnimationBehavior.TimeDuration="00:00:00.10"
+                              bv:ScrollAnimationBehavior.PointsToScroll="40" 
                               FocusVisualStyle="{x:Null}" Margin="0,5,-5,0" Padding="0,0,5,0"
                               VerticalScrollBarVisibility="Auto"
                               VerticalAlignment="Center">
@@ -153,34 +161,71 @@
                         </Button.Style>
                     </Button>
                     <Button Style="{StaticResource TransparentRoundedButton}"
-                            Content="Copy to Clipboard" IsEnabled="{Binding PreviewImageLoaded}"
-                            Width="145" Height="40" FontSize="15"
+                            IsEnabled="{Binding PreviewImageSource, Converter={StaticResource IsNotNullConverter}}"
+                            Content="Copy to Clipboard"
+                            FontSize="15"
+                            Width="145"
+                            Height="40"
                             Command="{Binding CopyImageToClipboardCommand}">
                     </Button>
                 </UniformGrid>
             </Grid>
 
-            <!--Background Color Rectangle-->
+            <!--Image Preview-->
             <Grid x:Name="PreviewContainerGrid" Margin="29.5,33.5" SizeChanged="PreviewContainerGrid_SizeChanged">
-                <Rectangle x:Name="ImagePreviewBackground" Fill="#101010" 
-                           HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.25"
-                           AllowDrop="True" PreviewDrop="Preview_PreviewDrop"
-                           Stretch="Uniform" ToolTip="Converted Image Preview">
+                <!--Background Color Rectangle-->
+                <Rectangle
+                    Fill="#40101010"
+                    ToolTip="Converted Image Preview"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    AllowDrop="True"
+                    bv:DragDropBehavior.Command="{Binding ImageDropCommand}">
                     <Rectangle.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="Convert From Clipboard" Command="{Binding ConvertFromClipboardCommand}"
-                                      ToolTip="If the clipboard contains an image,&#x0a;converts it with currently selected settings">
+                            <MenuItem
+                                Header="Convert From Clipboard"
+                                ToolTip="If the clipboard contains an image,&#x0a;converts it with currently selected settings"
+                                Command="{Binding ConvertFromClipboardCommand}">
                             </MenuItem>
                         </ContextMenu>
                     </Rectangle.ContextMenu>
+
+                    <Rectangle.Width>
+                        <MultiBinding Converter="{StaticResource MinValueConverter}" Mode="OneWay">
+                            <Binding Path="ActualWidth" ElementName="PreviewContainerGrid" />
+                            <Binding Path="ActualHeight" ElementName="PreviewContainerGrid" />
+                        </MultiBinding>
+                    </Rectangle.Width>
+
+                    <Rectangle.Height>
+                        <MultiBinding Converter="{StaticResource MinValueConverter}" Mode="OneWay">
+                            <Binding Path="ActualWidth" ElementName="PreviewContainerGrid" />
+                            <Binding Path="ActualHeight" ElementName="PreviewContainerGrid" />
+                        </MultiBinding>
+                    </Rectangle.Height>
                 </Rectangle>
+                
                 <!--"Image Preview" text-->
-                <TextBlock Text="Preview" Foreground="White" Visibility="{Binding PreviewImageLoaded,Converter={StaticResource InvertedBooleanToVisibility}}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,315,0,0" FontSize="15" />
-                <Grid Visibility="{Binding PreviewImageLoaded,Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <views:ImageMoveScaleControl x:Name="previewNew" Background="#000000"
-                                                 Scale="{Binding PreviewScale,Mode=OneWayToSource}"
-                                                 OffsetRatio="{Binding PreviewOffsetRatio,Mode=OneWayToSource}">
+                <TextBlock
+                    Text="Preview"
+                    FontSize="15"
+                    Foreground="White"
+                    Visibility="{Binding PreviewImageSource, Converter={StaticResource IsNullConverter}}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="0,315,0,0" />
+                
+                <!--Preview LCD Background (black)-->
+                <Grid Visibility="{Binding PreviewImageSource, Converter={StaticResource IsNotNullConverter}}">
+                    <!--Actual Image Control-->
+                    <views:ImageMoveScaleControl
+                        x:Name="previewNew"
+                        Background="#000000"
+                        Scale="{Binding PreviewScale,Mode=OneWayToSource}"
+                        OffsetRatio="{Binding PreviewOffsetRatio,Mode=OneWayToSource}"
+                        AllowDrop="True"
+                        bv:DragDropBehavior.Command="{Binding ImageDropCommand}">
                         <views:ImageMoveScaleControl.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="Copy to Clipboard" Command="{Binding CopyImageToClipboardCommand}" />
@@ -189,13 +234,17 @@
                             </ContextMenu>
                         </views:ImageMoveScaleControl.ContextMenu>
                     </views:ImageMoveScaleControl>
+                    
+                    <!--Image Split Grid-->
                     <UniformGrid
                         x:Name="PreviewGrid"
-                        Columns="{Binding ImageSplitSize.Width, Mode=OneWay}"
-                        Rows="{Binding ImageSplitSize.Height, Mode=OneWay}"
-                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                        PreviewDrop="Preview_PreviewDrop" AllowDrop="True"
-                        Visibility="{Binding ShowPreviewGrid,Converter={StaticResource BooleanToVisibilityConverter}}"
+                        Columns="{Binding ImageSplitWidth, Mode=OneWay}"
+                        Rows="{Binding ImageSplitHeight, Mode=OneWay}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        AllowDrop="True"
+                        bv:DragDropBehavior.Command="{Binding ImageDropCommand}"
+                        Visibility="{Binding ShowPreviewGrid, Converter={StaticResource BooleanToVisibilityConverter}}"
                         Width="{Binding ActualWidth,ElementName=previewNew}"
                         Height="{Binding ActualHeight,ElementName=previewNew}" />
                 </Grid>

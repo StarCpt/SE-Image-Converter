@@ -35,23 +35,11 @@
             <TextBlock Text="Split Image" Foreground="#ffffff" TextAlignment="Center" Margin="0,2,0,0" />
             
             <StackPanel Orientation="Horizontal" Margin="0,9,0,0" HorizontalAlignment="Center">
-                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitSize.Width, Mode=OneWay}" ToolTip="Width" ContextMenu="{x:Null}">
-                    <i:Interaction.Triggers>
-                        <i:DataStoreChangedTrigger Binding="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}">
-                            <i:InvokeCommandAction Command="{Binding SetImageSplitWidthCommand}" CommandParameter="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}" />
-                        </i:DataStoreChangedTrigger>
-                    </i:Interaction.Triggers>
-                </controls:ScrollablePositiveIntegerTextBox>
-                
+                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitWidth}" ToolTip="Width" ContextMenu="{x:Null}" />
+
                 <TextBlock Text="by" Margin="10,2,10,0" Foreground="DarkGray" />
 
-                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitSize.Height, Mode=OneWay}" ToolTip="Height" ContextMenu="{x:Null}" >
-                    <i:Interaction.Triggers>
-                        <i:DataStoreChangedTrigger Binding="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}">
-                            <i:InvokeCommandAction Command="{Binding SetImageSplitHeightCommand}" CommandParameter="{Binding Value, RelativeSource={RelativeSource AncestorType=controls:ScrollablePositiveIntegerTextBox}}" />
-                        </i:DataStoreChangedTrigger>
-                    </i:Interaction.Triggers>
-                </controls:ScrollablePositiveIntegerTextBox>
+                <controls:ScrollablePositiveIntegerTextBox Value="{Binding ImageSplitHeight}" ToolTip="Height" ContextMenu="{x:Null}" />
             </StackPanel>
                 
             <ToggleButton Style="{StaticResource ShowGridToggleButton}"

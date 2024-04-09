@@ -22,52 +22,6 @@ namespace ImageConverterPlus
     {
         private double PreviewContainerGridSize => PreviewContainerGrid != null ? Math.Min(PreviewContainerGrid.ActualWidth, PreviewContainerGrid.ActualHeight) : 0d;
 
-        private void Preview_PreviewDrop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-            {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-                foreach (string file in files)
-                {
-                    if (Helpers.TryLoadImage(file, out Bitmap? result) && result is not null)
-                    {
-                        convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
-                        convMgr.ImageSplitSize = new Int32Size(1, 1);
-                        convMgr.ProcessImage(delegate
-                        {
-                            ResetZoomAndPan(false);
-                            DataContext.CurrentImagePath = System.IO.Path.GetFileName(file);
-                            DataContext.CurrentImagePathLong = file;
-                            _logger.Log("Image Drag & Dropped (FileDrop)");
-                        });
-                        return;
-                    }
-                }
-
-                //when file type doesnt match
-                dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
-            }
-            else if (e.Data.GetDataPresent(DataFormats.Bitmap))
-            {
-                Bitmap image = (Bitmap)e.Data.GetData(DataFormats.Bitmap);
-                convMgr.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
-                convMgr.ProcessImage(delegate
-                {
-                    ResetZoomAndPan(false);
-                    DataContext.CurrentImagePath = DataContext.CurrentImagePathLong = "Drag & Droped Image";
-                    _logger.Log("Image Drag & Dropped (Bitmap)");
-                });
-            }
-            else if (e.Data.GetDataPresent(DataFormats.Html))
-            {
-                _ = WebHelpers.HandleHtmlDropThreadAsync(e.Data, convMgr);
-            }
-            else
-            {
-                dialogService.ShowAsync(new MessageDialogViewModel("Error", "Clipboard does not contain any images"));
-            }
-        }
-
         public void ZoomToFit()
         {
             if (convMgr.SourceImageSize is Int32Size imgSize)
@@ -197,9 +151,6 @@ namespace ImageConverterPlus
         private void PreviewContainerGrid_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             UpdatePreviewContainerSize();
-
-            ImagePreviewBackground.Width = PreviewContainerGridSize;
-            ImagePreviewBackground.Height = PreviewContainerGridSize;
         }
     }
 }

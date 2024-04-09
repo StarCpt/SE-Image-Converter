@@ -61,16 +61,20 @@ namespace ImageConverterPlus.ViewModels
             get => _convertManager.ConvertedSize.Height;
             set => _convertManager.ConvertedSize = new Int32Size(LCDWidth, value);
         }
-        public Int32Size ImageSplitSize
+        public int ImageSplitWidth
         {
-            get => _convertManager.ImageSplitSize;
-            set => _convertManager.ImageSplitSize = value;
+            get => _convertManager.ImageSplitSize.Width;
+            set => _convertManager.ImageSplitSize = new Int32Size(value, ImageSplitHeight);
+        }
+        public int ImageSplitHeight
+        {
+            get => _convertManager.ImageSplitSize.Height;
+            set => _convertManager.ImageSplitSize = new Int32Size(ImageSplitWidth, value);
         }
         [Reactive]
         public bool ShowPreviewGrid { get; set; } = false;
         [Reactive]
         public ImageSource? PreviewImageSource { get; set; }
-        public bool PreviewImageLoaded => PreviewImageSource != null;
         public double PreviewScale
         {
             get => _convertManager.Scale;
@@ -96,8 +100,7 @@ namespace ImageConverterPlus.ViewModels
         public ICommand ConvertFromClipboardCommand { get; }
         public ICommand ResetImageSplitCommand { get; }
         public ICommand CopySplitImagePieceToClipboardCommand { get; }
-        public ICommand SetImageSplitWidthCommand { get; }
-        public ICommand SetImageSplitHeightCommand { get; }
+        public ICommand ImageDropCommand { get; }
 
         private readonly ConvertManagerService _convertManager;
         private readonly ClipboardService _clipService;
@@ -121,12 +124,7 @@ namespace ImageConverterPlus.ViewModels
             ConvertFromClipboardCommand = new RelayCommand(ExecuteConvertFromClipboard);
             ResetImageSplitCommand = new RelayCommand(ExecuteResetImageSplit);
             CopySplitImagePieceToClipboardCommand = new RelayCommand<Int32Point>(ExecuteCopySplitImagePieceToClipboard);
-            SetImageSplitWidthCommand = new RelayCommand<int>(i => ImageSplitSize = new Int32Size(i, ImageSplitSize.Height));
-            SetImageSplitHeightCommand = new RelayCommand<int>(i => ImageSplitSize = new Int32Size(ImageSplitSize.Width, i));
-
-            this.WhenAnyValue(x => x.PreviewImageSource)
-                .Skip(1)
-                .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewImageLoaded)));
+            ImageDropCommand = new RelayCommand<DragEventArgs>(ExecuteImageDrop!, CanExecuteImageDrop);
 
             _convertManager.WhenAnyValue(x => x.EnableDithering)
                 .Skip(1)
@@ -143,19 +141,19 @@ namespace ImageConverterPlus.ViewModels
                 {
                     this.RaisePropertyChanged(nameof(LCDWidth));
                     this.RaisePropertyChanged(nameof(LCDHeight));
+                    _convertManager.ImageSplitSize = new Int32Size(1, 1);
                 });
             _convertManager.WhenAnyValue(x => x.ImageSplitSize)
                 .Skip(1)
-                .Subscribe(i => this.RaisePropertyChanged(nameof(ImageSplitSize)));
-            _convertManager.WhenAnyValue(x => x.ProcessedImageFull)
-                .Skip(1)
                 .Subscribe(i =>
                 {
-                    if (i != null)
-                    {
-                        this.PreviewImageSource = i;
-                    }
+                    this.RaisePropertyChanged(nameof(ImageSplitWidth));
+                    this.RaisePropertyChanged(nameof(ImageSplitHeight));
                 });
+            _convertManager.WhenAnyValue(x => x.ProcessedImageFull)
+                .Skip(1)
+                .Where(i => i != null)
+                .Subscribe(i => this.PreviewImageSource = i);
             _convertManager.WhenAnyValue(x => x.Scale)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewScale)));
@@ -189,7 +187,7 @@ namespace ImageConverterPlus.ViewModels
                 }
                 else
                 {
-                    _dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
+                    ShowErrorDialog("This file type is not supported!");
                 }
             }
         }
@@ -291,11 +289,11 @@ namespace ImageConverterPlus.ViewModels
                     }
                 }
 
-                _dialogService.ShowAsync(new MessageDialogViewModel("Error", "This file type is not supported!"));
+                ShowErrorDialog("This file type is not supported!");
             }
             else
             {
-                _dialogService.ShowAsync(new MessageDialogViewModel("Error", "Unsupported File"));
+                ShowErrorDialog("Unsupported File");
             }
         }
 
@@ -316,6 +314,65 @@ namespace ImageConverterPlus.ViewModels
             });
         }
 
-        private void ShowConversionFailedDialog() => _dialogService.ShowAsync(new MessageDialogViewModel("Error", new System.Diagnostics.StackTrace(1).ToString()));
+        private static bool CanExecuteImageDrop(DragEventArgs? e)
+        {
+            if (e is null)
+                return false;
+
+            return (e.Data.GetDataPresent(DataFormats.FileDrop) &&
+                ((string[])e.Data.GetData(DataFormats.FileDrop)).FirstOrDefault() is string file &&
+                Helpers.IsImageFileSupported(file) is not IsFileSupportedEnum.NotSupported) ||
+                e.Data.GetDataPresent(DataFormats.Bitmap) ||
+                e.Data.GetDataPresent(DataFormats.Html);
+        }
+
+        private void ExecuteImageDrop(DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                foreach (string file in files)
+                {
+                    if (Helpers.TryLoadImage(file, out var result) && result is not null)
+                    {
+                        _convertManager.SourceImage = Helpers.BitmapToBitmapSourceFast(result, true);
+                        _convertManager.ImageSplitSize = new Int32Size(1, 1);
+                        _convertManager.ProcessImage(delegate
+                        {
+                            ResetImageZoomAndPanNoAnim();
+                            CurrentImagePath = System.IO.Path.GetFileName(file);
+                            CurrentImagePathLong = file;
+                            _logger.Log("Image Drag & Dropped (FileDrop)");
+                        });
+                        return;
+                    }
+                }
+
+                //when file type doesnt match
+                ShowErrorDialog("This file type is not supported!");
+            }
+            else if (e.Data.GetDataPresent(DataFormats.Bitmap))
+            {
+                var image = (System.Drawing.Bitmap)e.Data.GetData(DataFormats.Bitmap);
+                _convertManager.SourceImage = Helpers.BitmapToBitmapSourceFast(image, true);
+                _convertManager.ProcessImage(delegate
+                {
+                    ResetImageZoomAndPanNoAnim();
+                    CurrentImagePath = CurrentImagePathLong = "Drag & Droped Image";
+                    _logger.Log("Image Drag & Dropped (Bitmap)");
+                });
+            }
+            else if (e.Data.GetDataPresent(DataFormats.Html))
+            {
+                _ = WebHelpers.HandleHtmlDropThreadAsync(e.Data, _convertManager);
+            }
+            else
+            {
+                ShowErrorDialog("Clipboard does not contain any images");
+            }
+        }
+
+        private void ShowConversionFailedDialog() => ShowErrorDialog(new System.Diagnostics.StackTrace(1).ToString());
+        private void ShowErrorDialog(string error) => _dialogService.ShowAsync(new MessageDialogViewModel("Error", error));
     }
 }

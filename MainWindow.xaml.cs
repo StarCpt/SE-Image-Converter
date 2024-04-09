@@ -33,14 +33,11 @@ namespace ImageConverterPlus
     {
         public new MainWindowViewModel DataContext => (MainWindowViewModel)base.DataContext;
         private readonly ConvertManagerService convMgr;
-        private readonly IDialogService dialogService;
         private readonly LogService _logger;
 
-        public MainWindow(MainWindowViewModel dataContext, ConvertManagerService convertManager, IDialogService dialogService, LogService logger)
+        public MainWindow(ConvertManagerService convertManager, LogService logger)
         {
-            base.DataContext = dataContext;
             convMgr = convertManager;
-            this.dialogService = dialogService;
             _logger = logger;
 
             InitializeComponent();
@@ -64,7 +61,6 @@ namespace ImageConverterPlus
 
         private void LcdSizeChanged(Int32Size newSize)
         {
-            convMgr.ImageSplitSize = new Int32Size(1, 1);
             UpdatePreviewContainerSize();
             ResetZoomAndPanOnPreviewNewSizeChanged(); //so jank
             //ResetZoomAndPan(false);
@@ -93,6 +89,7 @@ namespace ImageConverterPlus
             }
         }
 
+        // TODO: Find out what this callback does and why
         private void ConvMgr_SourceImageChanged(BitmapSource? sourceImg)
         {
             if (DataContext.PreviewImageSource == null)

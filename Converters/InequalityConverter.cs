@@ -9,11 +9,16 @@ using System.Windows.Data;
 
 namespace ImageConverterPlus.Converters
 {
-    public class InvertedEqualityToVisibilityConverter : IValueConverter
+    public class InequalityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return !Equals(value, parameter) ? Visibility.Visible : Visibility.Collapsed;
+            bool equals = Equals(value, parameter);
+            if (targetType == typeof(Visibility))
+            {
+                return !equals ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return !equals;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
