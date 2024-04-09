@@ -45,20 +45,17 @@ namespace ImageConverterPlus
             convertManager.Delay = previewNew.animationDuration.TotalMilliseconds;
 
             convertManager.WhenAnyValue(x => x.SourceImage)
-                .Skip(1)
                 .Subscribe(ConvMgr_SourceImageChanged);
 
             DataContext.WhenAnyValue(
                     x => x.LCDWidth,
                     x => x.LCDHeight,
                     (x, y) => new Int32Size(x, y))
-                .Skip(1)
                 .Subscribe(LcdSizeChanged);
             DataContext.WhenAnyValue(
                     x => x.ImageSplitWidth, 
                     x => x.ImageSplitHeight,
                     (x, y) => new Int32Size(x, y))
-                .Skip(1)
                 .Subscribe(ImageSplitSizeChanged);
 
             UpdatePreviewGrid();

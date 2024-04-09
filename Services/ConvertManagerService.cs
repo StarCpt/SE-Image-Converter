@@ -74,16 +74,20 @@ namespace ImageConverterPlus.Services
             this.WhenAnyValue(
                     x => x.BitDepth,
                     x => x.EnableDithering,
-                    x => x.Interpolation,
-                    x => x.ConvertedSize)
-                .Skip(1)
+                    x => x.Interpolation)
                 .Subscribe(i =>
                 {
                     ProcessedImageFull = null;
                     ProcessImageNextInterval();
                 });
+            this.WhenAnyValue(x => x.ConvertedSize)
+                .Subscribe(i =>
+                {
+                    ImageSplitSize = new Int32Size(1, 1);
+                    ProcessedImageFull = null;
+                    ProcessImageNextInterval();
+                });
             this.WhenAnyValue(x => x.ImageSplitSize)
-                .Skip(1)
                 .Subscribe(i =>
                 {
                     SelectedSplitPos = new Int32Point(Math.Min(SelectedSplitPos.X, i.Width - 1), Math.Min(SelectedSplitPos.Y, i.Height - 1));
@@ -91,19 +95,16 @@ namespace ImageConverterPlus.Services
                     ProcessImageNextInterval();
                 });
             this.WhenAnyValue(
-                x => x.SelectedSplitPos,
-                x => x.TopLeftRatio)
-                .Skip(1)
+                    x => x.SelectedSplitPos,
+                    x => x.TopLeftRatio)
                 .Subscribe(i => ConvertedImageString = null);
             this.WhenAnyValue(x => x.Scale)
-                .Skip(1)
                 .Subscribe(i =>
                 {
                     ProcessedImageFull = null;
                     ProcessImage();
                 });
             this.WhenAnyValue(x => x.SourceImage)
-                .Skip(1)
                 .Subscribe(i =>
                 {
                     ProcessedImageFull = null;
@@ -111,7 +112,6 @@ namespace ImageConverterPlus.Services
                         ProcessImageNextInterval();
                 });
             this.WhenAnyValue(x => x.ProcessedImageFull)
-                .Skip(1)
                 .Subscribe(i => ConvertedImageString = null);
         }
 
