@@ -41,45 +41,11 @@ namespace ImageConverterPlus.Services
         public System.Windows.Point TopLeftRatio { get; set; } = new System.Windows.Point(0, 0);
         [Reactive]
         public BitmapSource? SourceImage { get; set; }
-        public Int32Size? SourceImageSize
-        {
-            get
-            {
-                if (SourceImage is BitmapSource img)
-                {
-                    lock (img)
-                    {
-                        return new Int32Size(img.PixelWidth, img.PixelHeight);
-                    }
-                }
-                else
-                {
-                    return null;
-                }
-            }
-        }
         /// <summary>
         /// Non-cropped version of the converted (dithered, rescaled, etc) image
         /// </summary>
         [Reactive]
         public BitmapSource? ProcessedImageFull { get; set; }
-        public Int32Size? ProcessedImageFullSize
-        {
-            get
-            {
-                if (ProcessedImageFull is BitmapSource img)
-                {
-                    lock (img)
-                    {
-                        return new Int32Size(img.PixelWidth, img.PixelHeight);
-                    }
-                }
-                else
-                {
-                    return null;
-                }
-            }
-        }
         /// <summary>
         /// Converted and cropped lcd image string
         /// </summary>
@@ -140,18 +106,13 @@ namespace ImageConverterPlus.Services
                 .Skip(1)
                 .Subscribe(i =>
                 {
-                    this.RaisePropertyChanged(nameof(SourceImageSize));
                     ProcessedImageFull = null;
                     if (i != null)
                         ProcessImageNextInterval();
                 });
             this.WhenAnyValue(x => x.ProcessedImageFull)
                 .Skip(1)
-                .Subscribe(i =>
-                {
-                    this.RaisePropertyChanged(nameof(ProcessedImageFullSize));
-                    ConvertedImageString = null;
-                });
+                .Subscribe(i => ConvertedImageString = null);
         }
 
         private void PeriodicTimer_Tick()
@@ -208,12 +169,12 @@ namespace ImageConverterPlus.Services
 
         private async Task<bool> ProcessImageDelayedInternal(CancellationToken token)
         {
-            if (SourceImage == null || SourceImageSize == null)
+            if (SourceImage is not BitmapSource img)
             {
                 return false;
             }
 
-            Int32Size sourceSize = SourceImageSize.Value;
+            Int32Size sourceSize = new Int32Size(img.PixelWidth, img.PixelHeight);
 
             double imageToLcdWidthRatio = (double)sourceSize.Width / ConvertedSize.Width;
             double imageToLcdHeightRatio = (double)sourceSize.Height / ConvertedSize.Height;

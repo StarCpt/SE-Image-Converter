@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Windows.Media;
 using RotateFlipType = System.Drawing.RotateFlipType;
 using InterpolationMode = System.Drawing.Drawing2D.InterpolationMode;
 using CommunityToolkit.Mvvm.Input;
@@ -71,10 +70,16 @@ namespace ImageConverterPlus.ViewModels
             get => _convertManager.ImageSplitSize.Height;
             set => _convertManager.ImageSplitSize = new Int32Size(ImageSplitWidth, value);
         }
+        public Int32Point SelectedSplitPos
+        {
+            get => _convertManager.SelectedSplitPos;
+            set => _convertManager.SelectedSplitPos = value;
+        }
         [Reactive]
         public bool ShowPreviewGrid { get; set; } = false;
         [Reactive]
-        public ImageSource? PreviewImageSource { get; set; }
+        public BitmapSource? PreviewImageSource { get; set; }
+        public Int32Size? PreviewImageSize => PreviewImageSource is BitmapSource src ? new Int32Size(src.PixelWidth, src.PixelHeight) : null;
         public double PreviewScale
         {
             get => _convertManager.Scale;
@@ -126,6 +131,9 @@ namespace ImageConverterPlus.ViewModels
             CopySplitImagePieceToClipboardCommand = new RelayCommand<Int32Point>(ExecuteCopySplitImagePieceToClipboard);
             ImageDropCommand = new RelayCommand<DragEventArgs>(ExecuteImageDrop!, CanExecuteImageDrop);
 
+            this.WhenAnyValue(x => x.PreviewImageSource)
+                .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewImageSize)));
+
             _convertManager.WhenAnyValue(x => x.EnableDithering)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(EnableDithering)));
@@ -154,6 +162,9 @@ namespace ImageConverterPlus.ViewModels
                 .Skip(1)
                 .Where(i => i != null)
                 .Subscribe(i => this.PreviewImageSource = i);
+            _convertManager.WhenAnyValue(x => x.SelectedSplitPos)
+                .Skip(1)
+                .Subscribe(i => this.RaisePropertyChanged(nameof(SelectedSplitPos)));
             _convertManager.WhenAnyValue(x => x.Scale)
                 .Skip(1)
                 .Subscribe(i => this.RaisePropertyChanged(nameof(PreviewScale)));

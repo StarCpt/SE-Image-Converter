@@ -8,12 +8,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Bitmap = System.Drawing.Bitmap;
 using System.Windows.Controls.Primitives;
 using ImageConverterPlus.Data;
 using ImageConverterPlus.ViewModels;
 using System.Windows.Data;
-using ImageConverterPlus.Services;
 using ImageConverterPlus.Converters;
 
 namespace ImageConverterPlus
@@ -24,7 +22,7 @@ namespace ImageConverterPlus
 
         public void ZoomToFit()
         {
-            if (convMgr.SourceImageSize is Int32Size imgSize)
+            if (DataContext.PreviewImageSize is Int32Size imgSize)
             {
                 double scaleOld = previewNew.Scale;
                 double scaleChange = -scaleOld + 1;
@@ -51,10 +49,10 @@ namespace ImageConverterPlus
 
         public void ZoomToFill()
         {
-            if (convMgr.SourceImageSize is Int32Size imgSize)
+            if (DataContext.PreviewImageSize is Int32Size imgSize)
             {
-                double imageToLCDWidthRatio = (double)imgSize.Width / convMgr.ConvertedSize.Width * convMgr.ImageSplitSize.Width;
-                double imageToLCDHeightRatio = (double)imgSize.Height / convMgr.ConvertedSize.Height * convMgr.ImageSplitSize.Height;
+                double imageToLCDWidthRatio = (double)imgSize.Width / DataContext.LCDWidth * DataContext.ImageSplitWidth;
+                double imageToLCDHeightRatio = (double)imgSize.Height / DataContext.LCDHeight * DataContext.ImageSplitHeight;
                 double minRatio = Math.Min(imageToLCDWidthRatio, imageToLCDHeightRatio);
 
                 var convertedImageSize = new Size(imgSize.Width / minRatio, imgSize.Height / minRatio);
@@ -84,7 +82,7 @@ namespace ImageConverterPlus
 
         public void ResetZoomAndPan(bool animate)
         {
-            if (convMgr.SourceImageSize is Int32Size imgSize)
+            if (DataContext.PreviewImageSize is Int32Size imgSize)
             {
                 if (animate)
                     previewNew.SetScaleAnimated(1.0, previewNew.animationDuration);
@@ -117,23 +115,23 @@ namespace ImageConverterPlus
 
             PreviewGrid.Children.Clear();
 
-            convMgr.SelectedSplitPos = new Int32Point(0, 0);
+            DataContext.SelectedSplitPos = new Int32Point(0, 0);
 
-            for (int x = 0; x < convMgr.ImageSplitSize.Width; x++)
+            for (int x = 0; x < DataContext.ImageSplitWidth; x++)
             {
-                for (int y = 0; y < convMgr.ImageSplitSize.Height; y++)
+                for (int y = 0; y < DataContext.ImageSplitHeight; y++)
                 {
                     ToggleButton btn = new ToggleButton
                     {
                         Style = (Style)FindResource("PreviewSplitBtn"),
                         Tag = new Int32Point(x, y),
-                        IsChecked = new Int32Point(x, y) == convMgr.SelectedSplitPos, // not strictly necessary since the property is databound
+                        IsChecked = new Int32Point(x, y) == DataContext.SelectedSplitPos, // not strictly necessary since the property is databound
                         ContextMenu = (ContextMenu)FindResource("SplitGridMenu"),
                     };
 
-                    Binding binding = new Binding(nameof(ConvertManagerService.SelectedSplitPos))
+                    Binding binding = new Binding(nameof(MainWindowViewModel.SelectedSplitPos))
                     {
-                        Source = convMgr,
+                        Source = DataContext,
                         Mode = BindingMode.OneWay,
                         Converter = new EqualityConverter(),
                         ConverterParameter = btn.Tag,
@@ -142,7 +140,7 @@ namespace ImageConverterPlus
 
                     Grid.SetColumn(btn, x);
                     Grid.SetRow(btn, y);
-                    btn.Click += (sender, e) => convMgr.SelectedSplitPos = (Int32Point)btn.Tag;
+                    btn.Click += (sender, e) => DataContext.SelectedSplitPos = (Int32Point)btn.Tag;
                     PreviewGrid.Children.Add(btn);
                 }
             }

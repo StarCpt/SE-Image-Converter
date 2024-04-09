@@ -13,8 +13,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.IO;
-using SixLabors.ImageSharp;
 using ImageConverterPlus.ViewModels;
 using ImageConverterPlus.Services;
 using ImageConverterPlus.Data;
@@ -32,25 +30,34 @@ namespace ImageConverterPlus
     public partial class MainWindow : Window, IDialogPresenter
     {
         public new MainWindowViewModel DataContext => (MainWindowViewModel)base.DataContext;
-        private readonly ConvertManagerService convMgr;
+
         private readonly LogService _logger;
 
-        public MainWindow(ConvertManagerService convertManager, LogService logger)
+        public MainWindow(ConvertManagerService convertManager, LogService logger, IDialogService dialogService, MainWindowViewModel mainViewModel)
         {
-            convMgr = convertManager;
             _logger = logger;
+            base.DataContext = mainViewModel;
 
             InitializeComponent();
 
-            convMgr.Delay = previewNew.animationDuration.TotalMilliseconds;
+            dialogService.SetPresenter(this);
 
-            convMgr.WhenAnyValue(x => x.SourceImage)
+            convertManager.Delay = previewNew.animationDuration.TotalMilliseconds;
+
+            convertManager.WhenAnyValue(x => x.SourceImage)
                 .Skip(1)
                 .Subscribe(ConvMgr_SourceImageChanged);
-            convMgr.WhenAnyValue(x => x.ConvertedSize)
+
+            DataContext.WhenAnyValue(
+                    x => x.LCDWidth,
+                    x => x.LCDHeight,
+                    (x, y) => new Int32Size(x, y))
                 .Skip(1)
                 .Subscribe(LcdSizeChanged);
-            convMgr.WhenAnyValue(x => x.ImageSplitSize)
+            DataContext.WhenAnyValue(
+                    x => x.ImageSplitWidth, 
+                    x => x.ImageSplitHeight,
+                    (x, y) => new Int32Size(x, y))
                 .Skip(1)
                 .Subscribe(ImageSplitSizeChanged);
 
@@ -75,8 +82,8 @@ namespace ImageConverterPlus
 
         private void UpdatePreviewContainerSize()
         {
-            Int32Size lcd = convMgr.ConvertedSize;
-            Int32Size split = convMgr.ImageSplitSize;
+            Int32Size lcd = new Int32Size(DataContext.LCDWidth, DataContext.LCDHeight);
+            Int32Size split = new Int32Size(DataContext.ImageSplitWidth, DataContext.ImageSplitHeight);
             if (lcd.Width * split.Width > lcd.Height * split.Height)
             {
                 previewNew.Width = PreviewContainerGridSize;

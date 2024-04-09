@@ -10,11 +10,16 @@ namespace ImageConverterPlus.Services
 {
     public class AcrylicDialogService : IDialogService
     {
-        private readonly IDialogPresenter _dialogPresenter;
+        private IDialogPresenter _dialogPresenter;
 
         public AcrylicDialogService(IDialogPresenter dialogPresenter)
         {
             _dialogPresenter = dialogPresenter;
+        }
+
+        public void SetPresenter(IDialogPresenter presenter)
+        {
+            _dialogPresenter = presenter;
         }
 
         public Task ShowAsync(IDialog dialog)

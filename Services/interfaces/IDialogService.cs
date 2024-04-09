@@ -9,6 +9,7 @@ namespace ImageConverterPlus.Services.interfaces
 {
     public interface IDialogService
     {
+        void SetPresenter(IDialogPresenter presenter);
         Task ShowAsync(IDialog dialog);
     }
 }
