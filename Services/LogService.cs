@@ -67,6 +67,7 @@ namespace ImageConverterPlus.Services
                 {
                     Console.WriteLine(entry);
                     await writer.WriteLineAsync(entry).ConfigureAwait(false);
+                    await writer.FlushAsync();
                 }
                 catch (Exception e)
                 {
